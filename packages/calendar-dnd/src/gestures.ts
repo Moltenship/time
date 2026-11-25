@@ -2,6 +2,7 @@ import {
   createPlacementBetween,
   movePlacementToTarget,
   resizePlacementToTarget,
+  slotDuration,
   timeGridDateTimeAt,
   type CalendarEventPlacement,
   type CalendarInteractionTarget,
@@ -111,6 +112,55 @@ export function createdPlacement<TResourceId extends ResourceId>(
       snap,
     },
   );
+}
+
+/** A free drag's drawn edge follows the pointer to the second; drops still land on slots. */
+const FOLLOWING: WallTimeSnapOptions = { increment: 1, smallestUnit: "second" };
+
+/**
+ * Where a free resize (`preview: "free"`) draws the event: its dragged edge under the pointer
+ * rather than on a slot, never shorter than one. For drawing only; `null` across axes or
+ * resources, as `resizedPlacement` is.
+ */
+export function followedResize<TResourceId extends ResourceId>(
+  original: CalendarEventPlacement<TResourceId>,
+  edge: "start" | "end",
+  grab: PointerTarget,
+  current: PointerTarget,
+  options: GestureOptions,
+): CalendarEventPlacement<TResourceId> | null {
+  if (grab.kind !== "time" || current.kind !== "time") return null;
+  return resizePlacementToTarget(
+    original,
+    edge,
+    interactionTarget(grab, FOLLOWING),
+    interactionTarget(current, FOLLOWING),
+    options,
+  );
+}
+
+/**
+ * Where a free create draws its range: from the slot it started in to the pointer, at least that
+ * slot. For drawing only; `null` across axes or resources, as `createdPlacement` is.
+ */
+export function followedCreate<TResourceId extends ResourceId>(
+  anchor: PointerTarget,
+  current: PointerTarget,
+  { snap }: GestureOptions,
+): CalendarEventPlacement<TResourceId> | null {
+  if (anchor.kind !== "time" || current.kind !== "time") return null;
+  if (anchor.resourceId !== current.resourceId) return null;
+  const start = timeGridDateTimeAt(anchor.column, anchor.y, { snap: { ...snap, mode: "floor" } });
+  const end = start.add(slotDuration(snap));
+  const at = timeGridDateTimeAt(current.column, current.y, { snap: FOLLOWING });
+  const resourceIds = (anchor.resourceId == null ? [] : [anchor.resourceId]) as TResourceId[];
+  const before = Temporal.ZonedDateTime.compare(at, start) < 0;
+  return {
+    end: (before || Temporal.ZonedDateTime.compare(at, end) < 0 ? end : at).toInstant(),
+    kind: "timed",
+    resourceIds,
+    start: (before ? at : start).toInstant(),
+  };
 }
 
 /** What an item dragged in from outside the calendar becomes: a new event, or a move of one. */

@@ -71,6 +71,7 @@ interface CalendarPointerOptions<TEvent, TEventId extends EventId, TResourceId e
   readonly disabled?: boolean;
   readonly onPreview?: (draft: CalendarDraft<TEventId, TResourceId> | null) => void;
   readonly ghostClassName?: string;
+  readonly preview?: "free" | "snapped";
   readonly scrollContainer?: {
     readonly current: Element | null;
   };

@@ -32,13 +32,25 @@ import {
 import { eventIdOf } from "./event-id";
 import {
   createdPlacement,
+  followedCreate,
+  followedResize,
   movedPlacement,
   resizedPlacement,
   samePlacement,
   type GestureOptions,
   type PointerTarget,
 } from "./gestures";
-import { ghostLayout, GhostLayer, ghostValidity, type GhostRect } from "./ghost";
+import {
+  GhostClone,
+  ghostLayout,
+  GhostLayer,
+  ghostValidity,
+  prefersReducedMotion,
+  type GhostBox,
+  type GhostLayout,
+  type GhostRect,
+  type GhostValidity,
+} from "./ghost";
 import { settleProposal, type ProposalOutcome } from "./outcome";
 import { registerRegion, type PointerRegion } from "./regions";
 import { columnsByDate, targetAt, type TargetSurface } from "./targets";
@@ -100,6 +112,15 @@ export interface CalendarPointerOptions<
   /** Extra classes for the preview segments. */
   readonly ghostClassName?: string;
   /**
+   * How the preview follows the pointer. `"snapped"`, the default, draws the event where a drop
+   * would land, so it steps from slot to slot. `"free"` moves a copy of a moved event with the
+   * pointer, pixel for pixel, over boxes where a drop would land
+   * (`[data-calendar-ghost="landing"]`), and slides it there on release; a resize or create on a
+   * time axis draws its edge under the pointer. Both propose, check, and announce the same snapped
+   * placement. A prototype: the name and values may change.
+   */
+  readonly preview?: "free" | "snapped";
+  /**
    * A ref to the element scrolled while dragging near its edges. Defaults to the nearest scrollable
    * ancestor of where the drag starts.
    */
@@ -112,6 +133,19 @@ export interface CalendarPointerOptions<
   readonly sidewaysScrollContainer?: { readonly current: Element | null };
   /** Wall-clock grid for time columns. Defaults to 15 minutes. */
   readonly snap?: WallTimeSnapOptions;
+}
+
+/** A free drag's parts (`preview: "free"`). */
+interface FreePreview {
+  readonly className: string | undefined;
+  /** The copy of a moved event under the pointer, from when the move starts. */
+  clone?: GhostClone;
+  /** The snapped preview's time range, boxes and policy answer, as last laid out. */
+  label: string | null;
+  layout: GhostLayout | null;
+  validity: GhostValidity;
+  /** Where a drop would land. */
+  readonly marker: GhostLayer;
 }
 
 interface EventGesture<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
@@ -158,6 +192,8 @@ interface Session<TEvent, TEventId extends EventId, TResourceId extends Resource
   floating?: Floating;
   /** Drop zones and watchers following a move (`monitorCalendarDrags`). */
   followers: readonly CalendarDragFollower[];
+  /** A free drag's parts; `undefined` for a snapped one. */
+  readonly free: FreePreview | undefined;
   frame?: number;
   readonly gesture: Gesture<TEvent, TEventId, TResourceId>;
   readonly ghost: GhostLayer;
@@ -255,6 +291,26 @@ function floatingRect({ height, offset, width }: Floating, point: CalendarPoint)
     visible: { bottom: innerHeight, left: 0, right: innerWidth, top: 0 },
     width,
   };
+}
+
+function center({ height, left, top, width }: GhostBox): CalendarPoint {
+  return { x: left + width / 2, y: top + height / 2 };
+}
+
+/** The box nearest `near`, by their centres. */
+function nearest<TBox extends GhostBox>(boxes: Iterable<TBox>, near: GhostBox): TBox | null {
+  const { x, y } = center(near);
+  let best: TBox | null = null;
+  let distance = Infinity;
+  for (const box of boxes) {
+    const point = center(box);
+    const next = Math.hypot(point.x - x, point.y - y);
+    if (next < distance) {
+      best = box;
+      distance = next;
+    }
+  }
+  return best;
 }
 
 /**
@@ -399,7 +455,8 @@ export function attachCalendarPointer<
       const changed = current.placement !== null;
       current.placement = null;
       current.check = null;
-      showOutside(current);
+      if (current.free === undefined) showOutside(current);
+      else followOutside(current, current.free);
       if (changed) {
         getOptions().onPreview?.(null);
         show(current, () => null);
@@ -407,7 +464,10 @@ export function attachCalendarPointer<
       return changed;
     }
     const changed = current.placement === null || !samePlacement(current.placement, placement);
-    if (!scrolled && !changed) return false;
+    if (!scrolled && !changed) {
+      if (current.free !== undefined) drawFree(current, current.free, target!, false);
+      return false;
+    }
 
     current.placement = placement;
     if (changed) {
@@ -428,9 +488,123 @@ export function attachCalendarPointer<
         : (current.announcer?.formatRange(placement) ??
           formatPlacementRange(placement, { timeZone: current.options.timeZone }));
     const validity = ghostValidity(current.check);
-    current.ghost.render(layout.rects, template, label, validity);
+    if (current.free === undefined) current.ghost.render(layout.rects, template, label, validity);
+    else {
+      Object.assign(current.free, { label, layout, validity });
+      if (scrolled) current.free.clone?.measure();
+      drawFree(current, current.free, target!, true);
+    }
     show(current, () => ({ label, rects: layout.rects.map(viewportRect), validity }));
     return changed;
+  }
+
+  /**
+   * Draws a free drag (`preview: "free"`) over `target`: a moved event's copy under the pointer
+   * over the landing boxes, or a resize's or create's edge under the pointer on a time axis.
+   * `laidOut` says the snapped preview was laid out again; when it wasn't, a move only moves its
+   * copy.
+   */
+  function drawFree(
+    current: Session<TEvent, TEventId, TResourceId>,
+    free: FreePreview,
+    target: PointerTarget,
+    laidOut: boolean,
+  ): void {
+    const { gesture } = current;
+    const { label, layout, validity } = free;
+    if (layout === null) return;
+    if (gesture.kind === "move") {
+      if (laidOut) {
+        free.marker.render(layout.rects, null, null, validity);
+        free.clone?.mark(label, validity, false);
+      }
+      free.clone?.follow(current.point);
+      return;
+    }
+
+    const template = layout.axis === "time" && gesture.kind === "resize" ? gesture.element : null;
+    const followed =
+      layout.axis !== "time"
+        ? null
+        : gesture.kind === "create"
+          ? followedCreate<TResourceId>(gesture.anchor, target, current.options)
+          : followedResize(gesture.original, gesture.edge, gesture.grab, target, current.options);
+    if (followed === null) {
+      // Days are whole, so a resize or create over day cells steps as a snapped one does.
+      free.marker.clear();
+      if (laidOut) current.ghost.render(layout.rects, template, label, validity);
+      return;
+    }
+    if (laidOut) free.marker.render(layout.rects, null, null, validity);
+    const drawn = ghostLayout(current.surface, followed, current.options.timeZone);
+    current.ghost.render(drawn.rects, template, label, validity);
+  }
+
+  /** Where a free drag has nothing to drop on: no landing, and a moved event's copy marked so. */
+  function followOutside(current: Session<TEvent, TEventId, TResourceId>, free: FreePreview): void {
+    free.marker.clear();
+    current.ghost.clear();
+    free.clone?.mark(null, null, true);
+    free.clone?.follow(current.point);
+  }
+
+  /** Where the event renders now, nearest `near`; `null` when the view doesn't show it. */
+  function renderedBox(id: TEventId, near: GhostBox): GhostBox | null {
+    const boxes: GhostBox[] = [];
+    for (const element of region.querySelectorAll("[data-event-id]")) {
+      if (String(eventIdOf(element)) !== String(id)) continue;
+      const rect = element.getBoundingClientRect();
+      if (rect.width > 0 || rect.height > 0) boxes.push(rect);
+    }
+    return nearest(boxes, near);
+  }
+
+  /**
+   * Ends a free drag's preview: `"drop"` slides it to where the drop lands, `"home"` back to the
+   * event, and `null` removes it, as for a drop zone of the app's.
+   */
+  function settleFree(
+    current: Session<TEvent, TEventId, TResourceId>,
+    free: FreePreview,
+    to: "drop" | "home" | null,
+  ): void {
+    free.marker.clear();
+    const { gesture } = current;
+    if (gesture.kind !== "move") {
+      if (to === "drop" && free.layout !== null) current.ghost.settle(free.layout.rects);
+      else current.ghost.clear();
+      return;
+    }
+    const { clone } = free;
+    if (clone === undefined) return;
+    if (to === null || prefersReducedMotion()) {
+      clone.remove();
+      return;
+    }
+    const from = clone.rect;
+    if (to === "home") {
+      clone.settle(
+        gesture.element.isConnected
+          ? gesture.element.getBoundingClientRect()
+          : renderedBox(gesture.event.id, from),
+      );
+      return;
+    }
+    const layout = free.layout;
+    const landing = layout === null ? null : nearest(layout.rects, from);
+    const fallback: GhostBox | null =
+      landing === null
+        ? null
+        : {
+            height:
+              layout!.axis === "time" ? landing.height : Math.min(from.height, landing.height),
+            left: landing.left,
+            top: landing.top,
+            width: Math.min(from.width, landing.width),
+          };
+    // The proposal renders the event where it lands, or where it was if refused, by the next
+    // frame: the copy slides onto it there.
+    requestAnimationFrame(() => clone.settle(renderedBox(gesture.event.id, from) ?? fallback));
   }
 
   /** Tells the followers what the preview shows now. */
@@ -482,7 +656,17 @@ export function attachCalendarPointer<
       current.gesture.element.setAttribute("data-dragging", "");
     }
     getSelection()?.removeAllRanges();
-    if (current.gesture.kind === "move") follow(current, current.gesture);
+    if (current.gesture.kind === "move") {
+      follow(current, current.gesture);
+      if (current.free !== undefined) {
+        current.free.clone = new GhostClone(
+          region,
+          current.gesture.element,
+          current.free.className,
+          current.origin,
+        );
+      }
+    }
     trackEdges(current);
     current.frame = requestAnimationFrame(scrollFrame);
     preview(current);
@@ -506,15 +690,23 @@ export function attachCalendarPointer<
     };
     current.followers = followersOf(drag as CalendarEventDrag);
     current.zones = current.followers.some((follower) => follower.claims !== undefined);
-    if (current.zones) current.floating = floatingOf(element, current.origin);
+    // A free drag's copy follows the pointer everywhere already.
+    if (current.zones && current.free === undefined) {
+      current.floating = floatingOf(element, current.origin);
+    }
     tellFollowers(current.followers, (follower) => follower.move?.(current.point));
   }
 
   /**
    * Ends the gesture; `dropped` tells its followers a drop zone of theirs took it, and `landing`
-   * what the preview showed where a release in the view proposed the move.
+   * what the preview showed where a release in the view proposed the move. `settle` says where a
+   * free drag's preview goes: to the drop it proposed, or back to the event.
    */
-  function end(dropped = false, landing: CalendarDragPreview | null = null): void {
+  function end(
+    dropped = false,
+    landing: CalendarDragPreview | null = null,
+    settle: "drop" | "home" = "home",
+  ): void {
     const current = session;
     if (current === null) return;
     session = null;
@@ -522,7 +714,8 @@ export function attachCalendarPointer<
     if (current.placement !== null) getOptions().onPreview?.(null);
     clearTimeout(current.longPress);
     if (current.frame !== undefined) cancelAnimationFrame(current.frame);
-    current.ghost.clear();
+    if (current.free === undefined) current.ghost.clear();
+    else settleFree(current, current.free, dropped ? null : settle);
     region.removeAttribute("data-interaction");
     if (current.gesture.kind !== "create") current.gesture.element.removeAttribute("data-dragging");
 
@@ -603,7 +796,7 @@ export function attachCalendarPointer<
       return;
     }
     const proposed = proposal(current);
-    end(false, proposed === null ? null : current.shown);
+    end(false, proposed === null ? null : current.shown, proposed === null ? "home" : "drop");
     suppressNextClick();
     if (proposed === null) {
       announce(current, { phase: "cancel" });
@@ -667,6 +860,16 @@ export function attachCalendarPointer<
       claimed: false,
       edges: new EdgeArming(true),
       followers: noFollowers,
+      free:
+        options.preview === "free"
+          ? {
+              className: options.ghostClassName,
+              label: null,
+              layout: null,
+              marker: new GhostLayer(region, options.ghostClassName, "landing"),
+              validity: null,
+            }
+          : undefined,
       gesture,
       ghost: new GhostLayer(region, options.ghostClassName),
       options: { snap: options.snap ?? DEFAULT_SNAP, timeZone: options.timeZone },
