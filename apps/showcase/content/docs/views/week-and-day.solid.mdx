@@ -3,8 +3,15 @@ title: Week and day
 description: The Solid week and day views, time grids with an all-day row, a current-time line and DST-aware hours, from the Solid registry.
 ---
 
-Try them in the [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=week): it opens on
-the week.
+<SolidExample
+  name="week"
+  title="The week view"
+  size="h-[34rem]"
+  caption="Live. The page that Add them builds, with a standup and a two-day conference in October 2026."
+/>
+
+The [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=week) opens on the week, with
+more events and a toolbar.
 
 `createWeekView` and `createDayView` show the hours of the day down the side and one column per day.
 The week view has seven columns, starting on `weekRules.firstDay`. The day view has one column for
