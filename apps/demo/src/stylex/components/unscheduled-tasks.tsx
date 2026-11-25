@@ -7,8 +7,7 @@ import { Button } from "@registry/stylex-calendar-ui/button";
 
 import { getCalendarColor } from "../../calendars";
 import type { DemoTask, DemoTaskList } from "../../tasks";
-import { useUnschedule } from "../../unschedule";
-import { taskLength, useTaskCard, useUnscheduledDrop } from "../../unscheduled";
+import { taskLength, useTaskCard, useUnschedule, useUnscheduledDrop } from "../../unscheduled";
 import { StylexDemoCalendar } from "../calendar";
 import { visuallyHidden } from "../ui/visually-hidden";
 import { sectionStyles } from "./section";

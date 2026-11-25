@@ -1,9 +1,7 @@
-import { useCallback, useRef } from "react";
-
 import type { DemoEvent, DemoOccurrence } from "./demo-model";
 import { isDemoCalendarId, type DemoCalendarId } from "./calendars";
 import { isDemoResourceId, type DemoResourceId } from "./resources";
-import { isRecord, usePersistentState } from "./storage";
+import { isRecord } from "./storage";
 
 /** Something to do that isn't on the calendar yet: dragged onto it, it becomes an event. */
 export interface DemoTask {
@@ -54,30 +52,24 @@ export function loadTasks(stored: string | null): readonly DemoTask[] {
   }
 }
 
-const serializeTasks = (tasks: readonly DemoTask[]) => JSON.stringify(tasks);
+/** A task's length, as its card shows it. */
+export function taskLength(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest} min`;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
 
-/** The unscheduled tasks and what changes them, from `useDemoTasks`. */
-export type DemoTaskList = ReturnType<typeof useDemoTasks>;
+export const serializeTasks = (tasks: readonly DemoTask[]) => JSON.stringify(tasks);
 
-/** The unscheduled tasks, persisted to localStorage. */
-export function useDemoTasks() {
-  const [tasks, setTasks] = usePersistentState(tasksStorageKey, loadTasks, serializeTasks);
+/** The unscheduled tasks and what changes them, as each UI's saved state keeps them. */
+export interface DemoTaskList {
+  readonly addTask: (task: DemoTask) => void;
+  readonly removeTask: (id: string) => void;
   /** Counts resets, so an unschedule still saving when the data was reset leaves the seed alone. */
-  const resets = useRef(0);
-  const addTask = useCallback(
-    (task: DemoTask) =>
-      setTasks((current) => [task, ...current.filter(({ id }) => id !== task.id)]),
-    [setTasks],
-  );
-  const removeTask = useCallback(
-    (id: string) => setTasks((current) => current.filter((task) => task.id !== id)),
-    [setTasks],
-  );
-  const resetTasks = useCallback(() => {
-    resets.current += 1;
-    setTasks(seedTasks);
-  }, [setTasks]);
-  return { addTask, removeTask, resets, resetTasks, tasks };
+  readonly resets: { current: number };
+  readonly resetTasks: () => void;
+  readonly tasks: readonly DemoTask[];
 }
 
 /** The records tasks become, which a create carries when a task is dropped on the calendar. */

@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -19,16 +17,4 @@ export function writeStorage(key: string, value: string): void {
   } catch {
     // Keep the in-memory value.
   }
-}
-
-export function usePersistentState<T>(
-  key: string,
-  load: (stored: string | null) => T,
-  serialize: (value: T) => string,
-) {
-  const [value, setValue] = useState(() => load(readStorage(key)));
-
-  useEffect(() => writeStorage(key, serialize(value)), [key, serialize, value]);
-
-  return [value, setValue] as const;
 }

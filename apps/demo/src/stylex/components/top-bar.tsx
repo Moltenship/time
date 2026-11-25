@@ -7,7 +7,7 @@ import { Button } from "@registry/stylex-calendar-ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/stylex-calendar-ui/tooltip";
 
 import type { DemoView } from "../../demo-model";
-import { viewSwitcherOptions } from "../../view-options";
+import { viewSwitcherOptions } from "../../view-choices";
 import { StylexDemoCalendar } from "../calendar";
 import { BrandMark } from "./brand";
 import { DocsLink } from "./docs-link";

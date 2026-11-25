@@ -18,13 +18,8 @@ import { Textarea } from "./ui/textarea";
 import { DemoCalendar } from "../calendar";
 import { demoCalendars, isDemoCalendarId } from "../calendars";
 import { moveDraftStart, repeatsFrom, type EventDraft } from "../event-draft";
-import {
-  parseDate,
-  parseTime,
-  timeValue,
-  useEventForm,
-  type EventFormOptions,
-} from "../event-form";
+import { parseDate, parseTime, timeValue, type EventFormOptions } from "../event-form";
+import { useEventForm } from "../use-event-form";
 import { seriesDate } from "../repeat";
 import { RepeatField } from "./repeat-field";
 import { ResourcePicker } from "./resource-picker";

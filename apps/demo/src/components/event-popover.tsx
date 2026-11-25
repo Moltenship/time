@@ -17,7 +17,7 @@ import { demoCalendars } from "../calendars";
 import { formatEventWhen } from "../event-format";
 import { describeOccurrenceRecurrence } from "../event-recurrence";
 import { taskFromOccurrence, type DemoTaskList } from "../tasks";
-import { useUnschedule } from "../unschedule";
+import { useUnschedule } from "../unscheduled";
 
 export interface EventPopoverProps {
   /** The clicked event element the popover points at; kept after closing to restore focus. */

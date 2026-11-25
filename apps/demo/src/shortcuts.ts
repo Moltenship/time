@@ -1,7 +1,4 @@
-import { useEffect } from "react";
-
 import type { DemoView } from "./demo-model";
-import { viewFor } from "./scrolling";
 
 export type ShortcutCommand =
   | { readonly type: "create" | "help" | "next" | "previous" | "today" }
@@ -64,31 +61,6 @@ export interface ShortcutActions {
   readonly setView: (view: DemoView) => void;
 }
 
-/** Global shortcuts: t today, d/x/w/m/y/a views, j/k or ←/→ to step, c to create, ? for help. */
-export function useShortcutKeys(
-  actions: ShortcutActions,
-  onCreate: () => void,
-  onHelp: () => void,
-  /** Whether d, x, w, m, and a open the scrolling day, 3 days, week, month, and agenda. */
-  scrolling: boolean,
-) {
-  useEffect(() => {
-    const listener = (event: KeyboardEvent) => {
-      const command = shortcutCommand(event);
-      if (command === undefined) return;
-      event.preventDefault();
-      if (command.type === "view") actions.setView(viewFor(command.view, scrolling));
-      else if (command.type === "create") onCreate();
-      else if (command.type === "help") onHelp();
-      else if (command.type === "next") actions.navigateNext();
-      else if (command.type === "previous") actions.navigatePrevious();
-      else actions.navigateToday();
-    };
-    window.addEventListener("keydown", listener);
-    return () => window.removeEventListener("keydown", listener);
-  }, [actions, onCreate, onHelp, scrolling]);
-}
-
 export interface KeyListItem {
   readonly keys: readonly string[];
   readonly label: string;
@@ -124,16 +96,32 @@ const historyKeys: readonly KeyListItem[] = [
   { keys: isApple ? ["Shift+⌘Z"] : ["Shift+Ctrl+Z", "Ctrl+Y"], label: "Redo it" },
 ];
 
-/** The shortcuts dialog's lists. */
-export const shortcutSections: readonly {
+export interface ShortcutSection {
   readonly items: readonly KeyListItem[];
   readonly title: string;
-}[] = [
-  { items: shortcuts, title: "Anywhere" },
+}
+
+/** The shortcuts dialog's lists, with the keys of the views `hasView` keeps. */
+export function shortcutSectionsFor(
+  hasView: (view: DemoView) => boolean,
+): readonly ShortcutSection[] {
+  return [
+    {
+      items: shortcuts.filter(({ command }) => command.type !== "view" || hasView(command.view)),
+      title: "Anywhere",
+    },
+    ...otherSections,
+  ];
+}
+
+const otherSections: readonly ShortcutSection[] = [
   { items: navigationKeys, title: "In the calendar" },
   { items: editingKeys, title: "Changing events" },
   { items: historyKeys, title: "Undo and redo" },
 ];
+
+/** The shortcuts dialog's lists. */
+export const shortcutSections = shortcutSectionsFor(() => true);
 
 const keyNames: Readonly<Record<string, string>> = {
   ArrowDown: "↓",

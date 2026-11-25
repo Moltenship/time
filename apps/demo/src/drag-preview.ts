@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 import type { SettingField } from "./settings";
 
 /**
@@ -36,17 +34,6 @@ export function writeDragPreview(href: string, preview: DemoDragPreview): string
   if (preview === "free") url.searchParams.set("drag", "free");
   else url.searchParams.delete("drag");
   return url.toString();
-}
-
-/** The drag preview, initialised from the URL and mirrored back into it, so a link keeps it. */
-export function useDragPreview() {
-  const [preview, setPreview] = useState(() => readDragPreview(window.location.search));
-
-  useEffect(() => {
-    history.replaceState(history.state, "", writeDragPreview(window.location.href, preview));
-  }, [preview]);
-
-  return [preview, setPreview] as const;
 }
 
 /** The select for the drag preview, beside the other settings. */

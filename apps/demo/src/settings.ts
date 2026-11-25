@@ -1,6 +1,6 @@
 import type { IsoDayOfWeek, OverlapLayout } from "@moltenship/calendar";
 
-import { isRecord, usePersistentState } from "./storage";
+import { isRecord } from "./storage";
 
 export interface DemoSettings {
   readonly locale: string;
@@ -127,24 +127,23 @@ export function parseSettings(stored: string | null, defaults: DemoSettings): De
   }
 }
 
-const serializeSettings = (settings: DemoSettings) => JSON.stringify(settings);
+export const serializeSettings = (settings: DemoSettings) => JSON.stringify(settings);
 
-export function useDemoSettings() {
-  return usePersistentState(
-    "moltenship-demo:settings",
-    (stored) =>
-      parseSettings(stored, {
-        locale: "en-US",
-        overlapLayout: "columns",
-        resourceRules: "same",
-        scrolling: false,
-        secondaryTimeZone: null,
-        timeZone: Temporal.Now.timeZoneId(),
-        weekStartsOn: 7,
-        workingHours: "warn",
-      }),
-    serializeSettings,
-  );
+/** Where the settings are saved, the same for every page of the demo, so a switch keeps them. */
+export const settingsStorageKey = "moltenship-demo:settings";
+
+/** The settings of a first visit, in the visitor's own zone. */
+export function defaultSettings(timeZone: string = Temporal.Now.timeZoneId()): DemoSettings {
+  return {
+    locale: "en-US",
+    overlapLayout: "columns",
+    resourceRules: "same",
+    scrolling: false,
+    secondaryTimeZone: null,
+    timeZone,
+    weekStartsOn: 7,
+    workingHours: "warn",
+  };
 }
 
 /** The select's value for no second time zone; no IANA zone is named this. */

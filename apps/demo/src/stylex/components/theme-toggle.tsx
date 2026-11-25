@@ -4,7 +4,7 @@ import type { XStyle } from "@registry/stylex-calendar-theme/xprops";
 import { Button } from "@registry/stylex-calendar-ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/stylex-calendar-ui/tooltip";
 
-import { useTheme } from "../../theme";
+import { useTheme } from "../../use-theme";
 
 export function ThemeToggle({ xstyle }: { readonly xstyle?: XStyle }) {
   const { theme, toggleTheme } = useTheme();

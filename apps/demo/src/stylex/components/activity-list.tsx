@@ -3,7 +3,8 @@ import { useId } from "react";
 
 import { eventColorStyles } from "@registry/stylex-calendar-theme/event-color-styles";
 
-import { demoAnnotationSources, type DemoAnnotationSourceId } from "../../annotations";
+import { demoAnnotationSources } from "../../annotation-sources";
+import type { DemoAnnotationSourceId } from "../../annotations";
 import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/field";
 import { sectionStyles } from "./section";

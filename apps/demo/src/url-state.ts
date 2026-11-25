@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { demoViewNames, type DemoView } from "./demo-model";
+import { readDragPreview, writeDragPreview } from "./drag-preview";
 
 export interface CalendarLocation {
   readonly date: Temporal.PlainDate;
@@ -56,4 +57,15 @@ export function useCalendarLocation(today: Temporal.PlainDate) {
   }, [location]);
 
   return [location, setLocation] as const;
+}
+
+/** The drag preview, initialised from the URL and mirrored back into it, so a link keeps it. */
+export function useDragPreview() {
+  const [preview, setPreview] = useState(() => readDragPreview(window.location.search));
+
+  useEffect(() => {
+    history.replaceState(history.state, "", writeDragPreview(window.location.href, preview));
+  }, [preview]);
+
+  return [preview, setPreview] as const;
 }

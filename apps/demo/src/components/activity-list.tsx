@@ -3,7 +3,8 @@ import { useId } from "react";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 
-import { demoAnnotationSources, type DemoAnnotationSourceId } from "../annotations";
+import { demoAnnotationSources } from "../annotation-sources";
+import type { DemoAnnotationSourceId } from "../annotations";
 
 export interface ActivityListProps {
   readonly hidden: ReadonlySet<DemoAnnotationSourceId>;

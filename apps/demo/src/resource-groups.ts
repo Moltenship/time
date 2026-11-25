@@ -1,7 +1,7 @@
 import {
   fitsAvailability,
-  useBusyResources,
-  useCalendarAvailability,
+  type AvailabilitySnapshot,
+  type CalendarBusyResources,
   type CalendarEventInterval,
 } from "@moltenship/calendar";
 
@@ -15,9 +15,11 @@ const bookable = demoResources.filter(({ data }) => data.kind !== "team");
  * rooms and people split into Available and Busy at the event's time, free first, those inside
  * their hours first within a group, with the events keeping them busy.
  */
-export function useResourceGroups(interval: CalendarEventInterval | null, eventId?: string) {
-  const busy = useBusyResources(interval, { exclude: eventId });
-  const availability = useCalendarAvailability();
+export function resourceGroups(
+  busy: CalendarBusyResources,
+  availability: AvailabilitySnapshot,
+  interval: CalendarEventInterval | null,
+) {
   const outsideHours = (resourceId: DemoResourceId) =>
     interval !== null &&
     !fitsAvailability(
