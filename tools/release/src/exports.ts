@@ -12,6 +12,8 @@ import {
   pointerAdapterBindings,
   pointerAdapterPackage,
 } from "./config";
+import { nextTagLines } from "./docs-tag";
+import { distTag } from "./manifest";
 import { withPackedPackages, type PackedTarball } from "./pack";
 import { parseArguments, runMain } from "./workspace";
 
@@ -23,8 +25,8 @@ const adapterSpecifier = (adapters: readonly string[]) =>
   new RegExp(`["'\`](${adapters.map((name) => name.replace(/[/.]/g, "\\$&")).join("|")})`);
 
 /**
- * Problems with one packed tarball: publint, are-the-types-wrong, LICENSE, adapter imports, and the
- * facade's docs and skill.
+ * Problems with one packed tarball: publint, are-the-types-wrong, LICENSE, adapter imports, the
+ * facade's docs and skill, and in a stable version an install command that still names `@next`.
  */
 export async function tarballProblems(path: string): Promise<string[]> {
   const bytes = await readFile(path);
@@ -59,6 +61,21 @@ export async function tarballProblems(path: string): Promise<string[]> {
   if (archive.packageName === facadePackage) {
     for (const file of facadeAgentFiles) {
       if (!files.includes(file)) problems.push(`the tarball has no ${file}`);
+    }
+  }
+
+  // What a stable version ships installs no pre-release: its README, and the facade's docs and
+  // skill, which are packed from generated files the check of the tracked ones never reads.
+  const { version } = JSON.parse(archive.readFile(`${root}/package.json`)) as { version: string };
+  if (distTag(version) !== "next") {
+    for (const file of files.filter((name) => /\.mdx?$/u.test(name))) {
+      // Read as a package's file, so what it says of a pre-release counts as well as its commands.
+      const lines = nextTagLines(`packages/${file}`, archive.readFile(`${root}/${file}`));
+      if (lines.length > 0) {
+        problems.push(
+          `${version} is a stable version, but these lines install @next or call it a pre-release: ${lines.map((line) => line.slice("packages/".length)).join(", ")}`,
+        );
+      }
     }
   }
 
@@ -104,6 +121,6 @@ runMain(import.meta, async () => {
   parseArguments(process.argv.slice(2));
   await withPackedPackages(checkTarballs);
   console.log(
-    "Export checks passed: publint, are-the-types-wrong (ESM), LICENSE, no adapter in base packages, the facade's docs and skill.",
+    "Export checks passed: publint, are-the-types-wrong (ESM), LICENSE, no adapter in base packages, the facade's docs and skill, no @next in a stable version's Markdown.",
   );
 });

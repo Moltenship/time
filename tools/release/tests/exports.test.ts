@@ -199,6 +199,29 @@ describe("export checks", () => {
     ]);
   }, 30_000);
 
+  test("a stable version's Markdown installs no @next, and a pre-release's may", async () => {
+    const files = {
+      "README.md": "# Example\n\n```bash\npnpm add @moltenship/example@next\n```\n",
+      "docs/installation.md": "Time 2.0 is a pre-release on npm's `next` tag.\n",
+      "skills/time/SKILL.md": "pnpm add @moltenship/example\n",
+    };
+    const packed = { files: ["dist", "docs", "skills"] };
+
+    expect(
+      await tarballProblems(
+        await tarball("tagged-stable", { files, manifest: { ...packed, version: "2.0.0" } }),
+      ),
+    ).toEqual([
+      "2.0.0 is a stable version, but these lines install @next or call it a pre-release: README.md:4",
+      "2.0.0 is a stable version, but these lines install @next or call it a pre-release: docs/installation.md:1",
+    ]);
+    expect(
+      await tarballProblems(
+        await tarball("tagged-beta", { files, manifest: { ...packed, version: "2.0.0-beta.2" } }),
+      ),
+    ).toEqual([]);
+  }, 30_000);
+
   test("another package needs no docs or skill", async () => {
     expect(
       await tarballProblems(await tarball("no-docs", { name: "@moltenship/calendar-core" })),

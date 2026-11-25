@@ -93,5 +93,6 @@ to add again with `shadcn add`, and whether it needs this version of the package
 Tell the owner what shipped, with the release URL, and any `Left to do by hand:` step the command
 printed. A stable release takes `@next` out of the install commands by itself: the docs site
 follows the packages' version, and the release commit rewrites the READMEs and skill files
-(`docs/internal/releasing.md`, "A stable release and `@next`"). Nothing else to do:
-`docs/internal/releasing.md` covers rollbacks.
+(`docs/internal/releasing.md`, "A stable release and `@next`"). After a stable release, also tell
+the owner that the comparison page's "Latest release" and "Releases in the last 12 months" rows
+about Time need a PR. Nothing else to do: `docs/internal/releasing.md` covers rollbacks.

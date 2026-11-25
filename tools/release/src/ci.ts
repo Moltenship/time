@@ -300,8 +300,14 @@ async function push(tag: string, version: string): Promise<void> {
 async function publishRelease(version: string, dryRun: boolean): Promise<void> {
   await importRelease(version);
   await report(await publish({ version, dryRun }), dryRun);
-  // A stable version takes `next` too. What npm won't do here is a step for the owner, not a
-  // failure: the packages are published.
+}
+
+/**
+ * A stable version takes npm's `next` tag too. It is a step of its own after the publish, which
+ * the workflow lets fail and cuts off after five minutes: the packages are out, so nothing here
+ * may keep the release from being pushed. What npm won't do is a step for the owner.
+ */
+async function nextTag(version: string, dryRun: boolean): Promise<void> {
   const left = await moveNextTag({ version, dryRun });
   if (left !== undefined) await annotate(`${dryRun ? wouldLeave : leftToDo} ${left}`);
 }
@@ -345,10 +351,11 @@ runMain(import.meta, async () => {
   else if (command === "prepare") await prepare(version);
   else if (command === "package") await packageRelease(version);
   else if (command === "publish") await publishRelease(version, dryRun);
+  else if (command === "next-tag") await nextTag(version, dryRun);
   else if (command === "finish") await finish(version, dryRun);
   else {
     throw new Error(
-      "Usage: VERSION=<version> DRY_RUN=<true|false> node --import tsx src/ci.ts <check|prepare|package|publish|finish>",
+      "Usage: VERSION=<version> DRY_RUN=<true|false> node --import tsx src/ci.ts <check|prepare|package|publish|next-tag|finish>",
     );
   }
 });

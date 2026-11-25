@@ -43,11 +43,14 @@ const preReleaseBlock = /<\/?PreRelease>/u;
 function assertInstallTag(text, where) {
   assert.doesNotMatch(text, preReleaseBlock, `${where} kept a pre-release block's tags.`);
   if (preRelease) return;
-  assert.doesNotMatch(
-    text,
-    taggedPackage,
-    `${where} installs @next, but the site is built for ${version}, a stable version.`,
-  );
+  // As written, and as read: a highlighted command has each of its words in an element of its own.
+  for (const read of [text, text.replace(/<[^>]*>/gu, "")]) {
+    assert.doesNotMatch(
+      read,
+      taggedPackage,
+      `${where} installs @next, but the site is built for ${version}, a stable version.`,
+    );
+  }
 }
 
 // Derive routes and titles from the content so copy edits do not break this check. A file's name

@@ -31,7 +31,7 @@ describe("the release workflow's check", () => {
     expect(checkProblems(stable)).toEqual({
       blockers: [],
       problems: [
-        "1.0.0 is a stable version, which npm serves as latest, but these lines still install @next, the pre-release tag: docs/setup.md:12, packages/ics/README.md:16. Take the tag out of them, or put a docs page's sentence in <PreRelease>.",
+        "1.0.0 is a stable version, which npm serves as latest, but these lines still install @next, the pre-release tag, or say it is a pre-release: docs/setup.md:12, packages/ics/README.md:16. Take that out of them, or put a docs page's sentence in <PreRelease>.",
       ],
     });
     expect(checkProblems({ ...stable, taggedDocs: [] }).problems).toEqual([]);

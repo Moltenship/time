@@ -132,39 +132,67 @@ export async function publish(options: {
   });
 }
 
+/** What `moveNextTag` works with; a test gives it its own. */
+export interface NextTagParts {
+  /** The published packages' names. */
+  readonly names: () => Promise<readonly string[]>;
+  /** A place to run npm in, and its version, as `withNpm` gives them. */
+  readonly npm: typeof withNpm;
+  readonly run: typeof run;
+  readonly tagged: (name: string) => Promise<string | undefined>;
+}
+
+const nextTagParts: NextTagParts = {
+  names: async () => (await readPublishedPackages()).map(({ manifest }) => manifest.name),
+  npm: withNpm,
+  run,
+  tagged: async (name) => (await fetchPackument(name))?.["dist-tags"]?.next,
+};
+
 /**
  * After the publish, for a stable version: points `next` at it too, so an `@next` command in
- * someone's notes installs the release and not the last pre-release (`next-tag.ts`). It runs in
- * the publish job, through trusted publishing as the publish does. It returns the step that is left
- * for the owner when npm can't or won't move the tag here, and never throws: the packages are out.
+ * someone's notes installs the release and not the last pre-release (`next-tag.ts`). A step of
+ * the publish job runs it, through trusted publishing as the publish does. It returns the step
+ * that is left for the owner when npm can't or won't move the tag here, and never throws: the
+ * packages are out.
  */
-export async function moveNextTag(options: {
-  readonly version: string;
-  readonly dryRun?: boolean;
-  readonly log?: (line: string) => void;
-}): Promise<string | undefined> {
+export async function moveNextTag(
+  options: {
+    readonly version: string;
+    readonly dryRun?: boolean;
+    readonly log?: (line: string) => void;
+  },
+  parts: NextTagParts = nextTagParts,
+): Promise<string | undefined> {
   const { version, dryRun = false, log = console.log } = options;
-  const names = (await readPublishedPackages()).map(({ manifest }) => manifest.name);
+  let names: readonly string[] | undefined;
   try {
-    return await withNpm(({ cwd, env, version: npm }) =>
+    const published = await parts.names();
+    names = published;
+    return await parts.npm(({ cwd, env, version: npm }) =>
       pointNext(
-        { version, names, dryRun },
+        { version, names: published, dryRun },
         {
           npm,
-          tagged: async (name) => (await fetchPackument(name))?.["dist-tags"]?.next,
-          add: (name, to) =>
-            run("npm", ["dist-tag", "add", `${name}@${to}`, "next", "--registry", registry], {
+          tagged: parts.tagged,
+          // Without a credential npm could wait for a login nobody gives, so each call is cut off.
+          add: (name, to, timeout) =>
+            parts.run("npm", ["dist-tag", "add", `${name}@${to}`, "next", "--registry", registry], {
               cwd,
               env,
-              // Without a credential npm could wait for a login nobody gives.
-              signal: AbortSignal.timeout(60_000),
+              signal: AbortSignal.timeout(timeout),
             }),
           sleep: (milliseconds) => sleep(milliseconds),
           log,
+          now: Date.now,
         },
       ),
     );
   } catch (error) {
-    return `Couldn't look at the next tag (${error instanceof Error ? error.message : String(error)}). If it names a version before ${version}, @next installs that. Logged in to npm, run: ${nextTagCommand(names, version)}`;
+    const command =
+      names === undefined
+        ? `npm dist-tag add <package>@${version} next, for each published package`
+        : nextTagCommand(names, version);
+    return `Couldn't look at the next tag (${error instanceof Error ? error.message : String(error)}). If it names a version before ${version}, @next installs that. Logged in to npm, run: ${command}`;
   }
 }

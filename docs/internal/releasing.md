@@ -49,15 +49,16 @@ and then it must be set up again.
    workflow keeps publishing; a leaked token can't.
 4. **Optional: let the workflow move `next`.** A stable release also points `next` at itself
    ([A stable release and `@next`](#a-stable-release-and-next)), with `npm dist-tag add` through
-   trusted publishing. npm takes that only from a trusted publisher whose allowed actions include
-   it: on npmjs.com, each package's Settings → Trusted publishing → the GitHub Actions connection →
-   "Allow npm dist-tag", which is off by default
-   ([npm's docs](https://docs.npmjs.com/trusted-publishers)). `npm trust github` has no flag for it,
-   so `vp run release:trust` sets up publishing alone. npm's docs say a connection's fields can't be
-   changed once it exists; if the setting can't be turned on for the one a package has, delete the
-   connection and create it again with both actions, within two days of the release. It also needs
-   npm 11.21.0 in the runner, and Node.js 26 came with npm 11.20.0 when this was written. Without
-   either, the release still goes out, and ends with the command to run by hand.
+   trusted publishing. npm takes that only from a trusted publisher with "Allow npm dist-tag" on,
+   which is off by default: on npmjs.com, each package's Settings → Trusted publishing → the
+   GitHub Actions configuration → "Allow npm dist-tag"
+   ([npm's docs](https://docs.npmjs.com/trusted-publishers),
+   [its announcement](https://github.blog/changelog/2026-09-30-opt-in-dist-tag-permissions-for-npm-trusted-publishing/)).
+   It can be turned on for a configuration a package already has, and `vp run release:trust` sets
+   up publishing alone. The setting lets this workflow move any tag of the package, `latest`
+   included, from either job that holds an OIDC token (check and publish). It also needs npm
+   11.21.0 in the runner, or 12.2.0 of npm 12, and Node.js 26 came with npm 11.20.0 when this was
+   written. Without either, the release still goes out, and ends with the command to run by hand.
 
 The release workflow's first job checks the trusted publisher on every package, and a release
 without one stops there, before anything else runs.
@@ -118,7 +119,8 @@ The workflow, one release at a time (a second waits; dry runs queue apart):
    About 11 minutes.
 3. **Publish** (with an OIDC token, no install scripts): the tarballs the gate checked, with
    `npm publish --provenance` through trusted publishing, skipping any npm serves already. After a
-   stable version it points `next` at the release too, where npm lets it.
+   stable version, a step of its own points `next` at the release too, where npm lets it. That step
+   can't fail the job, and gives up after three minutes.
 4. **Finish** (the only job that can write to the repository): waits for npm to serve every
    package with the gate's integrity, the dist-tag, its trusted publisher and provenance; then
    pushes the tag, so the commit npm has is on GitHub whatever happens next, then `main`, and
@@ -180,8 +182,8 @@ would move `next` or leave that to you.
 ### A stable release and `@next`
 
 While a version is a prerelease, every install command names `@next`, since `latest` is still the
-last stable version. A stable release takes the tag out of them and moves `next`, and nobody edits
-anything by hand:
+last stable version. A stable release takes the tag out of them and moves `next`, with no hand
+edit of an install command:
 
 - **The docs site** takes its tag from the version of `@moltenship/calendar` it is built with
   (`installTag` in `apps/showcase/lib/install-tag.ts`): `next` for a prerelease, none for a stable
@@ -189,30 +191,42 @@ anything by hand:
   prerelease sits in a `<PreRelease>` block, which a stable build drops. So the release commit's
   bump is enough: the gate's copy of the site builds with the packed version, and Vercel builds
   `main` once the release commit lands there. The next prerelease puts the tag back the same way.
-- **READMEs, skill files and notes** are Markdown nothing compiles, so the release commit rewrites
-  them (`tools/release/src/docs-tag.ts`): each `@moltenship/…@next` loses its tag, and the sentence
-  "Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`." goes. The
-  tarballs are packed from that commit, so npm shows the READMEs without the tag.
+- **READMEs and skill files** are Markdown nothing compiles, so the release commit rewrites them
+  (`tools/release/src/docs-tag.ts`): each `@moltenship/…@next` loses its tag, and the sentence
+  "Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`." goes. Anything
+  else a README says of a prerelease alone, such as a note that the API can still change, stands
+  between two comments on lines of their own, `<!-- pre-release -->` and `<!-- /pre-release -->`,
+  and goes with them. The tarballs are packed from that commit, so npm shows the READMEs without
+  the tag.
 - **The check.** The dry run's `install tag` step fails a stable version while any tracked `.md` or
-  `.mdx` file still installs `@moltenship/…@next`, and names each `file:line`. A docs page may say
-  it inside `<PreRelease>`. A prerelease passes. The release workflow's first job runs the same
-  check on the files as the release commit would leave them, so a release stops there, before the
-  gate. `tools/release/tests/docs-tag.test.ts` does the same on every PR, so a line the rewrite
-  wouldn't clean fails in the PR that adds it: word a README's sentence as the others do, or leave
-  it out.
+  `.mdx` file still installs `@moltenship/…@next`, and names each `file:line`. In the READMEs, the
+  skill files and the docs pages it also fails on a line that says "pre-release on npm's `next`
+  tag" and on a leftover comment of a marked stretch. A docs page may say it inside `<PreRelease>`.
+  A prerelease passes. The release workflow's first job runs the same check on the files as the
+  release commit would leave them, so a release stops there, before the gate. The dry run's
+  `exports` step reads the Markdown in each tarball of a stable version the same way, the facade's
+  packed docs included. `tools/release/tests/docs-tag.test.ts` does the tracked files' check on
+  every PR, so a line the rewrite wouldn't clean fails in the PR that adds it: word a README's
+  sentence as the others do, mark it, or leave it out.
 - **npm's `next` tag.** After a stable release, `next` would still name the last prerelease, and
-  an `@next` command in someone's notes would install it. So the publish job runs
+  an `@next` command in someone's notes would install it. So a step after the publish runs
   `npm dist-tag add <package>@<version> next` for each package whose `next` names an older version,
   through trusted publishing ([One-time setup](#one-time-setup), step 4). A newer prerelease keeps
-  the tag. Where npm is older than 11.21.0 or refuses, nothing fails: the release is out, the run
-  carries a warning that starts with "Left to do by hand:", and `vp run release` prints it at its
-  end, with the command. Logged in to npm, with 2FA:
+  the tag. The step can't hold the release up: the workflow lets it fail and cuts it off after
+  five minutes, and the move gives up after three by itself, asks npm once for each package (again
+  only for a version npm doesn't know yet), and stops at the first call npm doesn't answer. Where
+  npm is too old, refuses or stops answering, the release is out all the same, the run carries a
+  warning that starts with "Left to do by hand:", and `vp run release` prints it at its end, with
+  the command. Logged in to npm, with 2FA:
 
   ```sh
   for name in @moltenship/calendar @moltenship/calendar-core …; do npm dist-tag add "$name@<version>" next; done
   ```
 
   The warning lists the packages. A dry run says which of the two a release would do.
+- **What is still edited by hand.** The comparison page's dated rows about Time ("Latest release"
+  and "Releases in the last 12 months" in `apps/showcase/content/docs/comparison.react.mdx`) are
+  facts with a date, like the other libraries' columns. Update them in a PR after the release.
 
 ### Why this order
 
@@ -303,8 +317,9 @@ The publish job (`tools/release/src/publish.ts`) refuses unless:
 - every published package was packed, and each tarball's sha512 still matches;
 - npm is 11.5.1 or later, the first that publishes through trusted publishing.
 
-Moving `next` after a stable version is no such condition: it is tried after the publish, and what
-npm refuses becomes a step for the owner ([A stable release and `@next`](#a-stable-release-and-next)).
+Moving `next` after a stable version is no such condition: a step of its own tries it after the
+publish, and what npm refuses becomes a step for the owner
+([A stable release and `@next`](#a-stable-release-and-next)).
 
 Before publishing anything, it asks npm about all eleven. A version npm already serves is skipped
 only when npm's integrity matches the tarball the gate checked; otherwise it stops, so the eleven
