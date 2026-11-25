@@ -222,6 +222,8 @@ export function App() {
         day's events. In the agenda, up and down move between events, Page Up and Page Down between
         days. A change to a Team sync asks which of the series it applies to, and every other change
         shows a toast to undo it; F6 reaches it. <a href={docsUrl}>The Solid docs</a>
+        days. A change to a Team sync asks which of the series it applies to, and every other change
+        shows a toast to undo it; F6 reaches it. <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's time grid, month, year and list projections, with an
