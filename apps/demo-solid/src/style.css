@@ -135,6 +135,12 @@ a {
   border-top: 1px solid var(--line);
 }
 
+/* The time grid scrolls its hours inside the viewport, under its header and all-day row. */
+.viewport:has([data-slot="time-grid"]) {
+  height: min(42rem, 75dvh);
+  border-top: 1px solid var(--line);
+}
+
 /* The month shares the viewport's height between its weeks, as many event lanes as fit. */
 .viewport:has([data-slot="month-view"]) {
   height: min(42rem, 75dvh);

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, test } from "vite-plus/test";
 
-import { nearestSolidView, readSolidLocation, writeSolidLocation } from "../src/url-state";
+import { readSolidLocation, writeSolidLocation, type SolidView } from "../src/url-state";
 
 /**
  * The React demo's view names, read from its source rather than imported: its module brings the
@@ -25,15 +25,17 @@ describe("the Solid demo's view and date in the URL", () => {
   test("reads the React demo's parameters", () => {
     expect(read("?view=month&date=2026-12-24")).toEqual(["month", "2026-12-24"]);
     expect(read("?view=agenda&date=2026-12-24")).toEqual(["agenda", "2026-12-24"]);
+    expect(read("?view=week&date=2026-12-24")).toEqual(["week", "2026-12-24"]);
+    expect(read("?view=day")[0]).toBe("day");
+    expect(read("?view=3-day")[0]).toBe("3-day");
   });
 
   test.each([
-    ["week", "agenda"],
-    ["day", "agenda"],
-    ["3-day", "agenda"],
-    ["resources", "agenda"],
-    ["timeline-week", "agenda"],
-    ["scrolling-week", "agenda"],
+    ["resources", "day"],
+    ["timeline-week", "week"],
+    ["scrolling-week", "week"],
+    ["scrolling-day", "day"],
+    ["scrolling-3-day", "3-day"],
     ["scrolling-agenda", "agenda"],
     ["year", "month"],
     ["scrolling-month", "month"],
@@ -44,7 +46,7 @@ describe("the Solid demo's view and date in the URL", () => {
   test("has a view for every view of the React demo", () => {
     expect(reactViewNames).toContain("week");
     // A view without a mapping here shows the fallback, so two fallbacks tell it apart.
-    const viewOf = (view: string, fallbackView: "agenda" | "month") =>
+    const viewOf = (view: string, fallbackView: SolidView) =>
       readSolidLocation(`?view=${view}`, { ...fallback, view: fallbackView }).view;
     const unmapped = reactViewNames.filter(
       (view) => viewOf(view, "month") !== viewOf(view, "agenda"),
@@ -67,7 +69,7 @@ describe("the Solid demo's view and date in the URL", () => {
   });
 
   test("writes a view the React demo has and keeps the rest of the URL", () => {
-    const href = (view: "agenda" | "month") =>
+    const href = (view: SolidView) =>
       writeSolidLocation("https://demo.test/solid/?debug=1#top", {
         date: Temporal.PlainDate.from("2027-01-02"),
         view,
@@ -78,7 +80,7 @@ describe("the Solid demo's view and date in the URL", () => {
   });
 
   test("keeps the React demo's view while it maps to the one shown", () => {
-    const write = (search: string, view: "agenda" | "month") =>
+    const write = (search: string, view: SolidView) =>
       new URL(
         writeSolidLocation(`https://demo.test/solid/${search}`, {
           date: Temporal.PlainDate.from("2026-10-08"),
@@ -86,16 +88,9 @@ describe("the Solid demo's view and date in the URL", () => {
         }),
       ).searchParams.get("view");
 
-    expect(write("?view=week", "agenda")).toBe("week");
+    expect(write("?view=scrolling-week", "week")).toBe("scrolling-week");
     expect(write("?view=year", "month")).toBe("year");
-    expect(write("?view=week", "month")).toBe("month");
+    expect(write("?view=scrolling-week", "month")).toBe("month");
     expect(write("?view=year", "agenda")).toBe("agenda");
-  });
-
-  test("a view a part asks for that this demo lacks shows as its nearest", () => {
-    // The month's date number asks for `day`.
-    expect(nearestSolidView("day", "month")).toBe("agenda");
-    expect(nearestSolidView("agenda", "month")).toBe("agenda");
-    expect(nearestSolidView("no-such-view", "month")).toBe("month");
   });
 });
