@@ -14,7 +14,8 @@ export function around(date: Temporal.PlainDate): PlainDateInterval {
  * side of them.
  */
 export function covering(current: PlainDateInterval, needed: PlainDateInterval): PlainDateInterval {
-  const compare = Temporal.PlainDate.compare;
+  const compare = (one: Temporal.PlainDate, two: Temporal.PlainDate) =>
+    Temporal.PlainDate.compare(one, two);
   if (compare(current.start, needed.start) <= 0 && compare(needed.end, current.end) <= 0) {
     return current;
   }

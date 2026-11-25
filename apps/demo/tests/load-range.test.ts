@@ -6,7 +6,7 @@ import { around, covering } from "../src/load-range";
 const date = (text: string) => Temporal.PlainDate.from(text);
 const range = (start: string, end: string) => plainDateInterval(date(start), date(end));
 const text = ({ end, start }: { end: Temporal.PlainDate; start: Temporal.PlainDate }) =>
-  `${start}/${end}`;
+  `${start.toString()}/${end.toString()}`;
 
 describe("covering", () => {
   const current = around(date("2026-11-25"));
