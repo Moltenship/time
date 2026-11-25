@@ -23,8 +23,10 @@ import { useViewKeyboard } from "@registry/stylex-calendar/view-keyboard";
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
 
-import { AgendaDay, type AgendaFormats } from "./agenda-day";
-import { rowFrom, type AgendaRow } from "./agenda-rows";
+import { agendaFormats, type AgendaFormats } from "@registry/shared/list-view/agenda-labels";
+import { rowFrom, type AgendaRow } from "@registry/shared/list-view/agenda-rows";
+
+import { AgendaDay } from "./agenda-day";
 import { useAgendaVirtualizer } from "./use-agenda-virtualizer";
 
 const styles = stylex.create({
@@ -57,15 +59,7 @@ const styles = stylex.create({
 });
 
 export function useAgendaFormats(locale: Intl.LocalesArgument): AgendaFormats {
-  return useMemo(
-    () => ({
-      date: new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
-      range: new Intl.DateTimeFormat(locale, { day: "numeric", month: "long" }),
-      time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }),
-      weekday: new Intl.DateTimeFormat(locale, { weekday: "short" }),
-    }),
-    [locale],
-  );
+  return useMemo(() => agendaFormats(locale), [locale]);
 }
 
 /**

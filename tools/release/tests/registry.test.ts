@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
+import { registryTrees } from "../src/config";
 import { registryProblems, type RegistryCompatibility } from "../src/registry";
 
 function registry(version: string, range = `^${version}`): RegistryCompatibility {
@@ -40,6 +41,22 @@ describe("registry against the release", () => {
   test("a runtime package that doesn't publish fails", () => {
     expect(registryProblems(registry("1.0.0"), new Map())).toEqual([
       "the registry needs @moltenship/calendar, which doesn't publish",
+    ]);
+  });
+
+  test("the Solid tree is tied to the release by the Solid facade", () => {
+    const solid = registryTrees.find(({ path }) => path === "solid")!;
+    expect(solid.facade).toBe("@moltenship/calendar-solid");
+    expect(
+      registryProblems(
+        { runtime: { [solid.facade]: "1.0.0" }, items: [] },
+        new Map([[solid.facade, "1.0.0"]]),
+        solid.facade,
+      ),
+    ).toEqual([]);
+    // React's registry alone doesn't tie the Solid tree to the release.
+    expect(registryProblems(registry("1.0.0"), packed("1.0.0"), solid.facade)).toEqual([
+      "the registry names no @moltenship/calendar-solid version, so nothing ties it to the release",
     ]);
   });
 });

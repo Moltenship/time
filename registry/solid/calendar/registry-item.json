@@ -1,0 +1,51 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "calendar",
+  "type": "registry:component",
+  "title": "Calendar shell",
+  "description": "Event chip, accessible event names, the views' navigation keys and the icons the views draw, shared by every Solid calendar view.",
+  "dependencies": ["@moltenship/calendar-solid", "cn"],
+  "registryDependencies": ["@moltenship/calendar-theme"],
+  "files": [
+    {
+      "path": "registry/solid/calendar/event-chip.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/event-chip.tsx"
+    },
+    {
+      "path": "registry/solid/calendar/event-label.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/event-label.ts"
+    },
+    {
+      "path": "registry/solid/calendar/icons.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/icons.tsx"
+    },
+    {
+      "path": "registry/solid/calendar/view-keyboard.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/view-keyboard.ts"
+    },
+    {
+      "path": "registry/shared/calendar/event-names.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/event-names.ts"
+    },
+    {
+      "path": "registry/shared/calendar/event-chip.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/event-chip.styles.ts"
+    },
+    {
+      "path": "registry/shared/calendar/preview-state.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/preview-state.ts"
+    },
+    {
+      "path": "registry/shared/calendar/view-keys.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/view-keys.ts"
+    }
+  ]
+}

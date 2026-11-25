@@ -23,7 +23,7 @@ import {
   useDraftCheck,
 } from "@registry/calendar/preview-check";
 import { UnavailableTime, type UnavailableTimeRender } from "@registry/calendar/unavailable-time";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { cn } from "cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@registry/calendar-ui/popover";
 

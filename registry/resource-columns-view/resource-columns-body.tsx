@@ -13,7 +13,7 @@ import { useMemo, type ReactNode, type RefCallback, type RefObject } from "react
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { TimeGridHours, useOpeningScroll } from "@registry/time-grid-view/time-grid-body";
 import {
   TimeGridColumn,

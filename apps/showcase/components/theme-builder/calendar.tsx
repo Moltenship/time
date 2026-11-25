@@ -4,7 +4,7 @@ import { useState } from "react";
 import { calendarAnnouncements } from "@registry/calendar/announcements";
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import { MiniMonth } from "@registry/calendar/mini-month";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { createAgendaView } from "@registry/list-view/agenda-view";
 import { createMonthView } from "@registry/month-view/month-view";
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";

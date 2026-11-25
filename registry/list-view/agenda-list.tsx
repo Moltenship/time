@@ -19,23 +19,21 @@ import {
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
-import { cn } from "cn";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
+import { agendaFormats, type AgendaFormats } from "@registry/shared/list-view/agenda-labels";
+import { rowFrom, type AgendaRow } from "@registry/shared/list-view/agenda-rows";
+import {
+  agendaEndRowClass,
+  agendaListClass,
+  agendaRowClass,
+  agendaScrollClass,
+} from "@registry/shared/list-view/agenda.styles";
 
-import { AgendaDay, type AgendaFormats } from "./agenda-day";
-import { rowFrom, type AgendaRow } from "./agenda-rows";
+import { AgendaDay } from "./agenda-day";
 import { useAgendaVirtualizer } from "./use-agenda-virtualizer";
 
 export function useAgendaFormats(locale: Intl.LocalesArgument): AgendaFormats {
-  return useMemo(
-    () => ({
-      date: new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
-      range: new Intl.DateTimeFormat(locale, { day: "numeric", month: "long" }),
-      time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }),
-      weekday: new Intl.DateTimeFormat(locale, { weekday: "short" }),
-    }),
-    [locale],
-  );
+  return useMemo(() => agendaFormats(locale), [locale]);
 }
 
 /**
@@ -163,13 +161,13 @@ export function AgendaList<TEvent>({
       }}
       onFocus={focusWithin.onFocus}
       data-slot="agenda-view"
-      className="relative h-full overflow-y-auto"
+      className={agendaScrollClass}
     >
       {days > 0 && (
         <ol
           aria-label={label}
           aria-busy={loading || undefined}
-          className="relative"
+          className={agendaListClass}
           style={{ height: virtualizer.getTotalSize() }}
         >
           {items.map(({ index, key, start }) => {
@@ -179,10 +177,7 @@ export function AgendaList<TEvent>({
             const item = {
               "aria-posinset": position + 1,
               "aria-setsize": size,
-              className: cn(
-                "absolute inset-x-0",
-                position < size - 1 && "border-b border-calendar-grid",
-              ),
+              className: agendaRowClass(position === size - 1),
               "data-index": index,
               ref: virtualizer.measureElement,
               style: { top: start },
@@ -212,7 +207,7 @@ export function AgendaList<TEvent>({
             key={key}
             ref={virtualizer.measureElement}
             data-index={index}
-            className="absolute inset-x-0 flex flex-col"
+            className={agendaEndRowClass}
             style={{ height: viewportHeight, top: start }}
           >
             {end}

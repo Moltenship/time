@@ -94,6 +94,7 @@ const expectedWorkspaceDependencies = {
   demo: ["@moltenship/calendar", "@moltenship/calendar-dnd-kit", "@moltenship/calendar-recurrence"],
   registry: [],
   "registry-source": ["@moltenship/calendar"],
+  "registry-source-solid": ["@moltenship/calendar-solid"],
   showcase: [
     "@moltenship/calendar",
     "@moltenship/calendar-dnd-kit",
@@ -121,6 +122,7 @@ const workspaceManifestPaths = [
   "packages/calendar-testing/package.json",
   "packages/ics/package.json",
   "registry/package.json",
+  "registry/solid/package.json",
   "tools/registry/package.json",
 ] as const;
 
@@ -412,13 +414,18 @@ describe("workspace boundaries", { concurrent: false }, () => {
         solid: /^(?:solid-js|@solidjs\/.+|@ui-sdk\/solid)$/u,
         "ui-sdk": /^@ui-sdk\//u,
       };
-      // By manifest path; the Solid demo joins workspaceManifestPaths when it lands.
+      // By manifest path; the Solid demo joins workspaceManifestPaths when it lands. The Solid
+      // registry's source and the registry tooling, which type-checks a Solid consumer's page with
+      // it, declare Solid too (ADR 0279); the cruiser keeps it out of everything else's source.
       const allowed: Record<keyof typeof frameworks, (path: string) => boolean> = {
-        react: (path) => !/^packages\/calendar-(?:primitives|solid)\//u.test(path),
+        react: (path) =>
+          !/^(?:packages\/calendar-(?:primitives|solid)|registry\/solid)\//u.test(path),
         // The docs site declares Solid for the samples of its Solid pages, which it type-checks
         // and never imports (the cruiser's rules keep Solid inside `content/examples/solid`).
         solid: (path) =>
-          /^(?:packages\/calendar-solid|apps\/(?:demo-solid|showcase))\//u.test(path),
+          /^(?:packages\/calendar-solid|apps\/(?:demo-solid|showcase)|registry\/solid|tools\/registry)\//u.test(
+            path,
+          ),
         // The docs site creates an agent bridge for its live examples (architecture.md, rule 14).
         // The facade and the testing package re-export the React integration, so they carry its
         // peers, as they carry React; their source still imports no ui-sdk (the cruiser's rule).

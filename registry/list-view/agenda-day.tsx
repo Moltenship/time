@@ -3,18 +3,21 @@
 import { memo, type ComponentProps, type ReactNode } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
+import type { AgendaFormats } from "@registry/shared/list-view/agenda-labels";
+import type { AgendaDay as AgendaDayData } from "@registry/shared/list-view/agenda-rows";
+import {
+  agendaDateClass,
+  agendaDateColumnClass,
+  agendaDayClass,
+  agendaEventsClass,
+  agendaWeekdayClass,
+} from "@registry/shared/list-view/agenda.styles";
 import { cn } from "cn";
 
 import { AgendaItem } from "./agenda-item";
-import type { AgendaDay as AgendaDayData } from "./agenda-rows";
 
-export interface AgendaFormats {
-  readonly date: Intl.DateTimeFormat;
-  readonly range: Intl.DateTimeFormat;
-  readonly time: Intl.DateTimeFormat;
-  readonly weekday: Intl.DateTimeFormat;
-}
+export type { AgendaFormats };
 
 export interface AgendaDayProps<TEvent> extends Omit<ComponentProps<"li">, "children"> {
   readonly day: AgendaDayData<TEvent>;
@@ -44,11 +47,7 @@ export function AgendaDay<TEvent>({
   ...props
 }: AgendaDayProps<TEvent>) {
   return (
-    <li
-      data-date={day.date.toString()}
-      className={cn("flex gap-3 px-3 py-2 sm:gap-6 sm:px-6", className)}
-      {...props}
-    >
+    <li data-date={day.date.toString()} className={cn(agendaDayClass, className)} {...props}>
       <AgendaDayContent
         day={day}
         formats={formats}
@@ -72,15 +71,8 @@ function AgendaDayContentBase<TEvent>({
   return (
     <>
       {/* Sticks to the top while the day's events scroll past. */}
-      <div className="sticky top-0 flex w-12 shrink-0 flex-col items-center gap-0.5 self-start pt-1">
-        <span
-          className={cn(
-            "text-[0.6875rem] font-medium uppercase",
-            day.isToday ? "text-calendar-today" : "text-muted-foreground",
-          )}
-        >
-          {formats.weekday.format(day.date)}
-        </span>
+      <div className={agendaDateColumnClass}>
+        <span className={agendaWeekdayClass(day.isToday)}>{formats.weekday.format(day.date)}</span>
         <button
           type="button"
           aria-current={day.isToday ? "date" : undefined}
@@ -88,16 +80,12 @@ function AgendaDayContentBase<TEvent>({
           onClick={() => onOpenDay(day.date)}
           // The list keeps one tab stop; Shift+Enter on an event opens its day.
           tabIndex={-1}
-          className={cn(
-            "flex size-9 items-center justify-center rounded-full text-lg tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
-            day.isToday &&
-              "bg-calendar-today text-calendar-today-foreground hover:bg-calendar-today/90",
-          )}
+          className={agendaDateClass(day.isToday)}
         >
           {day.date.day}
         </button>
       </div>
-      <ul className="flex min-w-0 flex-1 flex-col gap-0.5 py-1">
+      <ul className={agendaEventsClass}>
         {day.items.map((item) => (
           // `typeof` keeps numeric 1 and string "1" apart; they are distinct event IDs.
           <li key={`${typeof item.event.id}:${item.event.id}`}>

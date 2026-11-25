@@ -1,23 +1,9 @@
-import { useCalendarInteraction, type CalendarInteractionCheck } from "@moltenship/calendar";
+import { useCalendarInteraction } from "@moltenship/calendar";
 
-/** How a preview shows the policies' answer: `invalid` when they reject it, `warning` when flagged. */
-export type PreviewCheck = "invalid" | "warning" | undefined;
+import { previewCheck, type PreviewCheck } from "@registry/shared/calendar/preview-state";
 
-export function previewCheck(check: CalendarInteractionCheck): PreviewCheck {
-  if (check === null) return undefined;
-  if (check.status === "rejected") return "invalid";
-  return check.change.warnings !== undefined && check.change.warnings.length > 0
-    ? "warning"
-    : undefined;
-}
-
-/** `data-invalid` or `data-warning` on a preview, for `data-invalid:` and `data-warning:` styles. */
-export function previewCheckAttributes(check: PreviewCheck) {
-  return {
-    "data-invalid": check === "invalid" ? "" : undefined,
-    "data-warning": check === "warning" ? "" : undefined,
-  };
-}
+export { previewCheck, previewCheckAttributes } from "@registry/shared/calendar/preview-state";
+export type { PreviewCheck } from "@registry/shared/calendar/preview-state";
 
 /**
  * Styles for a draft that previews a keyboard create: a dashed outline when the policies would

@@ -28,7 +28,7 @@ import {
 } from "@registry/calendar/resource-status";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 
 import { ResourceTimelineGrid } from "./resource-timeline-grid";
 

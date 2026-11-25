@@ -1,4 +1,4 @@
-import type { CalendarEventColor } from "../calendar-theme/event-colors";
+import type { CalendarEventColor } from "../shared/calendar-theme/event-colors";
 
 /** Gamma-encoded sRGB channels and alpha, each from 0 to 1. */
 export type Rgba = readonly [number, number, number, number];

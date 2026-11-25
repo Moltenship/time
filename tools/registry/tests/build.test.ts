@@ -114,7 +114,7 @@ describe("registry build", () => {
   test("the theme merges calendar tokens and rules into the app's stylesheet", async () => {
     const theme = await readItem("calendar-theme");
     const source = await readFile(
-      join(workspaceRoot, "registry/calendar-theme/calendar-theme.css"),
+      join(workspaceRoot, "registry/shared/calendar-theme/calendar-theme.css"),
       "utf8",
     );
     const base = theme.css?.["@layer base"] as Record<string, Record<string, string>>;

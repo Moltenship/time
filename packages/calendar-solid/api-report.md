@@ -107,10 +107,26 @@ import {
   resolveViewOptions,
 } from "@moltenship/calendar-primitives";
 import {
+  CalendarDragFollower,
+  CalendarDragMonitor,
+  CalendarDragPreview,
+  CalendarDropOptions,
+  CalendarDropSession,
+  CalendarDropSource,
+  CalendarEventDrag,
+  CalendarPoint,
   CalendarPointerOptions,
   CalendarPointerOptions as CalendarPointerOptions$1,
+  CalendarRect,
+  CalendarRegion,
+  attachCalendarPointer,
   eventIdAttributes,
+  eventIdOf,
+  monitorCalendarDrags,
+  observeCalendarRegions,
   resourceIdAttributes,
+  resourceIdOf,
+  startCalendarDrop,
 } from "@moltenship/calendar-dnd";
 import {
   InstantInterval,
@@ -341,6 +357,9 @@ export declare function useTimeGridAvailability(columns: MaybeAccessor<readonly 
 export declare function useTimelineAvailability(columns: MaybeAccessor<readonly TimeGridColumn[]>, resourceId?: MaybeAccessor<ResourceId | null | undefined>): Accessor<readonly AvailabilityExtent[]>;
 export declare function useVisibleResources(options?: MaybeAccessor<ResourceVisibilityOptions>): Accessor<readonly VisibleResource[]>;
 
+export * from "@moltenship/calendar-core";
+export * from "@moltenship/calendar-temporal";
+
 export {
   type AnyCalendarView,
   type CalendarActions,
@@ -358,6 +377,13 @@ export {
   type CalendarControlledState,
   type CalendarDiagnostic,
   type CalendarDraftBusy,
+  type CalendarDragFollower,
+  type CalendarDragMonitor,
+  type CalendarDragPreview,
+  type CalendarDropOptions,
+  type CalendarDropSession,
+  type CalendarDropSource,
+  type CalendarEventDrag,
   type CalendarEventProps,
   type CalendarEventRenderValue,
   type CalendarFactory,
@@ -374,8 +400,11 @@ export {
   type CalendarMeta,
   type CalendarPartIds,
   type CalendarPartRefs,
+  type CalendarPoint,
   type CalendarPointerOptions,
   type CalendarPublicState,
+  type CalendarRect,
+  type CalendarRegion,
   type CalendarResourceExpansion,
   type CalendarResourceExpansionCause,
   type CalendarResourceExpansionCommand,
@@ -408,9 +437,15 @@ export {
   type CreateCalendarOptions,
   type MaybeAccessor,
   type UseNowOptions,
+  attachCalendarPointer,
   createCalendarStore,
   eventIdAttributes,
+  eventIdOf,
+  monitorCalendarDrags,
+  observeCalendarRegions,
   resolveViewOptions,
   resourceIdAttributes,
+  resourceIdOf,
+  startCalendarDrop,
 };
 ```

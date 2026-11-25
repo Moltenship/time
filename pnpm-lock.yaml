@@ -218,6 +218,9 @@ catalogs:
     '@tanstack/react-virtual':
       specifier: 3.14.24
       version: 3.14.24
+    '@tanstack/virtual-core':
+      specifier: 3.19.9
+      version: 3.19.9
     '@types/babel__core':
       specifier: 7.20.5
       version: 7.20.5
@@ -503,6 +506,12 @@ importers:
       '@solidjs/vite-plugin':
         specifier: 'catalog:'
         version: 3.0.1(@babel/core@7.29.7(supports-color@7.2.0))(@solidjs/web@2.0.3(solid-js@2.0.3))(@voidzero-dev/vite-plus-core@1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))(solid-js@2.0.3)
+      '@tailwindcss/vite':
+        specifier: 'catalog:'
+        version: 4.3.3(@voidzero-dev/vite-plus-core@1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 4.3.3
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -1082,6 +1091,9 @@ importers:
       '@tanstack/react-virtual':
         specifier: 'catalog:'
         version: 3.14.24(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@tanstack/virtual-core':
+        specifier: 'catalog:'
+        version: 3.19.9
       '@ui-sdk/core':
         specifier: 'catalog:'
         version: 0.1.0-beta.16
@@ -1129,6 +1141,46 @@ importers:
         specifier: 'catalog:'
         version: 1.4.0(@arethetypeswrong/core@0.18.5)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(esbuild@0.28.2)(happy-dom@21.0.4)(jiti@2.7.0)(jsdom@30.1.3)(playwright@1.64.1)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
 
+  registry/solid:
+    dependencies:
+      '@moltenship/calendar-solid':
+        specifier: workspace:*
+        version: link:../../packages/calendar-solid
+      '@solidjs/web':
+        specifier: 'catalog:'
+        version: 2.0.3(solid-js@2.0.3)
+      '@tanstack/virtual-core':
+        specifier: 'catalog:'
+        version: 3.19.9
+      '@ui-sdk/core':
+        specifier: 'catalog:'
+        version: 0.1.0-beta.16
+      '@ui-sdk/solid':
+        specifier: 'catalog:'
+        version: 0.1.0-beta.16(@solidjs/web@2.0.3(solid-js@2.0.3))(@ui-sdk/core@0.1.0-beta.16)(solid-js@2.0.3)
+      cn:
+        specifier: 'catalog:'
+        version: 0.5.1
+      solid-js:
+        specifier: 'catalog:'
+        version: 2.0.3
+    devDependencies:
+      '@solidjs/vite-plugin':
+        specifier: 'catalog:'
+        version: 3.0.1(@babel/core@7.29.7(supports-color@7.2.0))(@solidjs/web@2.0.3(solid-js@2.0.3))(@voidzero-dev/vite-plus-core@1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))(solid-js@2.0.3)
+      jsdom:
+        specifier: 'catalog:'
+        version: 30.1.3
+      registry:
+        specifier: workspace:*
+        version: link:../../tools/registry
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vite-plus:
+        specifier: 'catalog:'
+        version: 1.4.0(@arethetypeswrong/core@0.18.5)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(esbuild@0.28.2)(happy-dom@21.0.4)(jiti@2.7.0)(jsdom@30.1.3)(playwright@1.64.1)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
+
   tools/a11y:
     dependencies:
       '@base-ui/react':
@@ -1149,6 +1201,12 @@ importers:
       '@moltenship/calendar-recurrence':
         specifier: workspace:*
         version: link:../../packages/calendar-recurrence
+      '@moltenship/calendar-solid':
+        specifier: workspace:*
+        version: link:../../packages/calendar-solid
+      '@solidjs/web':
+        specifier: 'catalog:'
+        version: 2.0.3(solid-js@2.0.3)
       '@stylexjs/stylex':
         specifier: 'catalog:'
         version: 0.19.1
@@ -1158,10 +1216,16 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.3.1(react@19.3.1)
+      solid-js:
+        specifier: 'catalog:'
+        version: 2.0.3
     devDependencies:
       '@moltenship/calendar-testing':
         specifier: workspace:*
         version: link:../../packages/calendar-testing
+      '@solidjs/vite-plugin':
+        specifier: 'catalog:'
+        version: 3.0.1(@babel/core@7.29.7(supports-color@7.2.0))(@solidjs/web@2.0.3(solid-js@2.0.3))(@voidzero-dev/vite-plus-core@1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))(solid-js@2.0.3)
       '@stylexjs/unplugin':
         specifier: 'catalog:'
         version: 0.19.1(supports-color@7.2.0)(unplugin@2.3.11)
@@ -1226,6 +1290,12 @@ importers:
       '@moltenship/calendar':
         specifier: workspace:*
         version: link:../../packages/calendar
+      '@moltenship/calendar-solid':
+        specifier: workspace:*
+        version: link:../../packages/calendar-solid
+      '@solidjs/web':
+        specifier: 'catalog:'
+        version: 2.0.3(solid-js@2.0.3)
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
@@ -1241,6 +1311,9 @@ importers:
       react:
         specifier: 'catalog:'
         version: 19.3.1
+      solid-js:
+        specifier: 'catalog:'
+        version: 2.0.3
       tsx:
         specifier: 'catalog:'
         version: 4.23.15

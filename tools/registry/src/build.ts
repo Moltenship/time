@@ -8,7 +8,15 @@ import { promisify } from "node:util";
 import { registryItemSchema } from "shadcn/schema";
 
 import type { RegistryManifest, RegistryManifestItem } from "./compatibility";
-import { defaultRegistryBaseUrl, registryName, registryNamespace } from "./config";
+import {
+  baseTokensItemName,
+  defaultRegistryBaseUrl,
+  frameworkBaseUrl,
+  reactRegistry,
+  registryNamespace,
+  registrySharedDirectory,
+  type RegistryFramework,
+} from "./config";
 import { itemClosure } from "./items";
 import { consumerImportForTarget, rewriteRegistryImports } from "./rewrite-imports";
 import { themeCssToRegistry } from "./theme-css";
@@ -25,8 +33,13 @@ interface BuildRegistryOptions {
   readonly workspaceRoot: string;
   /** Where the item JSON lands, such as `apps/showcase/public/r`. */
   readonly outDir: string;
-  /** The URL `outDir` is served from. Items reach each other through it. */
+  /**
+   * The registry's base URL. A framework with a `path` is built for, and served from, the folder
+   * of that name under it, and its JSON belongs in the same folder under `outDir`'s base: the
+   * caller passes `<out>/solid` for Solid.
+   */
   readonly baseUrl?: string;
+  readonly framework?: RegistryFramework;
 }
 
 function ownItemName(dependency: string): string | null {
@@ -37,15 +50,18 @@ function withoutExtension(path: string): string {
   return path.replace(/\.tsx?$/u, "");
 }
 
-async function readSourceItems(workspaceRoot: string): Promise<SourceItem[]> {
-  const report = await validateRegistryWorkspace(workspaceRoot);
+async function readSourceItems(
+  workspaceRoot: string,
+  framework: RegistryFramework,
+): Promise<SourceItem[]> {
+  const report = await validateRegistryWorkspace(workspaceRoot, { framework });
   if (!report.valid) {
     throw new Error(
       `Registry source is invalid:\n${report.issues.map(({ path, message }) => `- ${path}: ${message}`).join("\n")}`,
     );
   }
   const items: SourceItem[] = [];
-  for (const manifestPath of await findRegistryManifests(workspaceRoot)) {
+  for (const manifestPath of await findRegistryManifests(workspaceRoot, framework)) {
     items.push(
       registryItemSchema.parse(
         JSON.parse(await readFile(join(workspaceRoot, manifestPath), "utf8")),
@@ -104,6 +120,34 @@ async function replaceOutput(built: string, outDir: string): Promise<void> {
   for (const file of await readdir(built)) await copyFile(join(built, file), join(outDir, file));
 }
 
+const facadeImport = /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(["'])@moltenship\/calendar\2/gu;
+
+/** A shared file imports `@moltenship/calendar`; in another framework's items it imports that one's facade. */
+function withFacade(source: string, framework: RegistryFramework): string {
+  return framework.facade === reactRegistry.facade
+    ? source
+    : source.replaceAll(facadeImport, `$1$2${framework.facade}$2`);
+}
+
+/** The workspace path an `@registry/…` import names, without its extension. */
+function importedPath(path: string, framework: RegistryFramework): string {
+  return path.startsWith("shared/")
+    ? `${registrySharedDirectory}/${path.slice("shared/".length)}`
+    : `${framework.sourceDirectory}/${path}`;
+}
+
+/** Puts back the source paths of files staged under another path, in a built item's JSON. */
+async function restorePaths(
+  built: string,
+  name: string,
+  paths: ReadonlyMap<number, string>,
+): Promise<void> {
+  const file = join(built, `${name}.json`);
+  const item = JSON.parse(await readFile(file, "utf8")) as { files: { path: string }[] };
+  for (const [index, path] of paths) item.files[index]!.path = path;
+  await writeFile(file, JSON.stringify(item, null, 2));
+}
+
 /**
  * Builds the registry with the official `shadcn build`: stages the source with consumer imports,
  * writes a `registry.json` with a range on our runtime and URL registry dependencies, builds the
@@ -113,38 +157,74 @@ export async function buildRegistry({
   workspaceRoot,
   outDir,
   baseUrl = defaultRegistryBaseUrl,
+  framework = reactRegistry,
 }: BuildRegistryOptions): Promise<RegistryManifest> {
   const root = resolve(workspaceRoot);
   const output = resolve(outDir);
-  const base = baseUrl.replace(/\/$/u, "");
-  const items = sortByDependencies(await readSourceItems(root));
-  const packages = await readWorkspacePackages(root);
+  const registryBase = baseUrl.replace(/\/$/u, "");
+  const base = frameworkBaseUrl(registryBase, framework);
+  const items = sortByDependencies(await readSourceItems(root, framework));
+  const packages = await readWorkspacePackages(root, framework);
   const byName = new Map(items.map((item) => [item.name, item]));
   const itemsOf = (item: SourceItem) =>
     (item.registryDependencies ?? []).flatMap((dependency) => ownItemName(dependency) ?? []);
 
-  const targets = new Map<string, string>();
-  for (const item of items) {
-    for (const file of item.files ?? []) targets.set(withoutExtension(file.path), file.target!);
-  }
-  const resolveImport = (from: string) => (specifier: string) => {
-    const path = specifier.slice("@registry/".length);
-    const target = targets.get(`registry/${path}`) ?? targets.get(`registry/${path}/index`);
-    if (!target) throw new Error(`${from} imports ${specifier}, which no registry item ships`);
-    return consumerImportForTarget(target);
+  // Where each file lands. A shared file can land in two places, one per flavour, so an import
+  // resolves to the target an item in the importer's own install gives it.
+  const targetsOf = (members: readonly SourceItem[]) => {
+    const targets = new Map<string, string[]>();
+    for (const member of members) {
+      for (const file of member.files ?? []) {
+        const key = withoutExtension(file.path);
+        targets.set(key, [...new Set([...(targets.get(key) ?? []), file.target!])]);
+      }
+    }
+    return targets;
   };
+  const allTargets = targetsOf(items);
+  const resolveImport =
+    (from: string, closureTargets: ReadonlyMap<string, string[]>) => (specifier: string) => {
+      const path = specifier.slice("@registry/".length);
+      const key = importedPath(path, framework);
+      const [target, ...others] = closureTargets.get(key) ??
+        closureTargets.get(`${key}/index`) ??
+        allTargets.get(key) ??
+        allTargets.get(`${key}/index`) ?? [undefined];
+      if (!target) throw new Error(`${from} imports ${specifier}, which no registry item ships`);
+      if (others.length > 0) {
+        throw new Error(`${from} imports ${specifier}, which lands in more than one place`);
+      }
+      return consumerImportForTarget(target);
+    };
 
   const stage = await mkdtemp(join(tmpdir(), "time-registry-build-"));
   try {
     const registryItems = [];
     const manifestItems: RegistryManifestItem[] = [];
+    // What each staged path holds, and the items whose files were staged elsewhere, since one
+    // shared file can read differently in two flavours' items.
+    const staged = new Map<string, string>();
+    const restored = new Map<string, Map<number, string>>();
 
     for (const item of items) {
-      for (const file of item.files ?? []) {
-        const source = await readFile(join(root, file.path), "utf8");
-        const staged = join(stage, file.path);
-        await mkdir(dirname(staged), { recursive: true });
-        await writeFile(staged, rewriteRegistryImports(source, resolveImport(file.path)));
+      const closureTargets = targetsOf(itemClosure(item.name, byName, itemsOf));
+      const stagedPaths: string[] = [];
+      for (const [index, file] of (item.files ?? []).entries()) {
+        const raw = await readFile(join(root, file.path), "utf8");
+        const source = file.path.startsWith(`${registrySharedDirectory}/`)
+          ? withFacade(raw, framework)
+          : raw;
+        const content = rewriteRegistryImports(source, resolveImport(file.path, closureTargets));
+        let path = file.path;
+        if (staged.has(path) && staged.get(path) !== content) {
+          path = `variants/${item.name}/${file.path}`;
+          const paths = restored.get(item.name) ?? new Map<number, string>();
+          restored.set(item.name, paths.set(index, file.path));
+        }
+        staged.set(path, content);
+        stagedPaths.push(path);
+        await mkdir(dirname(join(stage, path)), { recursive: true });
+        await writeFile(join(stage, path), content);
       }
 
       // Our packages carry the range the source was built against. Third-party ones stay bare, as
@@ -163,7 +243,7 @@ export async function buildRegistry({
         typeof stylesheet === "string"
           ? themeCssToRegistry(await readFile(join(root, stylesheet), "utf8"), stylesheet, {
               // The one item whose job is shadcn's own tokens, for an app that has none.
-              standard: item.name === "base-tokens",
+              standard: item.name === baseTokensItemName,
             })
           : null;
 
@@ -184,7 +264,11 @@ export async function buildRegistry({
           : {}),
         ...(item.files?.length
           ? {
-              files: item.files.map(({ path, type, target }) => ({ path, type, target })),
+              files: item.files.map(({ type, target }, index) => ({
+                path: stagedPaths[index]!,
+                type,
+                target,
+              })),
             }
           : {}),
         ...(theme ? { cssVars: theme.cssVars, css: theme.css } : {}),
@@ -209,8 +293,8 @@ export async function buildRegistry({
       `${JSON.stringify(
         {
           $schema: "https://ui.shadcn.com/schema/registry.json",
-          name: registryName,
-          homepage: base.replace(/\/r$/u, ""),
+          name: framework.registryName,
+          homepage: registryBase.replace(/\/r$/u, ""),
           items: registryItems,
         },
         null,
@@ -229,9 +313,10 @@ export async function buildRegistry({
       const { stdout = "", stderr = "" } = error as { stdout?: string; stderr?: string };
       throw new Error(`shadcn build failed:\n${stdout}\n${stderr}`, { cause: error });
     }
+    for (const [name, paths] of restored) await restorePaths(built, name, paths);
 
     const manifest: RegistryManifest = {
-      registry: registryName,
+      registry: framework.registryName,
       baseUrl: base,
       runtime: Object.fromEntries(
         [...packages.versions]

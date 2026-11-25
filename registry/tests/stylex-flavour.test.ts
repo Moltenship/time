@@ -125,7 +125,10 @@ describe("the StyleX flavour keeps in step with the Tailwind source", () => {
           (name) =>
             name === "cn" ||
             name === "class-variance-authority" ||
-            (name.startsWith("@registry/") && !name.startsWith(`@registry/${flavour}`)),
+            // Shared files hold words and arithmetic both flavours use; their looks are Tailwind's.
+            (name.startsWith("@registry/") &&
+              !name.startsWith(`@registry/${flavour}`) &&
+              !(name.startsWith("@registry/shared/") && !name.endsWith(".styles"))),
         );
         expect(wrong, `${item}/${file}`).toEqual([]);
         // A Tailwind utility left in a class name, which nothing here would style.
@@ -154,9 +157,23 @@ describe("the StyleX flavour keeps in step with the Tailwind source", () => {
         stylex.registryDependencies?.every((name) => name.startsWith("@moltenship/stylex-")),
       ).not.toBe(false);
       expect(stylex.dependencies ?? []).not.toContain("cn");
+      // Shared files are the same in both, but for the Tailwind classes, which the flavour leaves out.
       expect(
         stylex.files?.map(({ target }) => target.replace("calendar-stylex/", "calendar/")),
-      ).toEqual(source.files?.map(({ target }) => target));
+      ).toEqual(
+        source.files
+          ?.filter(
+            ({ path }) => !(path.startsWith("registry/shared/") && path.endsWith(".styles.ts")),
+          )
+          .map(({ target }) => target),
+      );
+      for (const file of stylex.files ?? []) {
+        if (!file.path.startsWith("registry/shared/")) continue;
+        expect(
+          source.files?.map(({ path }) => path),
+          `${item}: ${file.path}`,
+        ).toContain(file.path);
+      }
     }
   });
 });

@@ -1,7 +1,7 @@
 import { iteratePlainDates, type CalendarVisibleRange } from "@moltenship/calendar";
 import { useCallback, useRef, useState } from "react";
 
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 
 import type { PreviewEvent } from "./events";
 

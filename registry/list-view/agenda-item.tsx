@@ -1,16 +1,23 @@
 "use client";
 
-import {
-  withAsciiSpaces,
-  type EventId,
-  type ListItem,
-  type ResourceId,
-} from "@moltenship/calendar";
+import type { EventId, ListItem, ResourceId } from "@moltenship/calendar";
 import type { ReactNode } from "react";
 
 import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
+import { agendaTimeLabel, allDayLabel, dayOfLabel } from "@registry/shared/list-view/agenda-labels";
+import {
+  agendaAllDayClass,
+  agendaDayOfClass,
+  agendaDotClass,
+  agendaEventIconClass,
+  agendaItemClass,
+  agendaTimeClass,
+  agendaTimeColumnClass,
+  agendaTitleClass,
+  agendaTitleColumnClass,
+} from "@registry/shared/list-view/agenda.styles";
 
 export interface AgendaItemProps<TEvent> {
   readonly color?: CalendarEventColor;
@@ -23,16 +30,6 @@ export interface AgendaItemProps<TEvent> {
   readonly timeFormat: Intl.DateTimeFormat;
 }
 
-function timeLabel(
-  { end, event, start, endsAfterDay, startsBeforeDay }: ListItem<unknown, EventId, ResourceId>,
-  format: Intl.DateTimeFormat,
-) {
-  if (event.kind === "all-day" || (startsBeforeDay && endsAfterDay)) return undefined;
-  if (startsBeforeDay) return `Until ${format.format(end.toPlainTime())}`;
-  if (endsAfterDay) return `From ${format.format(start.toPlainTime())}`;
-  return withAsciiSpaces(format.formatRange(start.toPlainTime(), end.toPlainTime()));
-}
-
 /** One agenda row: time range or an "All day" badge, the title, and "Day k of n" for long events. */
 export function AgendaItem<TEvent>({
   color,
@@ -42,7 +39,7 @@ export function AgendaItem<TEvent>({
   onOpenDay,
   timeFormat,
 }: AgendaItemProps<TEvent>) {
-  const time = timeLabel(item, timeFormat);
+  const time = agendaTimeLabel(item, timeFormat);
   const chip = useEventChip(item.event, { date: item.date, labelEvent });
 
   return (
@@ -56,31 +53,23 @@ export function AgendaItem<TEvent>({
           onOpenDay(item.date);
         }
       }}
-      // Muted text turns accent-foreground on the hover fill: muted on accent falls short of 4.5:1.
-      className="group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start"
+      className={agendaItemClass}
     >
-      <span className="flex shrink-0 items-center gap-2 sm:w-44">
-        <span aria-hidden className="size-2.5 shrink-0 rounded-full bg-calendar-event-border" />
+      <span className={agendaTimeColumnClass}>
+        <span aria-hidden className={agendaDotClass} />
         {time === undefined ? (
-          <span className="rounded-full bg-calendar-event px-2 py-0.5 text-xs font-medium text-calendar-event-foreground">
-            All day
-          </span>
+          <span className={agendaAllDayClass}>{allDayLabel}</span>
         ) : (
-          <span className="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
-            {time}
-          </span>
+          <span className={agendaTimeClass}>{time}</span>
         )}
       </span>
-      <span className="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
-        <span data-slot="calendar-event-title" className="truncate font-medium">
-          {/* Sized for the row's larger text. */}
-          <EventIcon className="size-3.5 [&_svg]:size-3.5">{icon}</EventIcon>
+      <span className={agendaTitleColumnClass}>
+        <span data-slot="calendar-event-title" className={agendaTitleClass}>
+          <EventIcon className={agendaEventIconClass}>{icon}</EventIcon>
           {item.event.title}
         </span>
         {item.dayCount > 1 && (
-          <span className="shrink-0 text-xs text-muted-foreground group-hover/event:text-accent-foreground">
-            Day {item.dayIndex} of {item.dayCount}
-          </span>
+          <span className={agendaDayOfClass}>{dayOfLabel(item.dayIndex, item.dayCount)}</span>
         )}
       </span>
     </EventChip>

@@ -23,7 +23,7 @@ import {
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { ResourceStatusOptions } from "@registry/calendar/resource-status";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { cn } from "cn";
 
 import { LANE_GAP, LANE_HEIGHT, ROW_PADDING } from "./resource-timeline-event";

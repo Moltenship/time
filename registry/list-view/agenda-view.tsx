@@ -13,16 +13,17 @@ import {
   type ListProjection,
   type ListViewOptions,
   type ResourceId,
-  withAsciiSpaces,
 } from "@moltenship/calendar";
 import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 
 import type { EventDescriber } from "@registry/calendar/event-label";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
+import { agendaDates } from "@registry/shared/list-view/agenda-labels";
+import { agendaRows } from "@registry/shared/list-view/agenda-rows";
+import { emptyAgendaViewClass } from "@registry/shared/list-view/agenda.styles";
 
 import { AgendaList, useAgendaFormats, useAgendaList } from "./agenda-list";
-import { agendaRows } from "./agenda-rows";
 import { EmptyAgenda } from "./agenda-states";
 
 export interface AgendaViewOptions<TEvent> extends ListViewOptions {
@@ -57,15 +58,9 @@ function EmptyAgendaView<TEvent>({ environment, options, range }: AgendaViewProp
   const formats = useAgendaFormats(environment.locale);
 
   return (
-    <div
-      {...keyboard}
-      data-slot="agenda-view"
-      className="flex h-full items-center justify-center p-6 text-center"
-    >
+    <div {...keyboard} data-slot="agenda-view" className={emptyAgendaViewClass}>
       <EmptyAgenda
-        dates={withAsciiSpaces(
-          formats.range.formatRange(range.start, range.end.subtract({ days: 1 })),
-        )}
+        dates={agendaDates(formats, range)}
         loading={options.loading === true}
         start={range.start}
       />

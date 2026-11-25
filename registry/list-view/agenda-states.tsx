@@ -4,18 +4,28 @@ import { useRovingFocus, type PlainDateInterval } from "@moltenship/calendar";
 import { CalendarX2Icon, LoaderCircleIcon } from "lucide-react";
 import { useId } from "react";
 
-import { cn } from "cn";
-
-import type { AgendaFormats } from "./agenda-day";
+import {
+  agendaEndLabel,
+  agendaEndLoadingLabel,
+  emptyAgendaCopy,
+  type AgendaFormats,
+} from "@registry/shared/list-view/agenda-labels";
+import {
+  agendaEndClass,
+  agendaEndLoadingClass,
+  agendaEndSpinnerClass,
+  agendaSpinnerClass,
+  emptyAgendaClass,
+  emptyAgendaDetailClass,
+  emptyAgendaIconClass,
+  emptyAgendaSpinnerClass,
+  emptyAgendaTextClass,
+  emptyAgendaTitleClass,
+} from "@registry/shared/list-view/agenda.styles";
 
 /** A spinner that stays still when the system asks for reduced motion. */
 function Spinner({ className }: { readonly className: string }) {
-  return (
-    <LoaderCircleIcon
-      aria-hidden
-      className={cn("text-muted-foreground motion-safe:animate-spin", className)}
-    />
-  );
+  return <LoaderCircleIcon aria-hidden className={agendaSpinnerClass(className)} />;
 }
 
 /**
@@ -36,6 +46,7 @@ export function EmptyAgenda({
 }) {
   const roving = useRovingFocus({ date: start, kind: "day" });
   const id = useId();
+  const copy = emptyAgendaCopy(loading, dates);
 
   return (
     <div
@@ -47,20 +58,16 @@ export function EmptyAgenda({
         // Only for paging: the agenda has no cells, so Space must not start an event here.
         if (event.key === " ") event.preventDefault();
       }}
-      className="flex flex-col items-center gap-2 rounded-lg p-4 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+      className={emptyAgendaClass}
     >
       {loading ? (
-        <Spinner className="mb-1 size-10" />
+        <Spinner className={emptyAgendaSpinnerClass} />
       ) : (
-        <CalendarX2Icon aria-hidden className="mb-1 size-10 text-muted-foreground/60" />
+        <CalendarX2Icon aria-hidden className={emptyAgendaIconClass} />
       )}
-      <div id={id} className="flex flex-col gap-2">
-        <p className="font-medium">{loading ? "Loading events" : "No events"}</p>
-        <p className="text-sm text-muted-foreground">
-          {loading
-            ? `Fetching what's scheduled for ${dates}.`
-            : `Nothing is scheduled for ${dates}.`}
-        </p>
+      <div id={id} className={emptyAgendaTextClass}>
+        <p className={emptyAgendaTitleClass}>{copy.title}</p>
+        <p className={emptyAgendaDetailClass}>{copy.detail}</p>
       </div>
     </div>
   );
@@ -81,14 +88,14 @@ export function AgendaEndMessage({
   readonly loading: boolean;
 }) {
   return (
-    <p className="px-3 py-4 text-center text-sm text-muted-foreground sm:px-6">
+    <p className={agendaEndClass}>
       {loading ? (
-        <span className="inline-flex items-center gap-2">
-          <Spinner className="size-4" />
-          Loading events…
+        <span className={agendaEndLoadingClass}>
+          <Spinner className={agendaEndSpinnerClass} />
+          {agendaEndLoadingLabel}
         </span>
       ) : empty === null ? null : (
-        `Nothing more is scheduled through ${formats.date.format(empty.end.subtract({ days: 1 }))}.`
+        agendaEndLabel(formats, empty)
       )}
     </p>
   );

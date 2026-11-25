@@ -4,8 +4,9 @@ description: Build a Solid calendar with a toolbar and an agenda view you write,
 ---
 
 You'll build a calendar in SolidJS 2: a toolbar with previous, next and today buttons, a title, and
-an agenda of your own meetings. `@moltenship/calendar-solid` has no ready-made views yet, so the
-agenda is a Solid component you write. It draws a layout the engine computes.
+an agenda of your own meetings. The agenda is a Solid component you write, so you see how a view
+is made: it draws a layout the engine computes. The registry has a styled
+[agenda](/docs/views/agenda) to add instead, and you write the other views the same way.
 
 This page shows code only, since this site is a React app. The
 [Solid demo](https://moltenship-time-demo.vercel.app/solid/) is a running Solid calendar built the
@@ -17,7 +18,7 @@ same way, with a month grid, an agenda and an agent panel. Its source is the rep
 
 ### Install
 
-Install `@moltenship/calendar-solid`, `@moltenship/calendar-core` and their peer dependencies as
+Install `@moltenship/calendar-solid` and its peer dependencies as
 [Installation](/docs/installation#install) describes, and set up the Solid compiler as
 [Build setup](/docs/installation#build-setup) shows.
 
@@ -85,6 +86,7 @@ an accessor, so call it where you use it: `view()`, `range()`.
 
 ## Next steps
 
+- [Agenda](/docs/views/agenda) is the registry's styled agenda, added with the shadcn CLI.
 - [Components and hooks](/docs/api/components) lists every part, hook and export of the package.
 - [Keyboard and dragging in a view](/docs/api/components#keyboard-and-dragging-in-a-view) writes a
   month grid with roving focus, and drags that move, resize and create events.

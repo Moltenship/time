@@ -1,23 +1,21 @@
 // #region month
 import {
+  defineCalendarView,
+  eventIdAttributes,
   getMonthRange,
   getMonthTitle,
   monthSpatialNavigation,
   navigateMonth,
   projectMonth,
-  type DayGridSegment,
-  type MonthDay,
-  type MonthProjection,
-} from "@moltenship/calendar-core";
-import {
-  defineCalendarView,
-  eventIdAttributes,
   useCalendarAnnouncer,
   useCalendarDraftReporter,
   useCalendarKeyboard,
   useCalendarPointer,
   useRovingFocus,
   type CalendarViewRendererProps,
+  type DayGridSegment,
+  type MonthDay,
+  type MonthProjection,
 } from "@moltenship/calendar-solid";
 import { For } from "solid-js";
 

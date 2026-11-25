@@ -1,7 +1,7 @@
 import { copyFile, mkdir, rm } from "node:fs/promises";
 import { createServer, type AddressInfo } from "node:net";
 import { availableParallelism } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { isolatedWorkspace, lastLines, temporaryRoot, type IsolatedWorkspace } from "./isolated";
 import {
@@ -119,6 +119,7 @@ export const consumers: readonly Consumer[] = [
         const served = join(workspace.root, "apps/showcase/public/r");
         await mkdir(served, { recursive: true });
         for (const { file } of manifest.registry ?? []) {
+          await mkdir(dirname(join(served, file)), { recursive: true });
           await copyFile(join(registryDirectory, file), join(served, file));
         }
         return workspace;
@@ -145,7 +146,7 @@ export const consumers: readonly Consumer[] = [
     },
   },
   {
-    // #43's install test: `shadcn add` into clean Vite and Next.js apps, then a typecheck and a
+    // #43's install test: `shadcn add` into clean Vite, Next.js and Solid apps, then a typecheck and a
     // build of each, with the tarballs served as the `@moltenship` packages. It needs the network
     // for npm and shadcn's own components.
     name: "registry",

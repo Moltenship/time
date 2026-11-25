@@ -4,6 +4,9 @@
   "private": true,
   "description": "Internal shadcn registry schema and build verification tooling.",
   "type": "module",
+  "exports": {
+    "./solid-source": "./src/solid-source.ts"
+  },
   "dependencies": {
     "npm-package-arg": "catalog:",
     "postcss": "catalog:",
@@ -13,11 +16,14 @@
   },
   "devDependencies": {
     "@moltenship/calendar": "workspace:*",
+    "@moltenship/calendar-solid": "workspace:*",
+    "@solidjs/web": "catalog:",
     "@types/node": "catalog:",
     "@types/npm-package-arg": "catalog:",
     "@types/react": "catalog:",
     "@types/semver": "catalog:",
     "react": "catalog:",
+    "solid-js": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

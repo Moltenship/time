@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { valid, validRange } from "semver";
 import { parse } from "yaml";
 
-import { registrySourcePackage } from "./config";
+import { reactRegistry, type RegistryFramework } from "./config";
 
 interface PackageManifest {
   readonly name: string;
@@ -49,18 +49,22 @@ function caretRange(name: string, version: string): string {
 }
 
 /**
- * The range of each package `registry/package.json` declares, from what the workspace builds and
+ * The range of each package the framework's registry source package (`registry/package.json`,
+ * `registry/solid/package.json`) declares, from what the workspace builds and
  * tests the registry source with: the catalog for third-party packages and the package version for
  * our own. Items list bare names, and the build adds the range to ours. A package missing there
  * can't be imported by registry source, so it can't be an item's dependency either.
  */
-export async function readWorkspacePackages(workspaceRoot: string): Promise<WorkspacePackages> {
+export async function readWorkspacePackages(
+  workspaceRoot: string,
+  framework: RegistryFramework = reactRegistry,
+): Promise<WorkspacePackages> {
   const workspace = parse(await readFile(join(workspaceRoot, "pnpm-workspace.yaml"), "utf8")) as {
     readonly catalog?: Record<string, string>;
   };
   const catalog = workspace.catalog ?? {};
   const versions = await readWorkspaceVersions(workspaceRoot);
-  const source = await readJson<PackageManifest>(join(workspaceRoot, registrySourcePackage));
+  const source = await readJson<PackageManifest>(join(workspaceRoot, framework.sourcePackage));
   const ranges = new Map<string, string>();
 
   for (const [name, specifier] of Object.entries(source.dependencies ?? {})) {

@@ -1,18 +1,16 @@
 // #region calendar
 import {
+  createCalendar,
+  defineCalendarView,
   defineEventAdapter,
   getListRange,
   getListTitle,
   navigateList,
   projectList,
   type CalendarEventInterval,
+  type CalendarViewRendererProps,
   type ListProjection,
   type ListViewOptions,
-} from "@moltenship/calendar-core";
-import {
-  createCalendar,
-  defineCalendarView,
-  type CalendarViewRendererProps,
 } from "@moltenship/calendar-solid";
 import { For } from "solid-js";
 

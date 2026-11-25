@@ -7,7 +7,7 @@
   "dependencies": [
     "@moltenship/calendar",
     "@stylexjs/stylex",
-    "@tanstack/react-virtual",
+    "@tanstack/virtual-core",
     "lucide-react"
   ],
   "registryDependencies": ["@moltenship/stylex-calendar", "@moltenship/stylex-calendar-theme"],
@@ -38,9 +38,19 @@
       "target": "@components/calendar-stylex/list-view/agenda-states.tsx"
     },
     {
-      "path": "registry/stylex-list-view/agenda-rows.ts",
+      "path": "registry/shared/list-view/agenda-rows.ts",
       "type": "registry:lib",
       "target": "@components/calendar-stylex/list-view/agenda-rows.ts"
+    },
+    {
+      "path": "registry/shared/list-view/agenda-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/list-view/agenda-labels.ts"
+    },
+    {
+      "path": "registry/shared/list-view/agenda-virtualizer.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/list-view/agenda-virtualizer.ts"
     },
     {
       "path": "registry/stylex-list-view/use-agenda-virtualizer.ts",

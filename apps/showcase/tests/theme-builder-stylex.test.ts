@@ -9,7 +9,7 @@ import { defaultTheme, parseTheme, setToken, themeStylex } from "../components/t
 
 const registry = path.join(import.meta.dirname, "../../../registry");
 const source = parseTheme(
-  await readFile(path.join(registry, "calendar-theme/calendar-theme.css"), "utf8"),
+  await readFile(path.join(registry, "shared/calendar-theme/calendar-theme.css"), "utf8"),
 );
 const shipped = defaultTheme(source);
 

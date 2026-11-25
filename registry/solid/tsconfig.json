@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "jsxImportSource": "@solidjs/web",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@moltenship/calendar": ["./calendar-facade.ts"],
+      "@registry/shared/*": ["../shared/*"],
+      "@registry/*": ["./*"]
+    },
+    "types": []
+  },
+  "include": ["**/*.ts", "**/*.tsx", "../shared/**/*.ts"],
+  "exclude": ["node_modules"]
+}

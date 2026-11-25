@@ -14,7 +14,7 @@ import { ViewSwitcher } from "@registry/calendar/view-switcher";
 import {
   calendarEventColors,
   type CalendarEventColor,
-} from "@registry/calendar-theme/event-colors";
+} from "@registry/shared/calendar-theme/event-colors";
 import { createAgendaView } from "@registry/list-view/agenda-view";
 import { createMonthView } from "@registry/month-view/month-view";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";

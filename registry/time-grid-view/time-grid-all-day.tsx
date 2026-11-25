@@ -25,7 +25,7 @@ import {
   previewCheckAttributes,
   useDraftCheck,
 } from "@registry/calendar/preview-check";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { cn } from "cn";
 import { Button } from "@registry/calendar-ui/button";
 

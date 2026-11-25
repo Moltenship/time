@@ -5,7 +5,7 @@ import { useRef, type ReactNode, type RefObject } from "react";
 
 import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { Popover, PopoverContent } from "@registry/calendar-ui/popover";
 import { cn } from "cn";
 

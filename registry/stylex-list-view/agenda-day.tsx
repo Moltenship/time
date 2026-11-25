@@ -8,8 +8,10 @@ import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.st
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
 import { type XStyle, xprops } from "@registry/stylex-calendar-theme/xprops";
 
+import type { AgendaFormats } from "@registry/shared/list-view/agenda-labels";
+import type { AgendaDay as AgendaDayData } from "@registry/shared/list-view/agenda-rows";
+
 import { AgendaItem } from "./agenda-item";
-import type { AgendaDay as AgendaDayData } from "./agenda-rows";
 
 const styles = stylex.create({
   date: {
@@ -81,12 +83,7 @@ const styles = stylex.create({
   },
 });
 
-export interface AgendaFormats {
-  readonly date: Intl.DateTimeFormat;
-  readonly range: Intl.DateTimeFormat;
-  readonly time: Intl.DateTimeFormat;
-  readonly weekday: Intl.DateTimeFormat;
-}
+export type { AgendaFormats };
 
 export interface AgendaDayProps<TEvent> extends Omit<ComponentProps<"li">, "children"> {
   readonly day: AgendaDayData<TEvent>;

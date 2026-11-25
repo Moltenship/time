@@ -7,7 +7,7 @@ import {
 } from "@moltenship/calendar";
 import { describe, expect, test, vi } from "vite-plus/test";
 
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import {
   createTimelineDayView,
   createTimelineMonthView,

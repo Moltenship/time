@@ -16,7 +16,7 @@ import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { cn } from "cn";
 
 import { annotationFormats } from "./annotation-label";

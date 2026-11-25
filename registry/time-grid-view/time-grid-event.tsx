@@ -11,7 +11,7 @@ import { createContext, use, useEffect, useRef, useState, type ReactNode } from 
 
 import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import {
   createTooltipHandle,
   Tooltip,

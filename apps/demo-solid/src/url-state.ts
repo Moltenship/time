@@ -1,5 +1,5 @@
 /** The Solid demo's views. `app.tsx` passes them as the calendar's `view`, which checks the names. */
-export type SolidView = "month" | "list";
+export type SolidView = "month" | "agenda";
 
 export interface SolidLocation {
   readonly date: Temporal.PlainDate;
@@ -8,27 +8,24 @@ export interface SolidLocation {
 
 /**
  * The React demo's views (`demoViewNames` in apps/demo/src/demo-model.ts), each with the nearest
- * view this demo has: the month grid for a month or a year, and the list, two weeks of events with
- * their times, for the agenda and for the views of days and weeks.
+ * view this demo has: the month grid for a month or a year, and the registry's agenda, the days
+ * with events, for the agendas and for the views of days and weeks.
  */
 const nearestView: Readonly<Record<string, SolidView>> = {
-  "3-day": "list",
-  agenda: "list",
-  day: "list",
+  "3-day": "agenda",
+  agenda: "agenda",
+  day: "agenda",
   month: "month",
-  resources: "list",
-  "scrolling-3-day": "list",
-  "scrolling-agenda": "list",
-  "scrolling-day": "list",
+  resources: "agenda",
+  "scrolling-3-day": "agenda",
+  "scrolling-agenda": "agenda",
+  "scrolling-day": "agenda",
   "scrolling-month": "month",
-  "scrolling-week": "list",
-  "timeline-week": "list",
-  week: "list",
+  "scrolling-week": "agenda",
+  "timeline-week": "agenda",
+  week: "agenda",
   year: "month",
 };
-
-/** What the URL says for each view here, a name the React demo has too. */
-const urlView: Readonly<Record<SolidView, string>> = { list: "agenda", month: "month" };
 
 function viewFor(value: string | null): SolidView | undefined {
   return value !== null && Object.hasOwn(nearestView, value) ? nearestView[value] : undefined;
@@ -63,7 +60,7 @@ export function readSolidLocation(search: string, fallback: SolidLocation): Soli
  */
 export function writeSolidLocation(href: string, { date, view }: SolidLocation): string {
   const url = new URL(href);
-  if (viewFor(url.searchParams.get("view")) !== view) url.searchParams.set("view", urlView[view]);
+  if (viewFor(url.searchParams.get("view")) !== view) url.searchParams.set("view", view);
   url.searchParams.set("date", date.toString());
   return url.toString();
 }

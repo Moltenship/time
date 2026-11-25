@@ -28,7 +28,7 @@ import {
 import {
   calendarEventColors,
   type CalendarEventColor,
-} from "@registry/calendar-theme/event-colors";
+} from "@registry/shared/calendar-theme/event-colors";
 import { Button } from "@registry/calendar-ui/button";
 import {
   createPopoverHandle,

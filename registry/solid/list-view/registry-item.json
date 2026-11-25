@@ -1,0 +1,61 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "list-view",
+  "type": "registry:component",
+  "title": "Agenda view",
+  "description": "Chronological agenda grouped by day, virtualized so only the days in view render: sticky dates, Intl time ranges, all-day badges, \"Day k of n\" for multi-day events, and empty and loading states. The same agenda as the React registry's, in Solid.",
+  "dependencies": ["@moltenship/calendar-solid", "@tanstack/virtual-core", "cn"],
+  "registryDependencies": ["@moltenship/calendar", "@moltenship/calendar-theme"],
+  "files": [
+    {
+      "path": "registry/solid/list-view/agenda-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/list-view/agenda-view.tsx"
+    },
+    {
+      "path": "registry/solid/list-view/agenda-list.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/list-view/agenda-list.tsx"
+    },
+    {
+      "path": "registry/solid/list-view/agenda-day.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/list-view/agenda-day.tsx"
+    },
+    {
+      "path": "registry/solid/list-view/agenda-item.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/list-view/agenda-item.tsx"
+    },
+    {
+      "path": "registry/solid/list-view/agenda-states.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/list-view/agenda-states.tsx"
+    },
+    {
+      "path": "registry/shared/list-view/agenda-rows.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/list-view/agenda-rows.ts"
+    },
+    {
+      "path": "registry/shared/list-view/agenda-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/list-view/agenda-labels.ts"
+    },
+    {
+      "path": "registry/shared/list-view/agenda.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/list-view/agenda.styles.ts"
+    },
+    {
+      "path": "registry/shared/list-view/agenda-virtualizer.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/list-view/agenda-virtualizer.ts"
+    },
+    {
+      "path": "registry/solid/list-view/use-agenda-virtualizer.ts",
+      "type": "registry:hook",
+      "target": "@components/calendar/list-view/use-agenda-virtualizer.ts"
+    }
+  ]
+}

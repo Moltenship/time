@@ -5,7 +5,10 @@ import ThemeBuilderClient from "./builder";
 import { parseTheme } from "./theme";
 
 // The docs build and run from `apps/showcase`.
-const themeFile = path.join(process.cwd(), "../../registry/calendar-theme/calendar-theme.css");
+const themeFile = path.join(
+  process.cwd(),
+  "../../registry/shared/calendar-theme/calendar-theme.css",
+);
 
 /**
  * The theme builder, over the tokens and values of the registry's `calendar-theme.css`, read as

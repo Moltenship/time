@@ -33,8 +33,9 @@ export const Calendar = createCalendar<Meeting>()({
 });
 ```
 
-The view is named `agenda`. It renders with `@tanstack/react-virtual`, which the registry item
-installs.
+The view is named `agenda`. It decides which days render with `@tanstack/virtual-core`, which the
+registry item installs. A Solid app adds the [Solid agenda](/docs/solid/views/agenda), built from the same
+styles, labels and virtualizer.
 
 ## Scrolling agenda
 
@@ -110,7 +111,7 @@ AgendaView                       agenda-view.tsx
 ```
 
 `AgendaItem` shows the time range or an "All day" badge, the title, and "Day 2 of 3", which comes
-from `dayIndex` and `dayCount`. `use-agenda-virtualizer.ts` decides which days render. The
+from `dayIndex` and `dayCount`. `agenda-virtualizer.ts` decides which days render, and `use-agenda-virtualizer.ts` binds it to the list. The
 scrolling agenda's `ScrollingAgendaView` renders the same parts, and `use-agenda-scroll.ts` in
 `registry/scrolling-list-view` keeps its scroll position and the anchor date together.
 

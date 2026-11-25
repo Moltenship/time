@@ -6,7 +6,7 @@
 @import "shadcn/tailwind.css";
 @import "fumadocs-ui/css/shadcn.css";
 @import "fumadocs-ui/css/preset.css";
-@import "../../../registry/calendar-theme/calendar-theme.css";
+@import "../../../registry/shared/calendar-theme/calendar-theme.css";
 
 @source "../../../registry";
 

@@ -55,7 +55,7 @@ React app built from the same views. Its source is in [`apps/demo`](./apps/demo)
   records. TypeScript keeps your record and ID types.
 - **Views you own.** Week, day, month, year, agenda, resource columns and resource timeline are
   React source files built on shadcn/ui. The shadcn CLI copies them into your app, in Tailwind CSS
-  or StyleX.
+  or StyleX. A Solid registry has the agenda so far.
 - **Headless underneath.** The packages ship no styles, and the registry's views are one UI on top
   of them. Restyle it with tokens, edit the files, swap its controls, or build your own UI with
   MUI or any other library. See [Customization](https://time.molten.sh/docs/react/customization).
@@ -76,9 +76,9 @@ React app built from the same views. Its source is in [`apps/demo`](./apps/demo)
 - **React and Solid.** One package holds the calendar's state and actions, and it imports no
   framework. The React integration is complete. The
   [SolidJS 2](https://time.molten.sh/docs/solid) integration is a preview. It has the same parts
-  and hooks, keyboard navigation, dragging and undo, and no ready-made views yet, so you write each
-  view as a Solid component. [React and Solid](https://time.molten.sh/docs/react/frameworks) lists
-  what the two share.
+  and hooks, keyboard navigation, dragging and undo, and the registry's agenda as a ready-made
+  Solid view. [React and Solid](https://time.molten.sh/docs/react/frameworks) lists what the two
+  share.
 
 [Comparison](https://time.molten.sh/docs/react/comparison) sets Time beside FullCalendar and
 react-big-calendar, including where they're ahead.
@@ -94,7 +94,7 @@ pnpm add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
 In a SolidJS 2 app:
 
 ```bash
-pnpm add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+pnpm add @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 Time 2.0 is a pre-release on npm's `next` tag, so both commands install `@next`.
@@ -197,13 +197,13 @@ The [Quick start](https://time.molten.sh/docs/react/quick-start) wires them into
 ## Packages
 
 A React app imports `@moltenship/calendar` alone. It re-exports the React, pointer-interaction,
-core and Temporal packages. A Solid app imports `@moltenship/calendar-solid` and
-`@moltenship/calendar-core`.
+core and Temporal packages. A Solid app imports `@moltenship/calendar-solid` alone, which re-exports the core and Temporal
+packages too.
 
 | Package | What it does |
 | --- | --- |
 | [`@moltenship/calendar`](./packages/calendar) | The package a React app installs: React components and hooks, the event engine, Temporal helpers and pointer interactions. |
-| [`@moltenship/calendar-solid`](./packages/calendar-solid) | The SolidJS 2 integration, a preview: the parts, the hooks, keyboard navigation, dragging and undo, without ready-made views. |
+| [`@moltenship/calendar-solid`](./packages/calendar-solid) | The package a Solid app installs: the SolidJS 2 integration, a preview, with the event engine and Temporal helpers. |
 | [`@moltenship/calendar-recurrence`](./packages/calendar-recurrence) | RRULE expansion inside a range, exceptions and series edits. |
 | [`@moltenship/ics`](./packages/ics) | Typed iCalendar (RFC 5545) parsing into Temporal values, with Standard Schema support. |
 | [`@moltenship/calendar-dnd-kit`](./packages/calendar-dnd-kit) | A dnd-kit adapter: drag your own items into the calendar and events out. |

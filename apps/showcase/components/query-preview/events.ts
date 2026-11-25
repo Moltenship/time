@@ -1,6 +1,6 @@
 import type { ApiEvent } from "@/content/examples/query-api";
 
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 
 /** How far either way of today the pretend server has events. */
 const REACH = { months: 6 };

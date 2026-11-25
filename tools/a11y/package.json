@@ -2,7 +2,7 @@
   "name": "a11y",
   "version": "0.0.0",
   "private": true,
-  "description": "axe-core checks and interactions of the registry views and the demo, light and dark, in Chromium, and in Firefox and WebKit with --mode browsers.",
+  "description": "axe-core checks and interactions of the registry views, React and Solid, and the demo, light and dark, in Chromium, and in Firefox and WebKit with --mode browsers.",
   "type": "module",
   "scripts": {
     "test": "vp test"
@@ -14,12 +14,16 @@
     "@moltenship/calendar": "workspace:*",
     "@moltenship/calendar-dnd-kit": "workspace:*",
     "@moltenship/calendar-recurrence": "workspace:*",
+    "@moltenship/calendar-solid": "workspace:*",
+    "@solidjs/web": "catalog:",
     "@stylexjs/stylex": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "solid-js": "catalog:"
   },
   "devDependencies": {
     "@moltenship/calendar-testing": "workspace:*",
+    "@solidjs/vite-plugin": "catalog:",
     "@stylexjs/unplugin": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@types/react": "catalog:",

@@ -1,6 +1,6 @@
 import type { TeamEvent } from "@/content/examples/recurrence-calendar";
 
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 
 const weekdays = ["MO", "TU", "WE", "TH", "FR"] as const;
 

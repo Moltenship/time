@@ -1,19 +1,12 @@
 import {
   defineEventAdapter,
-  getListRange,
-  getListTitle,
   getMonthRange,
   getMonthTitle,
-  listSpatialNavigation,
   monthSpatialNavigation,
-  navigateList,
   navigateMonth,
-  projectList,
   projectMonth,
   type CalendarEventInterval,
   type DayGridSegment,
-  type ListProjection,
-  type ListViewOptions,
   type MonthDay,
   type MonthProjection,
 } from "@moltenship/calendar-core";
@@ -31,6 +24,8 @@ import {
 } from "@moltenship/calendar-solid";
 import { For, Show } from "solid-js";
 
+import { createAgendaView } from "@registry/list-view/agenda-view";
+
 export interface Meeting {
   readonly id: string;
   readonly interval: CalendarEventInterval;
@@ -47,7 +42,6 @@ const adapter = defineEventAdapter<Meeting>()({
 });
 
 type Month = MonthProjection<Meeting, string, string>;
-type List = ListProjection<Meeting, string, string>;
 type Segment = DayGridSegment<Meeting, string, string>;
 
 /**
@@ -165,58 +159,6 @@ function MonthGrid(props: CalendarViewRendererProps<Month, undefined>) {
   );
 }
 
-/** An agenda item: up and down move between them. */
-function AgendaItem(props: {
-  readonly date: Temporal.PlainDate;
-  readonly item: List["days"][number]["items"][number];
-  readonly time: (value: Temporal.PlainDateTime) => string;
-}) {
-  const roving = useRovingFocus(() => ({
-    date: props.date,
-    eventId: props.item.event.id,
-    kind: "event",
-  }));
-  return (
-    <li {...roving} {...eventIdAttributes(props.item.event.id)}>
-      <span class="time">
-        <Show when={props.item.event.kind !== "all-day"} fallback="All day">
-          {props.time(props.item.start)}–{props.time(props.item.end)}
-        </Show>
-      </span>
-      <span>{props.item.event.title}</span>
-    </li>
-  );
-}
-
-function Agenda(props: CalendarViewRendererProps<List, ListViewOptions>) {
-  const keyboard = useCalendarKeyboard();
-  const day = (date: Temporal.PlainDate) =>
-    date.toLocaleString(props.environment.locale, {
-      day: "numeric",
-      month: "long",
-      weekday: "long",
-    });
-  const time = (value: Temporal.PlainDateTime) =>
-    value.toLocaleString(props.environment.locale, { hour: "2-digit", minute: "2-digit" });
-  return (
-    <div class="agenda" data-view="list" ref={keyboard}>
-      <For each={props.projection.days} fallback={<p class="empty">Nothing in these weeks.</p>}>
-        {(entry) => (
-          <section class="agenda-day" data-today={entry.isToday ? "" : undefined}>
-            {/* Under the page's `h1`, as the agent panel's `h2` is. */}
-            <h2>{day(entry.date)}</h2>
-            <ul>
-              <For each={entry.items}>
-                {(item) => <AgendaItem date={entry.date} item={item} time={time} />}
-              </For>
-            </ul>
-          </section>
-        )}
-      </For>
-    </div>
-  );
-}
-
 const month = defineCalendarView({
   name: "month",
   Renderer: MonthGrid,
@@ -229,22 +171,15 @@ const month = defineCalendarView({
   },
 });
 
-const list = defineCalendarView({
-  defaultOptions: { weeks: 2 } as ListViewOptions,
-  name: "list",
-  Renderer: Agenda,
-  strategy: {
-    getRange: (anchor, environment, options) => getListRange(anchor, environment, options),
-    getSpatialNavigation: listSpatialNavigation,
-    getTitle: (range, environment) => getListTitle(range, environment),
-    navigate: (anchor, delta, options) => navigateList(anchor, delta, options),
-    project: (input) => projectList(input) as List,
-  },
-});
+/**
+ * The registry's agenda (`registry/solid/list-view`), the files `shadcn add @moltenship/list-view`
+ * installs into a Solid app, run here from their source.
+ */
+const agenda = createAgendaView<Meeting>({ weeks: 2 });
 
 export const Calendar = createCalendar<Meeting>()({
   eventAdapter: adapter,
-  views: [month, list],
+  views: [month, agenda],
 });
 
 export type View = (typeof Calendar.views)[number]["name"];
