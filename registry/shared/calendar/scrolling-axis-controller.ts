@@ -216,6 +216,12 @@ export function createScrollingAxis(
     const view = element.ownerDocument.defaultView;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let waiting: MutationObserver | undefined;
+    /**
+     * The target of the touch on the view, until the last finger lifts: the user holds the scroll,
+     * so a pause in their swipe settles nothing, as a slow finger, or a busy page that delivers
+     * its moves late, would otherwise snap the view back under it.
+     */
+    let touched: EventTarget | null = null;
 
     /** The item the page nearest the start of the view starts at. */
     const nearest = () => {
@@ -248,7 +254,7 @@ export function createScrollingAxis(
 
     const settle = (stopped: boolean) => {
       timer = undefined;
-      if (unplaced()) return;
+      if (touched !== null || unplaced()) return;
       if (heading !== null) {
         const target = (heading - read().base) * size();
         if (Math.abs(offset(element) - target) > 1) {
@@ -304,6 +310,27 @@ export function createScrollingAxis(
     const onInput = () => {
       heading = null;
     };
+    const untouch = () => {
+      touched?.removeEventListener("touchend", onTouchEnd);
+      touched?.removeEventListener("touchcancel", onTouchEnd);
+      touched = null;
+    };
+    // The touch's end goes to its target, which hears it even once it has left the document, as a
+    // week does that scrolls out of the canvas mid-swipe.
+    const onTouchStart = (event: Event) => {
+      onInput();
+      untouch();
+      touched = event.target ?? element;
+      touched.addEventListener("touchend", onTouchEnd, { passive: true });
+      touched.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    };
+    function onTouchEnd(event: Event) {
+      if (((event as TouchEvent).touches?.length ?? 0) > 0) return;
+      untouch();
+      // Whatever the browser does next, a fling or a snap, settles the view; or nothing moves it.
+      if (timer !== undefined) clearTimeout(timer);
+      timer = setTimeout(settle, SETTLE_MS, false);
+    }
     // A new item size moves every item, which `place` puts back once the move is visible. Other
     // resizes, such as the all-day row growing, leave a scroll in progress alone.
     const resize =
@@ -313,10 +340,11 @@ export function createScrollingAxis(
             if (size() !== laidOutSize) place();
           });
 
-    const inputs = ["pointerdown", "touchstart", "wheel"] as const;
+    const inputs = ["pointerdown", "wheel"] as const;
     element.addEventListener("scroll", onScrollEvent, { passive: true });
     element.addEventListener("scrollend", onScrollEnd);
     for (const type of inputs) element.addEventListener(type, onInput, { passive: true });
+    element.addEventListener("touchstart", onTouchStart, { passive: true });
     resize?.observe(element);
     // The items can resize alone, as when the time grid's gutter widens.
     const track = elements.track();
@@ -325,6 +353,8 @@ export function createScrollingAxis(
       element.removeEventListener("scroll", onScrollEvent);
       element.removeEventListener("scrollend", onScrollEnd);
       for (const type of inputs) element.removeEventListener(type, onInput);
+      element.removeEventListener("touchstart", onTouchStart);
+      untouch();
       resize?.disconnect();
       waiting?.disconnect();
       if (timer !== undefined) clearTimeout(timer);

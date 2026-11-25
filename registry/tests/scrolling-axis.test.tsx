@@ -198,6 +198,34 @@ test("a drag that scrolls the view still moves the range, without snapping it", 
   expect(scrolls).toEqual([]);
 });
 
+test("a finger that pauses mid-swipe holds the view until it lifts", async () => {
+  const { finishScroll, shownItem, viewport } = await show();
+  const touch = (type: string, target: Element = viewport) =>
+    act(() => {
+      target.dispatchEvent(new Event(type, { bubbles: true }));
+    });
+  // The finger lands on a day, which leaves the document as the canvas recentres.
+  const day = viewport.querySelector("[data-base]")!.appendChild(document.createElement("div"));
+  scrolls = [];
+  await touch("touchstart", day);
+  await act(async () => {
+    viewport.scrollLeft += 2.6 * ITEM;
+    viewport.dispatchEvent(new Event("scroll"));
+  });
+  day.remove();
+
+  // Still, past the time a scroll takes to settle: the view stays under the finger.
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  expect(scrolls).toEqual([]);
+
+  // It lifts short of halfway, and the view comes back to its page.
+  await touch("touchend", day);
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  expect(scrolls).toEqual([{ behavior: "smooth", left: expect.any(Number) }]);
+  await finishScroll();
+  expect(shownItem()).toBe(5000);
+});
+
 test.each([
   ["on to the next page past halfway", 5004.4, 5007],
   ["back short of halfway", 5002.6, 5000],
