@@ -23,7 +23,7 @@ import { ShortcutsDialog } from "./components/shortcuts-dialog";
 import { Sidebar } from "./components/sidebar";
 import { ThemeToggle } from "./components/theme-toggle";
 import { TopBar } from "./components/top-bar";
-import { UiSwitch } from "./components/ui-switch";
+import { FrameworkSwitch, UiSwitch } from "./components/ui-switch";
 import { UnscheduledTasks } from "./components/unscheduled-tasks";
 import { withDragAnnouncements } from "./drag-announcements";
 import { useDemoWorkspace } from "./use-demo-workspace";
@@ -103,7 +103,10 @@ export function App() {
                   <DocsLink className="ml-auto" />
                   <ThemeToggle className="rounded-full" />
                 </div>
-                <UiSwitch className="mx-4 w-fit" current="tailwind" />
+                <div className="mx-4 flex flex-wrap gap-2">
+                  <FrameworkSwitch />
+                  <UiSwitch current="tailwind" />
+                </div>
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   {sidebar(() => workspace.setSidebarOpen(false))}
                 </div>

@@ -1,8 +1,10 @@
 import type { CalendarWeekRules } from "@moltenship/calendar-core";
-import { createSignal } from "solid-js";
+import { createEffect, createSignal } from "solid-js";
 
 import { AgentPanel } from "./agent-panel";
-import { Calendar, type Meeting, type View } from "./calendar";
+import { Calendar, type Meeting } from "./calendar";
+import { FrameworkSwitch } from "./framework-switch";
+import { readSolidLocation, writeSolidLocation } from "./url-state";
 
 const timeZone = Temporal.Now.timeZoneId();
 const today = Temporal.Now.plainDateISO(timeZone);
@@ -29,6 +31,9 @@ const seed: readonly Meeting[] = [
 
 // ISO weeks: they start on Monday, and the first has four days of the new year.
 const weekRules: CalendarWeekRules = { firstDay: 1, minimalDays: 4, weekend: [6, 7] };
+
+// The Solid integration's docs, which say what the preview has and what comes next.
+const docsUrl = "https://time.molten.sh/docs/api/solid";
 
 const local = (date: Temporal.PlainDate, time: string) => `${date.toString()}T${time}`;
 
@@ -67,21 +72,34 @@ const steps = [
 
 export function App() {
   const [events, setEvents] = createSignal<readonly Meeting[]>(seed);
-  const [view, setView] = createSignal<View>("month");
+  // The view and date come from the URL and go back into it, so the framework switch keeps them.
+  const [location, setLocation] = createSignal(
+    readSolidLocation(window.location.search, { date: today, view: "month" }),
+  );
+  createEffect(location, (current) => {
+    history.replaceState(history.state, "", writeSolidLocation(window.location.href, current));
+  });
   const [allowDelete, setAllowDelete] = createSignal(false);
   const [lastChange, setLastChange] = createSignal("none yet");
   let created = 0;
 
   return (
     <main>
-      <h1>calendar-solid</h1>
+      <header class="header">
+        <h1>Calendar</h1>
+        <FrameworkSwitch />
+      </header>
+      <p class="preview">
+        This is <code>@moltenship/calendar-solid</code>, a preview: a month grid and a list, and no
+        dragging or keyboard navigation yet. <a href={docsUrl}>What the Solid package has</a>
+      </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's month and list projections, with an agent driving it
         through ui-sdk. Last change: <output data-last-change="">{lastChange()}</output>
       </p>
       <Calendar.Root
         allowAgentDelete={allowDelete()}
-        defaultAnchorDate={today}
+        anchorDate={location().date}
         defaultTimeZone={timeZone}
         events={events()}
         label="Team calendar"
@@ -107,7 +125,8 @@ export function App() {
             );
           }
         }}
-        onViewChange={(next) => setView(next)}
+        onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
+        onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
         policies={[
           // A locked event stays where it is: the change fails, and an agent hears the reason.
           (change) =>
@@ -115,7 +134,7 @@ export function App() {
               ? { reason: "locked-event", type: "reject" }
               : { type: "accept" },
         ]}
-        view={view()}
+        view={location().view}
         weekRules={weekRules}
       >
         <div class="layout">

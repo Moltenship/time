@@ -13,7 +13,7 @@ import { StylexDemoCalendar } from "../calendar";
 import { BrandMark } from "./brand";
 import { DocsLink } from "./docs-link";
 import { ThemeToggle } from "./theme-toggle";
-import { UiSwitch } from "./ui-switch";
+import { FrameworkSwitch, UiSwitch } from "./ui-switch";
 
 const styles = stylex.create({
   brand: {
@@ -71,6 +71,7 @@ export function TopBar({ onOpenSidebar, onShowShortcuts, scrolling }: TopBarProp
     >
       <ViewSwitcher onValueChange={setView} options={viewSwitcherOptions(scrolling)} value={view} />
       <div {...stylex.props(styles.fromTablet)}>
+        <FrameworkSwitch />
         <UiSwitch />
         <IconButton
           icon={<Icon icon={KeyboardIcon} />}

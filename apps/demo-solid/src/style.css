@@ -16,8 +16,56 @@ body {
 }
 
 h1 {
-  margin: 0 0 0.25rem;
+  margin: 0;
   font-size: 1.5rem;
+}
+
+a {
+  /* The accent, lighter on a dark page, where it would be hard to read. */
+  color: light-dark(var(--accent), #60a5fa);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+/* React and Solid, as the React demo's pill-shaped switch. */
+.switch {
+  display: flex;
+  padding: 0.125rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.switch a {
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  color: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.75rem;
+  text-decoration: none;
+}
+
+.switch a:hover {
+  background: color-mix(in srgb, CanvasText 6%, Canvas);
+}
+
+.switch a[aria-current="page"] {
+  background: color-mix(in srgb, CanvasText 10%, Canvas);
+}
+
+.switch a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.preview {
+  margin: 0 0 0.25rem;
 }
 
 .hint,

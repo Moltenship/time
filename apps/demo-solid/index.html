@@ -3,7 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>calendar-solid · Moltenship Time demo</title>
+    <!-- The React demo's, beside this page on its deployment. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Solid · Moltenship Time demo</title>
+    <meta
+      name="description"
+      content="A preview of Moltenship Time's SolidJS 2 integration: a month grid, a list and an agent panel."
+    />
+    <script>
+      // The theme the React demo saved on this origin (apps/demo/src/theme.ts), before first paint.
+      // Without one, the page follows the system's, as `color-scheme: light dark` says.
+      try {
+        const saved = localStorage.getItem("moltenship-demo:theme");
+        if (saved === "light" || saved === "dark")
+          document.documentElement.style.colorScheme = saved;
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

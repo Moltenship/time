@@ -10,7 +10,7 @@ import { viewSwitcherOptions } from "../view-options";
 import { BrandMark } from "./brand";
 import { DocsLink } from "./docs-link";
 import { ThemeToggle } from "./theme-toggle";
-import { UiSwitch } from "./ui-switch";
+import { FrameworkSwitch, UiSwitch } from "./ui-switch";
 
 const selectView = (state: { readonly view: DemoView }) => state.view;
 
@@ -53,6 +53,7 @@ export function TopBar({ onOpenSidebar, onShowShortcuts, scrolling }: TopBarProp
         options={viewSwitcherOptions(scrolling)}
         value={view}
       />
+      <FrameworkSwitch className="max-md:hidden" />
       <UiSwitch className="max-sm:hidden" current="tailwind" />
       <Tooltip>
         <TooltipTrigger
