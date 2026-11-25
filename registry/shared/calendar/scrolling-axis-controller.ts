@@ -217,11 +217,12 @@ export function createScrollingAxis(
     let timer: ReturnType<typeof setTimeout> | undefined;
     let waiting: MutationObserver | undefined;
     /**
-     * The target of the touch on the view, until the last finger lifts: the user holds the scroll,
-     * so a pause in their swipe settles nothing, as a slow finger, or a busy page that delivers
-     * its moves late, would otherwise snap the view back under it.
+     * The fingers on the view, by touch identifier, and where each landed. While one is down the
+     * user holds the scroll, so a pause in their swipe settles nothing, as a slow finger, or a busy
+     * page that delivers its moves late, would otherwise snap the view back under it.
      */
-    let touched: EventTarget | null = null;
+    const fingers = new Set<number>();
+    const touched = new Set<EventTarget>();
 
     /** The item the page nearest the start of the view starts at. */
     const nearest = () => {
@@ -254,7 +255,7 @@ export function createScrollingAxis(
 
     const settle = (stopped: boolean) => {
       timer = undefined;
-      if (touched !== null || unplaced()) return;
+      if (fingers.size > 0 || unplaced()) return;
       if (heading !== null) {
         const target = (heading - read().base) * size();
         if (Math.abs(offset(element) - target) > 1) {
@@ -311,21 +312,39 @@ export function createScrollingAxis(
       heading = null;
     };
     const untouch = () => {
-      touched?.removeEventListener("touchend", onTouchEnd);
-      touched?.removeEventListener("touchcancel", onTouchEnd);
-      touched = null;
+      for (const target of touched) {
+        target.removeEventListener("touchend", onTouchEnd);
+        target.removeEventListener("touchcancel", onTouchEnd);
+      }
+      touched.clear();
+      fingers.clear();
     };
-    // The touch's end goes to its target, which hears it even once it has left the document, as a
-    // week does that scrolls out of the canvas mid-swipe.
+    /** The fingers a touch event lands or lifts; a synthetic event without them is one finger. */
+    const changed = (event: Event) => {
+      const touches = (event as TouchEvent).changedTouches as TouchList | undefined;
+      return touches === undefined ? [-1] : Array.from(touches, (touch) => touch.identifier);
+    };
+    // Each finger's end goes to the target it landed on, which hears it even once it has left the
+    // document, as a week does that scrolls out of the canvas mid-swipe.
     const onTouchStart = (event: Event) => {
       onInput();
-      untouch();
-      touched = event.target ?? element;
-      touched.addEventListener("touchend", onTouchEnd, { passive: true });
-      touched.addEventListener("touchcancel", onTouchEnd, { passive: true });
+      // A finger whose end never came, as when the page lost it, is no longer on the screen.
+      const down = (event as TouchEvent).touches as TouchList | undefined;
+      if (down !== undefined) {
+        const ids = new Set(Array.from(down, (touch) => touch.identifier));
+        for (const finger of fingers) if (!ids.has(finger)) fingers.delete(finger);
+      }
+      for (const finger of changed(event)) fingers.add(finger);
+      const target = event.target ?? element;
+      if (!touched.has(target)) {
+        touched.add(target);
+        target.addEventListener("touchend", onTouchEnd, { passive: true });
+        target.addEventListener("touchcancel", onTouchEnd, { passive: true });
+      }
     };
     function onTouchEnd(event: Event) {
-      if (((event as TouchEvent).touches?.length ?? 0) > 0) return;
+      for (const finger of changed(event)) fingers.delete(finger);
+      if (fingers.size > 0) return;
       untouch();
       // Whatever the browser does next, a fling or a snap, settles the view; or nothing moves it.
       if (timer !== undefined) clearTimeout(timer);

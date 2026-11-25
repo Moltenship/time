@@ -205,11 +205,12 @@ export function App() {
   createEffect(href, (next) => {
     history.replaceState(history.state, "", next);
   });
-  // The React demo's "Scroll days, weeks, months and agenda": here the month and the agenda, which
-  // the view in the URL keeps.
-  const scrolling = () => isScrolling(location().view);
+  // The React demo's "Scroll days, weeks, months and agenda": here the month and the agenda. A
+  // setting of its own, as React's, so it outlasts the views it doesn't change; it starts on when
+  // the URL's view scrolls.
+  const [scrolling, setScrolling] = createSignal(isScrolling(location().view));
   const showView = (view: SolidView) =>
-    setLocation((current) => ({ ...current, view: viewFor(view, isScrolling(current.view)) }));
+    setLocation((current) => ({ ...current, view: viewFor(view, scrolling()) }));
   const [allowDelete, setAllowDelete] = createSignal(false);
   const { ask, dialog } = useRecurrenceScopePrompt();
   const [lastChange, setLastChange] = createSignal("none yet");
@@ -234,8 +235,7 @@ export function App() {
         between events, Page Up and Page Down between days. A change to a Team sync asks which of
         the series it applies to, and every other change shows a toast to undo it; F6 reaches it.
         The week and day draw your sleep and music beside the events, and shade the time outside 9
-        to 6 on weekdays; the month mutes the weekend.{" "}
-        <a href={docsUrl}>The Solid docs</a>
+        to 6 on weekdays; the month mutes the weekend. <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's time grid, month, year and list projections, with an
@@ -329,6 +329,7 @@ export function App() {
                 checked={scrolling()}
                 onChange={(event) => {
                   const on = event.currentTarget.checked;
+                  setScrolling(on);
                   setLocation((current) => ({ ...current, view: viewFor(current.view, on) }));
                 }}
               />

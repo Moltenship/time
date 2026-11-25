@@ -89,7 +89,7 @@ describe("the Solid demo's view and date in the URL", () => {
       ).searchParams.get("view");
 
     expect(write("?view=scrolling-week", "week")).toBe("scrolling-week");
-    expect(write("?view=scrolling-month", "month")).toBe("scrolling-month");
+    expect(write("?view=scrolling-day", "day")).toBe("scrolling-day");
     expect(write("?view=scrolling-week", "month")).toBe("month");
     expect(write("?view=year", "agenda")).toBe("agenda");
   });
