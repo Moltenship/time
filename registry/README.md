@@ -154,7 +154,7 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
   navigation keys that never fall through to app shortcuts. Cells register with
   `useRovingFocus`, and events with `useEventChip`, which also marks a grabbed event. Apps
   render `<Calendar.Announcer messages={calendarAnnouncements} />` from
-  `@registry/calendar/announcements`, the English messages for moves, resizes and creates.
+  `@registry/shared/calendar/announcements`, the English messages for moves, resizes and creates.
 - A component file that calls hooks, creates a context or sets event handlers starts with
   `"use client"`, so a Server Component can import it (#190). Hook and helper modules (`.ts`) render
   nothing and don't need it, as in shadcn's own registry.
@@ -255,7 +255,7 @@ follow the rules above, with these differences:
 `@moltenship/calendar-solid`, with `@registry/*` mapped to it and `@registry/shared/*` to
 `registry/shared`. Its tests run in the `registry-solid` Vitest project, and
 `tools/a11y/tests/solid` checks the agenda, the toolbar, the view switcher and the mini month in
-a real browser against what the React files check. `apps/demo-solid` draws its agenda from it.
+a real browser against what the React files check. `apps/demo-solid` draws its toolbar, view switcher, mini month and agenda from it.
 
 ## Consuming the source in this repo
 

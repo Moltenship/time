@@ -24,6 +24,7 @@ import {
   selectSeparatorClassName,
   selectTriggerClassName,
   selectValueClassName,
+  selectDefaults,
 } from "@registry/shared/calendar-ui/select.styles";
 import { cn } from "cn";
 
@@ -113,14 +114,14 @@ export interface SelectContentProps {
 
 /** The list, below the trigger unless `alignItemWithTrigger` puts the chosen item over it. */
 function SelectContent(props: SelectContentProps) {
-  const aligned = () => props.alignItemWithTrigger ?? true;
+  const aligned = () => props.alignItemWithTrigger ?? selectDefaults.alignItemWithTrigger;
   const rest = omit(props, "alignItemWithTrigger", "class", "sideOffset");
   return (
     <SelectContentPart
       alignItemWithTrigger={aligned()}
       data-align-trigger={String(aligned())}
       class={cn(selectContentClassName, props.class)}
-      sideOffset={props.sideOffset ?? 4}
+      sideOffset={props.sideOffset ?? selectDefaults.sideOffset}
       {...rest}
     />
   );

@@ -80,6 +80,12 @@ test("the toolbar with the app's own button still steps by click and by keyboard
   }
   // The calendar's trigger keeps its own part name, and the tooltip still names its button.
   expect(button("Next period").getAttribute("data-calendar-part")).toBe("next-trigger");
+  await userEvent.hover(button("Next period"));
+  await until(() => {
+    const label = button("Next period").getAttribute("aria-labelledby");
+    expect(label && document.getElementById(label)?.textContent).toBe("Next period");
+  });
+  await userEvent.unhover(button("Next period"));
   expect(button("Today").textContent).toBe("Today");
 
   await userEvent.click(button("Next period"));

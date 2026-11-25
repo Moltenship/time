@@ -7,7 +7,7 @@ import {
   isSameMonth,
   miniMonthDay,
   miniMonthFormats,
-  miniMonthKeySteps,
+  miniMonthKeyStep,
   miniMonthTabStop,
   miniMonthWeeks,
   startOfMonth,
@@ -56,7 +56,7 @@ export function MiniMonth(props: MiniMonthProps) {
   const moveFocus = (element: HTMLTableElement) => {
     grid = element;
     element.addEventListener("keydown", (event) => {
-      const step = miniMonthKeySteps[event.key];
+      const step = miniMonthKeyStep(event.key, getComputedStyle(element).direction);
       if (step === undefined) return;
       event.preventDefault();
       const next = tabStop().add(step);

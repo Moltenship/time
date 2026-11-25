@@ -3,6 +3,7 @@
 import { plainDateInterval } from "@moltenship/calendar";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
+import { miniMonthKeyStep } from "../shared/calendar/mini-month-dates";
 import { MiniMonth, type MiniMonthProps } from "../calendar/mini-month";
 import { click, press, render } from "./render";
 
@@ -86,6 +87,15 @@ describe("MiniMonth", () => {
     expect(title()).toBe("November 2026");
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Friday, November 6, 2026");
     expect(tabStops()).toHaveLength(1);
+  });
+
+  test("swaps the left and right arrows right to left, where the next day is on the left", () => {
+    expect(miniMonthKeyStep("ArrowRight", "ltr")).toEqual({ days: 1 });
+    expect(miniMonthKeyStep("ArrowLeft", "ltr")).toEqual({ days: -1 });
+    expect(miniMonthKeyStep("ArrowRight", "rtl")).toEqual({ days: -1 });
+    expect(miniMonthKeyStep("ArrowLeft", "rtl")).toEqual({ days: 1 });
+    expect(miniMonthKeyStep("ArrowDown", "rtl")).toEqual({ days: 7 });
+    expect(miniMonthKeyStep("Tab", "ltr")).toBeUndefined();
   });
 
   test("follows the selected date into another month", async () => {

@@ -168,7 +168,7 @@ export function CalendarToolbar({
         <span {...stylex.props(styles.todayIcon)}>
           <CalendarCheckIcon {...stylex.props(styles.icon)} />
         </span>
-        <span {...stylex.props(styles.todayLabel)}>Today</span>
+        <span {...stylex.props(styles.todayLabel)}>{calendarToolbarLabels.today}</span>
       </TodayTrigger>
       <div {...stylex.props(styles.steps)}>
         <StepTrigger label={calendarToolbarLabels.previous} Trigger={PreviousTrigger}>

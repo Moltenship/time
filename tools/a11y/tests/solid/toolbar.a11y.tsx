@@ -124,7 +124,8 @@ describe.each(["ltr", "rtl"] as const)("the Solid toolbar and mini month, %s", (
     tabStop().focus();
     expect(tabStop().textContent).toBe("9");
 
-    await userEvent.keyboard("{ArrowRight}");
+    // The next day is on the inline end: the right, or the left right to left.
+    await userEvent.keyboard(dir === "rtl" ? "{ArrowLeft}" : "{ArrowRight}");
     await until(() => expect(document.activeElement?.textContent).toBe("10"));
     await userEvent.keyboard("{ArrowDown}");
     await until(() => expect(document.activeElement?.textContent).toBe("17"));

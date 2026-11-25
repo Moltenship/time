@@ -26,6 +26,7 @@ import {
   selectSeparatorClassName,
   selectTriggerClassName,
   selectValueClassName,
+  selectDefaults,
 } from "@registry/shared/calendar-ui/select.styles";
 
 /** An option as `items` lists it: what the trigger shows, and the value it stands for. */
@@ -116,9 +117,9 @@ export interface SelectContentProps {
 
 /** The list, below the trigger unless `alignItemWithTrigger` puts the chosen item over it. */
 function SelectContent({
-  alignItemWithTrigger = true,
+  alignItemWithTrigger = selectDefaults.alignItemWithTrigger,
   className,
-  sideOffset = 4,
+  sideOffset = selectDefaults.sideOffset,
   ...props
 }: SelectContentProps) {
   return (

@@ -10,8 +10,8 @@ import {
  * what each day shows.
  */
 
-/** How far each key moves focus through the month. */
-export const miniMonthKeySteps: Readonly<Partial<Record<string, Temporal.DurationLike>>> = {
+/** How far each key moves focus through the month, left to right. */
+const miniMonthKeySteps: Readonly<Partial<Record<string, Temporal.DurationLike>>> = {
   ArrowDown: { days: 7 },
   ArrowLeft: { days: -1 },
   ArrowRight: { days: 1 },
@@ -19,6 +19,23 @@ export const miniMonthKeySteps: Readonly<Partial<Record<string, Temporal.Duratio
   PageDown: { months: 1 },
   PageUp: { months: -1 },
 };
+
+/**
+ * How far `key` moves focus through the month, or `undefined` for a key it ignores. Right to left,
+ * the next day is on the left, so the arrows swap, as they do in the calendar's views.
+ */
+export function miniMonthKeyStep(
+  key: string,
+  direction: string,
+): Temporal.DurationLike | undefined {
+  const swapped =
+    direction === "rtl" && key === "ArrowLeft"
+      ? "ArrowRight"
+      : direction === "rtl" && key === "ArrowRight"
+        ? "ArrowLeft"
+        : key;
+  return miniMonthKeySteps[swapped];
+}
 
 export function startOfMonth(date: Temporal.PlainDate): Temporal.PlainDate {
   return date.with({ day: 1 });
