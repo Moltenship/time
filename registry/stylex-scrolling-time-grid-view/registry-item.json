@@ -20,6 +20,16 @@
       "path": "registry/stylex-scrolling-time-grid-view/scrolling-time-grid-scroll.ts",
       "type": "registry:lib",
       "target": "@components/calendar-stylex/scrolling-time-grid-view/scrolling-time-grid-scroll.ts"
+    },
+    {
+      "path": "registry/shared/scrolling-time-grid-view/scrolling-time-grid.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/scrolling-time-grid-view/scrolling-time-grid.ts"
+    },
+    {
+      "path": "registry/shared/scrolling-time-grid-view/time-grid-scroll.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/scrolling-time-grid-view/time-grid-scroll.ts"
     }
   ]
 }

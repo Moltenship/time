@@ -11,7 +11,7 @@ import { render, settled, tab, until } from "./render";
 // apps/demo-solid: axe over each view and with each popup open, in both themes, then the keyboard
 // through the chrome, a task dragged in by mouse and by keys, and the sidebar's sheet on a phone.
 
-/** The views the Solid demo registers; the timeline and the scrolling grids come later. */
+/** The paged views the Solid demo registers; the timeline comes later. */
 const views = ["week", "day", "3-day", "month", "year", "agenda", "resources"] as const;
 
 /** Opens the demo the way a link does: the view comes from the URL, the events from the seed. */
@@ -67,16 +67,19 @@ describe.each(themes)("the Solid demo, %s theme", (theme) => {
     expect(await seriousViolations()).toEqual([]);
   });
 
-  test.each(["month", "agenda"] as const)("scrolling %s view", async (view) => {
-    setTheme(theme);
-    await renderDemo(view, { scrolling: true });
+  test.each(["week", "day", "3-day", "month", "agenda"] as const)(
+    "scrolling %s view",
+    async (view) => {
+      setTheme(theme);
+      await renderDemo(view, { scrolling: true });
 
-    // The setting picks each view's scrolling version; the scrolling month marks its parts.
-    if (view === "month") {
-      expect(document.querySelector('[data-slot^="scrolling-"]')).not.toBeNull();
-    }
-    expect(await seriousViolations()).toEqual([]);
-  });
+      // The setting picks each view's scrolling version; all but the agenda mark their parts.
+      if (view !== "agenda") {
+        expect(document.querySelector('[data-slot^="scrolling-"]')).not.toBeNull();
+      }
+      expect(await seriousViolations()).toEqual([]);
+    },
+  );
 
   test("resources view's status badges", async () => {
     setTheme(theme);

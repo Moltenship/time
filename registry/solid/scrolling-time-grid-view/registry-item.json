@@ -1,0 +1,40 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "scrolling-time-grid-view",
+  "type": "registry:component",
+  "title": "Scrolling week and day views",
+  "description": "Week, 3-day and day time grids that scroll sideways without end and come to rest on a day, as in Apple's Calendar on iPad: a sticky header, all-day row and hour gutter over day columns rendered a page either side with their events, keyboard paging, and drag, resize and create across the scroll. The same scrolling week and day as the React registry's, in Solid.",
+  "dependencies": ["@moltenship/calendar-solid", "cn"],
+  "registryDependencies": [
+    "@moltenship/calendar",
+    "@moltenship/calendar-theme",
+    "@moltenship/time-grid-view"
+  ],
+  "files": [
+    {
+      "path": "registry/solid/scrolling-time-grid-view/scrolling-time-grid-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/scrolling-time-grid-view/scrolling-time-grid-view.tsx"
+    },
+    {
+      "path": "registry/solid/scrolling-time-grid-view/scrolling-time-grid-scroll.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-time-grid-view/scrolling-time-grid-scroll.ts"
+    },
+    {
+      "path": "registry/shared/scrolling-time-grid-view/scrolling-time-grid.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-time-grid-view/scrolling-time-grid.ts"
+    },
+    {
+      "path": "registry/shared/scrolling-time-grid-view/scrolling-time-grid.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-time-grid-view/scrolling-time-grid.styles.ts"
+    },
+    {
+      "path": "registry/shared/scrolling-time-grid-view/time-grid-scroll.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-time-grid-view/time-grid-scroll.ts"
+    }
+  ]
+}

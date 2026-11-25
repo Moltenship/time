@@ -101,11 +101,19 @@ function AllDayCell(props: {
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   readonly resourceId?: ResourceId | null;
 }) {
-  const roving = useRovingFocus(() => ({
-    date: props.date,
-    kind: "day",
-    resourceId: props.resourceId,
-  }));
+  let element: HTMLElement | undefined;
+  // The cell joins the view's roving focus only while its date is in view; a date a scroll moves
+  // away releases its place. Out of the tab order, it stays focusable, so focus on it survives.
+  const roving = createMemo(() => {
+    if (props.offscreen) return null;
+    const own = useRovingFocus(() => ({
+      date: props.date,
+      kind: "day",
+      resourceId: props.resourceId,
+    }));
+    if (element !== undefined) own.ref(element);
+    return own;
+  });
   const inDraft = useCalendarInteraction(
     (session) =>
       session?.eventId === null &&
@@ -117,8 +125,6 @@ function AllDayCell(props: {
   );
   const draftCheck = useDraftCheck();
   const check = () => previewCheckAttributes(inDraft() ? draftCheck() : undefined);
-  // Out of the tab order, yet focusable, so focus on it survives a scroll that moves it away.
-  const offscreen = untrack(() => props.offscreen);
   // Native, so it runs before the view's keyboard, which listens on the grid.
   const openDayKey = (element: HTMLElement) => {
     element.addEventListener("keydown", (event) => {
@@ -141,9 +147,15 @@ function AllDayCell(props: {
       aria-colindex={props.colIndex}
       aria-hidden={props.offscreen ? "true" : undefined}
       aria-label={allDayCellLabel(props.formatDate(props.date), props.count)}
-      ref={offscreen ? openDayKey : [roving.ref, openDayKey]}
-      onFocus={offscreen ? undefined : roving.onFocus}
-      tabindex={offscreen ? -1 : roving.tabindex}
+      ref={[
+        (node: HTMLElement) => {
+          element = node;
+          untrack(roving)?.ref(node);
+        },
+        openDayKey,
+      ]}
+      onFocus={(event: FocusEvent) => untrack(roving)?.onFocus(event)}
+      tabindex={roving()?.tabindex ?? -1}
       class={allDayCellClass}
     >
       {/* Events sit outside this element, so a drop target is never the cell a bar starts in. */}

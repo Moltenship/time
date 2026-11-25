@@ -2,7 +2,6 @@
 
 import {
   defineCalendarView,
-  eventDateRanges,
   plainDateIntervalContains,
   sameFocus,
   useAnchorDateRequests,
@@ -13,9 +12,7 @@ import {
   useCalendarFocus,
   useCalendarPointer,
   useNow,
-  type CalendarFocus,
   type CalendarViewRendererProps,
-  type PlainDateInterval,
   type TimeGridProjection,
   type TimeGridSpan,
 } from "@moltenship/calendar";
@@ -37,6 +34,30 @@ import {
   useScrollingAxis,
 } from "@registry/calendar/scrolling-axis";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
+import {
+  barFocusInView,
+  dayWidth,
+  DAY,
+  daysBackground,
+  daysLength,
+  pageSnap,
+  pageSnapPoints,
+} from "@registry/shared/scrolling-time-grid-view/scrolling-time-grid";
+import {
+  scrollingTimeGridBodyClass,
+  scrollingTimeGridClass,
+  scrollingTimeGridColumnsClass,
+  scrollingTimeGridCornerClass,
+  scrollingTimeGridDaysClass,
+  scrollingTimeGridFollowerClass,
+  scrollingTimeGridGhostClass,
+  scrollingTimeGridGutterClass,
+  scrollingTimeGridHeaderClass,
+  scrollingTimeGridRowClass,
+  scrollingTimeGridStripClass,
+  scrollingTimeGridTrackClass,
+  scrollingTimeGridViewportClass,
+} from "@registry/shared/scrolling-time-grid-view/scrolling-time-grid.styles";
 import { annotationFormats } from "@registry/shared/time-grid-view/annotation-label";
 import {
   AllDayRowHeader,
@@ -61,10 +82,8 @@ import {
   gutterColumn,
   gutterStyle,
   TimeGridGutterLabels,
-  timeGridGutterClassName,
   useTimeGridZones,
 } from "@registry/time-grid-view/time-grid-zones";
-import { cn } from "cn";
 
 import {
   useDaysFollower,
@@ -74,54 +93,10 @@ import {
 
 /** Pointer and keyboard both step by these slots, so they reach the same times. */
 const snap = { increment: 15, smallestUnit: "minute" } as const;
-/** One day's width: the viewport past the hour gutter, shared by the visible days. */
-const DAY = "var(--calendar-day-width)";
-/** Pages with snap points either way of the range, past any a swipe reaches before it renders. */
-const SNAP_PAGES = 6;
-
 export type ScrollingTimeGridViewProps<TEvent> = CalendarViewRendererProps<
   TimeGridProjection<TEvent>,
   TimeGridViewOptions<TEvent>
 >;
-
-/**
- * Focus on an all-day bar from a day outside the visible ones, moved to the visible day nearest
- * it that the bar covers; `null` when there's nothing to move. The bar renders from the visible
- * days once its focused day scrolls away, either way, so focus on it has to follow.
- */
-function barFocusInView(
-  focus: CalendarFocus | null,
-  row: TimeGridProjection<unknown>["allDay"],
-  visible: PlainDateInterval,
-  timeZone: string,
-): CalendarFocus | null {
-  if (focus?.kind !== "event" || plainDateIntervalContains(visible, focus.date)) return null;
-  const before = Temporal.PlainDate.compare(focus.date, visible.start) < 0;
-  const lastVisible = visible.end.subtract({ days: 1 });
-  for (const { column, event, span } of row.segments) {
-    if (event.id !== focus.eventId) continue;
-    const first = row.range.start.add({ days: column });
-    const last = first.add({ days: span - 1 });
-    const target = before
-      ? Temporal.PlainDate.compare(first, visible.start) > 0
-        ? first
-        : visible.start
-      : Temporal.PlainDate.compare(last, lastVisible) < 0
-        ? last
-        : lastVisible;
-    if (!plainDateIntervalContains(visible, target)) continue;
-    // Segments are clipped to the loaded days, so the event's own dates decide what it covered:
-    // one run of local dates through both days, which a fold at midnight can start a day early.
-    const [from, to] = before ? [focus.date, target] : [target, focus.date];
-    const continuous = eventDateRanges(event, timeZone).some(
-      ({ first: runFirst, last: runLast }) =>
-        Temporal.PlainDate.compare(runFirst, from) <= 0 &&
-        Temporal.PlainDate.compare(to, runLast) <= 0,
-    );
-    if (continuous) return { ...focus, date: target };
-  }
-  return null;
-}
 
 /** A row's days across the canvas, with `children` at `start`. */
 function Track({
@@ -149,13 +124,13 @@ function Track({
   return (
     <div
       ref={ref}
-      className="relative h-full flex-none"
-      style={{ ...style, width: `calc(${count} * ${DAY})` }}
+      className={scrollingTimeGridTrackClass}
+      style={{ ...style, width: daysLength(count) }}
     >
       {overlay}
       <div
-        className="flex h-full"
-        style={{ marginInlineStart: `calc(${start} * ${DAY})`, width: `calc(${strip} * ${DAY})` }}
+        className={scrollingTimeGridStripClass}
+        style={{ marginInlineStart: daysLength(start), width: daysLength(strip) }}
       >
         {children}
       </div>
@@ -201,7 +176,7 @@ export function ScrollingTimeGridView<TEvent>({
     page: visibleDays,
     rtl: direction === "rtl",
     // Whole pages from the range, so a week stays a calendar week and three days move three.
-    snapTo: (day) => first + Math.round((day - first) / visibleDays) * visibleDays,
+    snapTo: pageSnap(first, visibleDays),
   });
   // Today and Next can ask for the range the view already has while a scroll runs ahead of it.
   useAnchorDateRequests((_, requested) => {
@@ -219,7 +194,7 @@ export function ScrollingTimeGridView<TEvent>({
     disabled: isReadOnly,
     events,
     // A dragged bar's copy keeps its title at its start, not where the bar's pin had moved it.
-    ghostClassName: "[&_[data-slot=calendar-event-title]]:transform-none!",
+    ghostClassName: scrollingTimeGridGhostClass,
     onPropose: actions.proposeEventChange,
     preview: options.dragPreview,
     scrollContainer: viewportRef,
@@ -289,7 +264,7 @@ export function ScrollingTimeGridView<TEvent>({
   const placed = { count: axis.count, start, strip: days.length };
   const firstShown = days.find(({ column }) => column.date.equals(range.start)) ?? days[0];
   const corner = gutterColumn(columns, zones, firstShown?.column);
-  const gutter = "shrink-0 w-(--calendar-gutter-width) bg-calendar-surface";
+  const background = daysBackground(direction === "rtl", start);
 
   return (
     <TimeGridEventTooltip>
@@ -301,42 +276,30 @@ export function ScrollingTimeGridView<TEvent>({
         {...keyboard}
         data-slot="scrolling-time-grid"
         dir={direction}
-        className={cn(
-          "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize",
-          timeGridGutterClassName,
-          // A long-press on a touch screen picks events up: it selects no text and opens no callout.
-          !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
-        )}
+        className={scrollingTimeGridClass(isReadOnly)}
         style={gutterStyle(zones)}
       >
         <div
           ref={viewportRef}
           data-slot="scrolling-time-grid-viewport"
-          className="relative min-h-0 flex-1 scroll-pt-(--calendar-header-height) overflow-x-hidden overflow-y-auto overscroll-x-contain [container-type:inline-size] [scrollbar-gutter:stable]"
-          style={
-            {
-              "--calendar-day-width": `calc((100cqw - var(--calendar-gutter-width)) / ${visibleDays})`,
-            } as CSSProperties
-          }
+          className={scrollingTimeGridViewportClass}
+          style={{ "--calendar-day-width": dayWidth(visibleDays) } as CSSProperties}
         >
           <div
             ref={headerRef}
             data-slot="scrolling-time-grid-header"
-            className="sticky top-0 z-30 border-b border-calendar-grid bg-calendar-surface"
+            className={scrollingTimeGridHeaderClass}
           >
             {/* Days scroll beneath it, so the pointer layer doesn't look through it to them. */}
-            <div role="row" data-occludes="" className="flex">
-              <div
-                role="columnheader"
-                className={`${gutter} flex items-end pb-1 text-[0.625rem] text-calendar-axis`}
-              >
+            <div role="row" data-occludes="" className={scrollingTimeGridRowClass}>
+              <div role="columnheader" className={scrollingTimeGridCornerClass}>
                 <TimeGridGutterLabels
                   offset={corner === undefined ? undefined : offsetLabel(locale, timeZone, corner)}
                   zones={zones}
                 />
               </div>
               {/* The days follow the scroll below by transform; nothing can scroll them here. */}
-              <div className="flex min-w-0 flex-1 overflow-clip">
+              <div className={scrollingTimeGridFollowerClass}>
                 <Track {...placed} ref={followDays}>
                   <TimeGridDayHeaders
                     actions={actions}
@@ -351,11 +314,15 @@ export function ScrollingTimeGridView<TEvent>({
                 </Track>
               </div>
             </div>
-            <div role="row" className="flex" style={{ height: collapse.height }}>
-              <div data-occludes="" className={gutter}>
+            <div
+              role="row"
+              className={scrollingTimeGridRowClass}
+              style={{ height: collapse.height }}
+            >
+              <div data-occludes="" className={scrollingTimeGridGutterClass}>
                 <AllDayRowHeader collapse={collapse} />
               </div>
-              <div className="flex min-w-0 flex-1 overflow-clip">
+              <div className={scrollingTimeGridFollowerClass}>
                 <Track {...placed} ref={followDays}>
                   <TimeGridAllDayCells
                     days={days}
@@ -373,8 +340,8 @@ export function ScrollingTimeGridView<TEvent>({
               </div>
             </div>
           </div>
-          <div ref={bodyRef} role="row" className="flex h-[calc(var(--calendar-hour-height)*24)]">
-            <div role="rowheader" data-occludes="" className={gutter}>
+          <div ref={bodyRef} role="row" className={scrollingTimeGridBodyClass}>
+            <div role="rowheader" data-occludes="" className={scrollingTimeGridGutterClass}>
               <span className="sr-only">Timed events</span>
               <TimeGridHours locale={locale} zones={zones} />
             </div>
@@ -382,7 +349,7 @@ export function ScrollingTimeGridView<TEvent>({
             <div
               ref={axis.scrollRef}
               data-slot="scrolling-time-grid-days"
-              className="min-w-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] in-data-interaction:snap-none [&::-webkit-scrollbar]:hidden"
+              className={scrollingTimeGridDaysClass}
             >
               <Track
                 {...placed}
@@ -390,26 +357,20 @@ export function ScrollingTimeGridView<TEvent>({
                   <ScrollSnapPoints
                     axis="inline"
                     base={axis.base}
-                    points={Array.from(
-                      { length: 2 * SNAP_PAGES + 1 },
-                      (_, index) => first + (index - SNAP_PAGES) * visibleDays,
-                    )}
+                    points={pageSnapPoints(first, visibleDays)}
                     size={DAY}
                   />
                 }
                 ref={axis.trackRef}
                 style={{
                   // Hour lines, and day lines past the rendered days during a long swipe.
-                  backgroundImage: `linear-gradient(to bottom, var(--calendar-grid) 1px, transparent 1px), linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--calendar-grid) 1px, transparent 1px)`,
-                  backgroundSize: `100% var(--calendar-hour-height), ${DAY} 100%`,
-                  // Day lines start at the first rendered day: each tile's length is rounded to
-                  // layout units, an error that tiling from the canvas's start would grow into
-                  // lines pixels off the days.
-                  backgroundPosition: `0 0, ${direction === "rtl" ? "right" : "left"} calc(${start} * ${DAY}) top 0`,
+                  backgroundImage: background.image,
+                  backgroundPosition: background.position,
+                  backgroundSize: background.size,
                 }}
               >
                 <div
-                  className="grid flex-1"
+                  className={scrollingTimeGridColumnsClass}
                   style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
                 >
                   {days.map((day, index) => (

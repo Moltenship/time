@@ -2,7 +2,6 @@
 
 import {
   defineCalendarView,
-  eventDateRanges,
   plainDateIntervalContains,
   sameFocus,
   useAnchorDateRequests,
@@ -13,9 +12,7 @@ import {
   useCalendarFocus,
   useCalendarPointer,
   useNow,
-  type CalendarFocus,
   type CalendarViewRendererProps,
-  type PlainDateInterval,
   type TimeGridProjection,
   type TimeGridSpan,
 } from "@moltenship/calendar";
@@ -39,6 +36,15 @@ import {
   useScrollingAxis,
 } from "@registry/stylex-calendar/scrolling-axis";
 import { useViewKeyboard } from "@registry/stylex-calendar/view-keyboard";
+import {
+  barFocusInView,
+  dayWidth,
+  DAY,
+  daysBackground,
+  daysLength,
+  pageSnap,
+  pageSnapPoints,
+} from "@registry/shared/scrolling-time-grid-view/scrolling-time-grid";
 import { annotationFormats } from "@registry/shared/time-grid-view/annotation-label";
 import {
   AllDayRowHeader,
@@ -181,53 +187,10 @@ const styles = stylex.create({
 
 /** Pointer and keyboard both step by these slots, so they reach the same times. */
 const snap = { increment: 15, smallestUnit: "minute" } as const;
-/** One day's width: the viewport past the hour gutter, shared by the visible days. */
-const DAY = "var(--calendar-day-width)";
-/** Pages with snap points either way of the range, past any a swipe reaches before it renders. */
-const SNAP_PAGES = 6;
 export type ScrollingTimeGridViewProps<TEvent> = CalendarViewRendererProps<
   TimeGridProjection<TEvent>,
   TimeGridViewOptions<TEvent>
 >;
-
-/**
- * Focus on an all-day bar from a day outside the visible ones, moved to the visible day nearest
- * it that the bar covers; `null` when there's nothing to move. The bar renders from the visible
- * days once its focused day scrolls away, either way, so focus on it has to follow.
- */
-function barFocusInView(
-  focus: CalendarFocus | null,
-  row: TimeGridProjection<unknown>["allDay"],
-  visible: PlainDateInterval,
-  timeZone: string,
-): CalendarFocus | null {
-  if (focus?.kind !== "event" || plainDateIntervalContains(visible, focus.date)) return null;
-  const before = Temporal.PlainDate.compare(focus.date, visible.start) < 0;
-  const lastVisible = visible.end.subtract({ days: 1 });
-  for (const { column, event, span } of row.segments) {
-    if (event.id !== focus.eventId) continue;
-    const first = row.range.start.add({ days: column });
-    const last = first.add({ days: span - 1 });
-    const target = before
-      ? Temporal.PlainDate.compare(first, visible.start) > 0
-        ? first
-        : visible.start
-      : Temporal.PlainDate.compare(last, lastVisible) < 0
-        ? last
-        : lastVisible;
-    if (!plainDateIntervalContains(visible, target)) continue;
-    // Segments are clipped to the loaded days, so the event's own dates decide what it covered:
-    // one run of local dates through both days, which a fold at midnight can start a day early.
-    const [from, to] = before ? [focus.date, target] : [target, focus.date];
-    const continuous = eventDateRanges(event, timeZone).some(
-      ({ first: runFirst, last: runLast }) =>
-        Temporal.PlainDate.compare(runFirst, from) <= 0 &&
-        Temporal.PlainDate.compare(to, runLast) <= 0,
-    );
-    if (continuous) return { ...focus, date: target };
-  }
-  return null;
-}
 
 /** A row's days across the canvas, with `children` at `start`. */
 function Track({
@@ -253,15 +216,11 @@ function Track({
   readonly style?: CSSProperties;
 }) {
   return (
-    <div
-      ref={ref}
-      {...stylex.props(styles.track)}
-      style={{ ...style, width: `calc(${count} * ${DAY})` }}
-    >
+    <div ref={ref} {...stylex.props(styles.track)} style={{ ...style, width: daysLength(count) }}>
       {overlay}
       <div
         {...stylex.props(styles.trackDays)}
-        style={{ marginInlineStart: `calc(${start} * ${DAY})`, width: `calc(${strip} * ${DAY})` }}
+        style={{ marginInlineStart: daysLength(start), width: daysLength(strip) }}
       >
         {children}
       </div>
@@ -307,13 +266,14 @@ export function ScrollingTimeGridView<TEvent>({
     page: visibleDays,
     rtl: direction === "rtl",
     // Whole pages from the range, so a week stays a calendar week and three days move three.
-    snapTo: (day) => first + Math.round((day - first) / visibleDays) * visibleDays,
+    snapTo: pageSnap(first, visibleDays),
   });
   // Today and Next can ask for the range the view already has while a scroll runs ahead of it.
   useAnchorDateRequests((_, requested) => {
     if (requested !== null) axis.request(epochDay(requested.start));
   });
   const start = epochDay((loadRange ?? range).start) - axis.base;
+  const background = daysBackground(direction === "rtl", start);
 
   // Pointer drags speak through the same messages as the keyboard, and the drag preview labels
   // the proposed range in the calendar's locale.
@@ -419,7 +379,7 @@ export function ScrollingTimeGridView<TEvent>({
           {...stylex.props(styles.viewport)}
           style={
             {
-              "--calendar-day-width": `calc((100cqw - var(--calendar-gutter-width)) / ${visibleDays})`,
+              "--calendar-day-width": dayWidth(visibleDays),
             } as CSSProperties
           }
         >
@@ -491,22 +451,16 @@ export function ScrollingTimeGridView<TEvent>({
                   <ScrollSnapPoints
                     axis="inline"
                     base={axis.base}
-                    points={Array.from(
-                      { length: 2 * SNAP_PAGES + 1 },
-                      (_, index) => first + (index - SNAP_PAGES) * visibleDays,
-                    )}
+                    points={pageSnapPoints(first, visibleDays)}
                     size={DAY}
                   />
                 }
                 ref={axis.trackRef}
                 style={{
                   // Hour lines, and day lines past the rendered days during a long swipe.
-                  backgroundImage: `linear-gradient(to bottom, var(--calendar-grid) 1px, transparent 1px), linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--calendar-grid) 1px, transparent 1px)`,
-                  backgroundSize: `100% var(--calendar-hour-height), ${DAY} 100%`,
-                  // Day lines start at the first rendered day: each tile's length is rounded to
-                  // layout units, an error that tiling from the canvas's start would grow into
-                  // lines pixels off the days.
-                  backgroundPosition: `0 0, ${direction === "rtl" ? "right" : "left"} calc(${start} * ${DAY}) top 0`,
+                  backgroundImage: background.image,
+                  backgroundPosition: background.position,
+                  backgroundSize: background.size,
                 }}
               >
                 <div
