@@ -10,6 +10,7 @@ import { Button } from "@registry/calendar-ui/button";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -184,13 +185,16 @@ function DragPreviewSelect(props: {
         <SelectValue />
       </SelectTrigger>
       <SelectContent align="end" alignItemWithTrigger={false}>
-        <For each={dragPreviewOptions} keyed={(option) => option.value}>
-          {(option) => (
-            <SelectItem label={option().label} value={option().value}>
-              {option().label}
-            </SelectItem>
-          )}
-        </For>
+        {/* The group pads the list: the popup itself has no padding. */}
+        <SelectGroup>
+          <For each={dragPreviewOptions} keyed={(option) => option.value}>
+            {(option) => (
+              <SelectItem label={option().label} value={option().value}>
+                {option().label}
+              </SelectItem>
+            )}
+          </For>
+        </SelectGroup>
       </SelectContent>
     </Select>
   );
@@ -243,25 +247,8 @@ export function App() {
       <header class="header">
         <h1>Calendar</h1>
         <FrameworkSwitch search={new URL(href()).search} />
+        <a href={docsUrl}>Docs</a>
       </header>
-      <p class="preview">
-        This page runs <code>@moltenship/calendar-solid</code>, a preview. The toolbar, the view
-        switcher, the mini month, the week, day, month, year and agenda, the resource columns, the
-        recurrence dialog and the undo toast are the registry's Solid items, the files{" "}
-        <code>shadcn add</code> installs into a Solid app. "Scroll the month and agenda" switches to
-        their scrolling versions, which swipe a month at a time and scroll through days without end.
-        Arrow keys move through the week's and day's 15-minute slots and the month's days, Enter
-        moves into the events there, and Space picks an event up or starts a new one. A pointer
-        drags an event to another time or day, or its edges, or across empty time or days to create
-        one. In the year, arrow keys move through days and Enter or a click lists a day's events. In
-        the agenda, up and down move between events, Page Up and Page Down between days. The
-        resource columns show the rooms and people the events book, each with whether it's free now:
-        drag an event to another column, or press the arrow keys while it's picked up, to move it to
-        that room or person. A change to a Team sync asks which of the series it applies to, and
-        every other change shows a toast to undo it; F6 reaches it. The week and day draw your sleep
-        and music beside the events, and shade the time outside 9 to 6 on weekdays; the month mutes
-        the weekend. <a href={docsUrl}>The Solid docs</a>
-      </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's time grid, month, year and list projections, with an
         agent driving it through ui-sdk. Last change:{" "}
