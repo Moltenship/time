@@ -48,6 +48,15 @@ interface ResolvedTabStop {
   readonly target: CalendarFocus | null;
 }
 
+/** The tab stop as `resolve` found it, and how, so an element registering can keep it. */
+interface Resolution extends ResolvedTabStop {
+  /** On the focus's element, on the entry's, first in document order, or with no elements. */
+  readonly by: "empty" | "entry" | "focus" | "order";
+  readonly entry: CalendarFocus | null;
+  /** Whether it landed in the target's own resource, which no later element beats. */
+  readonly exact: boolean;
+}
+
 /**
  * Where focus enters the active view: its default entry (`"home"`), or its last target (`"end"`),
  * as focus does after paging back. `calendarViewEntry` gives a view's.
@@ -91,7 +100,7 @@ export function createRovingFocusStore(initialEntry: CalendarRovingEntry): Rovin
   let focus: CalendarFocus | null = null;
   let getEntry = initialEntry;
   let entryCommand: "end" | "home" = "home";
-  let resolved: ResolvedTabStop | null = null;
+  let resolved: Resolution | null = null;
   /**
    * DOM focus owed after the next update: to the tab stop, as keyboard navigation asks, or only
    * to the focused target once it renders, after the element holding DOM focus went away.
@@ -117,22 +126,53 @@ export function createRovingFocusStore(initialEntry: CalendarRovingEntry): Rovin
     return compatible;
   }
 
-  function resolve(): ResolvedTabStop {
+  function resolve(): Resolution {
     if (resolved !== null) return resolved;
     const entry = getEntry(entryCommand);
     // A view without navigation has no entry, so its focus has to stand in.
-    if (items.size === 0) return (resolved = { target: entry ?? focus });
+    if (items.size === 0) {
+      return (resolved = { by: "empty", entry, exact: false, target: entry ?? focus });
+    }
     const found = find(focus);
-    if (found !== undefined) return (resolved = { ...found, isFocus: true });
+    if (found !== undefined) {
+      return (resolved = {
+        ...found,
+        by: "focus",
+        entry,
+        exact: found.target === focus,
+        isFocus: true,
+      });
+    }
     const entered = find(entry);
-    if (entered !== undefined) return (resolved = entered);
+    if (entered !== undefined) {
+      return (resolved = { ...entered, by: "entry", entry, exact: entered.target === entry });
+    }
     const [element] = [...items.keys()].sort((left, right) =>
       left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
     );
     return (resolved = {
+      by: "order",
       element,
+      entry,
+      exact: false,
       target: element === undefined ? null : items.get(element)!.target,
     });
+  }
+
+  /**
+   * Whether `item`, registering after every other element, can move the resolved tab stop. `find`
+   * takes the first element that lands on its target, so a later one wins only by landing in the
+   * target's own resource where the first didn't, or by landing on the focus when the tab stop
+   * isn't on it. Elements register while a commit reads their tab stops, so keeping the tab stop
+   * saves a pass over every element for each one.
+   */
+  function moves(item: RovingItem, { by, entry, exact }: Resolution): boolean {
+    const lands = (target: CalendarFocus | null) =>
+      target === null ? null : landOn(target, item.target, item.days);
+    if (by === "focus") return !exact && lands(focus) === focus;
+    if (by === "entry") return lands(focus) !== null || (!exact && lands(entry) === entry);
+    // An element's place in the document is only known once it's in it.
+    return true;
   }
 
   function changed() {
@@ -146,7 +186,6 @@ export function createRovingFocusStore(initialEntry: CalendarRovingEntry): Rovin
    * year of days, so their elements hear once, after it, rather than once per element.
    */
   function changedLater() {
-    resolved = null;
     if (notifying) return;
     notifying = true;
     queueMicrotask(() => {
@@ -194,6 +233,8 @@ export function createRovingFocusStore(initialEntry: CalendarRovingEntry): Rovin
   return Object.freeze({
     enterFromEnd() {
       entryCommand = "end";
+      // The elements registering next no longer clear the tab stop, so it would keep "home".
+      resolved = null;
     },
     focusAt(node: Node) {
       const item = itemAt(node);
@@ -209,7 +250,15 @@ export function createRovingFocusStore(initialEntry: CalendarRovingEntry): Rovin
       return stop !== null && focusLandsOn(stop, target, days);
     },
     register(element: HTMLElement, target: CalendarFocus, days: number) {
-      items.set(element, { days, target });
+      const item = { days, target };
+      const known = items.get(element);
+      if (resolved !== null) {
+        // An element registering again keeps its place among the others, so a new target there
+        // can move the tab stop wherever it lands; the same target leaves it.
+        const same = known !== undefined && known.days === days && sameFocus(known.target, target);
+        if (known === undefined ? moves(item, resolved) : !same) resolved = null;
+      }
+      items.set(element, item);
       changedLater();
       // The focused target can come back without a calendar update, as when a view re-renders it.
       if (owed === "focus") retryOwedFocus();
@@ -222,6 +271,10 @@ export function createRovingFocusStore(initialEntry: CalendarRovingEntry): Rovin
           released = element;
         }
         items.delete(element);
+        // Only the tab stop's own element leaving moves it: the first exact or compatible match,
+        // and the first in the document, stay first when another goes. An element moved in the
+        // document meanwhile is caught by the notice after the commit, which resolves again.
+        if (resolved?.element === element) resolved = null;
         changedLater();
       };
     },
