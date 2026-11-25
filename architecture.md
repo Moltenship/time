@@ -3,7 +3,7 @@
 Time is a Temporal-native calendar system for React 19 and, from version 2.0, SolidJS 2.0, built on five principles: application data remains authoritative; performance comes from indexed projections and bounded rendering rather than later optimization; every interaction is controllable and accessible; consumers own the visual source while upgradeable engines own difficult algorithms; and public contracts stay typed, deterministic, composable, and SSR-safe.
 
 > **Status:** Target design. Parts of it are built; the documentation site (`apps/showcase`) describes only what exists today.
-> **Version 2.0:** decided on 2026-11-24 ([ADR 0275](./docs/adr/0275-ui-sdk-primitives.md)) and not released. §2 says what of it is built, in progress and planned; the published 1.x line has none of it.
+> **Version 2.0:** decided on 2026-11-24 ([ADR 0275](./docs/adr/0275-ui-sdk-primitives.md)). `2.0.0-beta.1` has been on npm under the `next` tag since November 25, 2026. §2 says what of 2.0 is built, in progress and planned. The 1.x line has none of it.
 > **Repository:** `github.com/Moltenship/time`
 > **Primary package:** `@moltenship/calendar`
 > **Registry:** `moltenship-time` (namespace `@moltenship`), served at `/r/<item>.json`; `calendar-full` installs every item
@@ -92,7 +92,7 @@ narrow:
 
 Three words, used the same way in every section: **built** is in the tree and tested; **in
 progress** is being written against the contract here; **planned** is decided and not started.
-None of 2.0 is released.
+`2.0.0-beta.1` has been on npm under the `next` tag since November 25, 2026.
 
 | Piece | Status on 2026-11-25 |
 | --- | --- |

@@ -1,20 +1,22 @@
 ---
 title: Introduction
-description: A calendar engine on the Temporal API, rendered by React and by SolidJS 2 as a preview, with views you copy and own and actions an AI agent can call.
+description: A calendar engine on the Temporal API with a complete React integration, a SolidJS 2 preview, views you copy and own, and actions an AI agent can call.
 ---
 
 Moltenship Time is a calendar for scheduling screens such as bookings, rooms, shifts and team
 calendars. Its engine handles dates, time zones, recurrence, calendar state, event lookups and
-saving changes, and it imports no UI framework. React renders it, and SolidJS 2 renders it as a
-preview. Your events stay in the shape your app already uses, and Time reads them through an
+saving changes, and it imports no UI framework. React renders it. A SolidJS 2 package, a preview,
+renders the parts and leaves the views to you. Your events stay in the shape your app already uses, and Time reads them through an
 adapter. The week, day, month, year, agenda and resource views are React source files you copy into
 your app. An AI agent can read the same calendar and act on it through named actions, under rules
 your app sets.
 
 <CalendarPreview switcher />
 
-To see every view with more data, try the [live demo](https://moltenship-time-demo.vercel.app), a Google Calendar-style app built from
-the same views.
+To see every view with more data, try the [live demo](https://moltenship-time-demo.vercel.app), a
+Google Calendar-style app built from the same views. A switch in it opens the
+[Solid demo](https://moltenship-time-demo.vercel.app/solid/), which has a month grid, an agenda
+and an agent panel.
 
 <Callout type="warn" title="2.0 is a pre-release">
   These docs describe Time 2.0, which is built on [ui-sdk](https://ui-sdk.dev). Time 2.0 is a
@@ -38,12 +40,12 @@ the same views.
   <Card
     title="Let an AI agent use a calendar"
     href="/docs/agents"
-    description="What an agent reads, the fifteen actions it can call, and the rules your app sets."
+    description="What an agent reads, the actions it can call, and the rules your app sets."
   />
   <Card
     title="Build with a coding agent"
     href="/docs/agents/coding-agents"
-    description="These docs as Markdown, llms.txt, and a skill that ships in the npm package."
+    description="These docs as Markdown, llms.txt, and a skill that ships in @moltenship/calendar@next."
   />
 </Cards>
 
@@ -88,14 +90,18 @@ some hooks exist in React only. [React and Solid](/docs/frameworks) has the full
   view, the time zone, the selection and the focus, one value at a time.
 - **Headless parts.** `Root`, the previous, next and today buttons, `Title` and `ActiveView` render
   plain elements. A [custom view](/docs/views/custom-views) is a strategy and a component.
-- **Actions for agents.** A calendar gives an AI agent fifteen actions: describe the calendar, list
-  its events, navigate, switch view, and create, rename, move, resize and delete events. An agent
-  sees nothing until your app creates ui-sdk's agent bridge. An agent's change goes through your
+- **Actions for agents.** A calendar gives an AI agent fourteen actions, and a fifteenth, deleting,
+  when you allow it. They describe the calendar, list its events, navigate, switch view, and
+  create, rename, move and resize events. An agent sees nothing until your app creates ui-sdk's
+  agent bridge. An agent's change goes through your
   policies and your `onEventChange`, marked as an agent's, and the agent gets back how it ended.
-  Deleting is off until you turn it on. The actions reach the agent built into a browser through
+  The actions reach the agent built into a browser through
   WebMCP, an experimental browser API, or a model you run. See [Agents](/docs/agents).
+- **Undo and redo.** `createEventHistory` records changes and takes them back. React has a hook
+  and keyboard shortcuts for it. Solid has no hook yet, and
+  [Outside React](/docs/undo-redo#outside-react) shows the calls to make yourself.
 - **Docs your coding agent can read.** Every page has a Markdown version, the docs ship inside
-  the npm package, and a skill teaches a coding agent the library. See
+  `@moltenship/calendar@next`, and a skill teaches a coding agent the library. See
   [Build with a coding agent](/docs/agents/coding-agents).
 
 ### In React
@@ -110,7 +116,6 @@ some hooks exist in React only. [React and Solid](/docs/frameworks) has the full
 - **Editing by pointer and keyboard.** The built-in views support dragging, resizing and creating
   events with a mouse, a pen or touch, and moving and resizing them
   [from the keyboard](/docs/accessibility#changing-events).
-- **Undo and redo.** An opt-in [history](/docs/undo-redo) records changes and takes them back.
 - **Server rendering.** During server rendering, Time doesn't read the clock, the host time zone or
   `window`, so the server and the browser render the same markup from the same props.
 - **A testing package.** [`@moltenship/calendar-testing`](/docs/testing) has a fixed clock, typed

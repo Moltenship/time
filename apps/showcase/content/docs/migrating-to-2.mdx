@@ -3,8 +3,8 @@ title: Migrating to 2.0
 description: What changes between Time 1.x and 2.0, and what to do about each change.
 ---
 
-2.0 rebuilds the calendar's parts on [ui-sdk](https://ui-sdk.dev). That gives the calendar an
-[agent surface](/docs/agents) and a second framework, [Solid](/docs/api/solid). The engine didn't
+2.0 rebuilds the calendar's parts on [ui-sdk](https://ui-sdk.dev). That gives the calendar
+[actions an agent can call](/docs/agents) and a second framework, [Solid](/docs/api/solid). The engine didn't
 move: dates, time zones, recurrence, layouts, transactions and policies work as they did.
 
 For most apps the upgrade is two more packages to install. The rest of this page is for code that
@@ -39,32 +39,34 @@ value. The parts gained one attribute, [`data-slot`](#the-parts-have-data-slot).
 <Tab value="pnpm">
 
 ```bash
-pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react
+pnpm add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react
 ```
 
 </Tab>
 <Tab value="npm">
 
 ```bash
-npm install @moltenship/calendar @ui-sdk/core @ui-sdk/react
+npm install @moltenship/calendar@next @ui-sdk/core @ui-sdk/react
 ```
 
 </Tab>
 <Tab value="yarn">
 
 ```bash
-yarn add @moltenship/calendar @ui-sdk/core @ui-sdk/react
+yarn add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react
 ```
 
 </Tab>
 <Tab value="bun">
 
 ```bash
-bun add @moltenship/calendar @ui-sdk/core @ui-sdk/react
+bun add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react
 ```
 
 </Tab>
 </Tabs>
+
+Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
 
 - **`react-dom` is needed too.** `@ui-sdk/react` has it as a peer dependency. A React app on the web
   already has it.

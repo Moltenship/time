@@ -4,8 +4,8 @@ description: Give Claude Code, Cursor or another coding agent these docs as Mark
 ---
 
 The other pages in this section are about an agent that uses the calendar in your app. This one is
-about the agent that writes your app. A coding agent trained before 2.0 doesn't know the library's
-agent surface, and guesses at the rest. Three things give it the real API:
+about the agent that writes your app. A coding agent trained before 2.0 doesn't know the
+actions an agent can call, and guesses at the rest. Three things give it the real API:
 
 | What                | Where                                                      | Use it when                                               |
 | ------------------- | ---------------------------------------------------------- | --------------------------------------------------------- |
@@ -39,7 +39,7 @@ The skill is a short guide and seven references the agent opens as it needs them
 | `mistakes.md`    | Mistakes agents make with this library, and the fix for each                             |
 | `solid.md`       | What the Solid preview has and doesn't have                                              |
 
-The same skill ships in the npm package, at
+The same skill ships in the npm package since 2.0, which `@moltenship/calendar@next` installs, at
 `node_modules/@moltenship/calendar/skills/moltenship-time`. That copy matches the version you
 installed. Without the CLI, copy the folder into your agent's skills folder, or point the agent at
 it.

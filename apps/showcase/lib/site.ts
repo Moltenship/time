@@ -2,7 +2,8 @@ export const siteUrl = "https://time.molten.sh";
 export const siteName = "Moltenship Time";
 /** The landing page's headline, which the Open Graph image and the production check repeat. */
 export const siteHeadline = "The Temporal calendar for React, Solid and AI agents";
-export const siteTitle = `Moltenship Time: ${siteHeadline.charAt(0).toLowerCase()}${siteHeadline.slice(1)}`;
+/** The `<title>` of the landing page. Search results cut a title near 60 characters. */
+export const siteTitle = "Moltenship Time: a calendar for React, Solid and AI agents";
 export const siteDescription =
   "A calendar engine on the Temporal API with exact time zones and recurrence. React views you copy and own, a SolidJS 2 preview, and actions an AI agent can call.";
 /** The `@id` that structured data on other pages uses to point at the site. */

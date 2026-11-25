@@ -85,14 +85,16 @@ react-big-calendar, including where they're ahead.
 In a React app:
 
 ```bash
-pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
+pnpm add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 In a SolidJS 2 app:
 
 ```bash
-pnpm add @moltenship/calendar-solid @moltenship/calendar-core solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+pnpm add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
+
+Time 2.0 is a pre-release under npm's `next` tag, so both commands name `@next`.
 
 Time needs:
 
@@ -227,7 +229,7 @@ The docs are written to be read by a coding agent too:
 - [`/llms.txt`](https://time.molten.sh/llms.txt) is the index, and every page has a Markdown
   version: add `.md` to its address. [`/llms-full.txt`](https://time.molten.sh/llms-full.txt) is
   every page in one file.
-- `@moltenship/calendar` ships the same docs, for the version you installed, in
+- `@moltenship/calendar@next` ships the same docs, for the version you installed, in
   `node_modules/@moltenship/calendar/docs`.
 - An [Agent Skill](https://agentskills.io) teaches an agent the library:
 

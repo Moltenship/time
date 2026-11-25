@@ -6,8 +6,8 @@ ownership. A workspace may import only the public entry points of workspaces lis
 
 Version 2.0 adds a plane and two packages (#275, ADR 0275): the framework-free
 `calendar-primitives`, written on ui-sdk, between the engine and the framework integrations, and
-`calendar-solid` beside `calendar-react`. Both are in progress and unreleased; `architecture.md` §2
-says what is built. Where this document says "2.0", the 1.x line doesn't have it.
+`calendar-solid` beside `calendar-react`. Both are on npm in `2.0.0-beta.1`, a pre-release, and still
+in progress. `architecture.md` §2 says what is built. Where this document says "2.0", the 1.x line doesn't have it.
 
 Entry points expose only contracts approved by their owning implementation issues. Calendar core
 and Temporal expose the canonical engine contracts. Calendar React exposes its state/SSR layer and

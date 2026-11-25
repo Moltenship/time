@@ -4,6 +4,7 @@ import {
   AgentChangesIsland,
   AgentDeleteIsland,
   AgentOverviewIsland,
+  AgentOverviewNearIsland,
   AgentPermissionsIsland,
   AgentSaveIsland,
   AgentServerIsland,
@@ -34,11 +35,15 @@ function AgentFigure({
   );
 }
 
-/** A calendar beside what an agent's bridge lists for it, with buttons that run scripted steps. */
-export function AgentPreview() {
+/**
+ * A calendar beside what an agent's bridge lists for it, with buttons that run scripted steps.
+ * With `whenNear`, the example's code loads once the page scrolls close to it, for a page that
+ * shows it far below the first screen.
+ */
+export function AgentPreview({ whenNear = false }: { readonly whenNear?: boolean }) {
   return (
     <AgentFigure caption="Live. The buttons call the bridge as a model's tool calls would, and each result is what the model gets back; no model runs on this page. Drag a meeting and the snapshot follows.">
-      <AgentOverviewIsland />
+      {whenNear ? <AgentOverviewNearIsland /> : <AgentOverviewIsland />}
     </AgentFigure>
   );
 }

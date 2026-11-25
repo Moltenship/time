@@ -14,7 +14,12 @@ export function pageSections(page: InferPageType<typeof source>): string[] {
   );
 }
 
-/** A page's title with its sections, since two pages are both named "Overview". */
+/**
+ * A page's title with its sections, since two pages are both named "Overview". A section named as
+ * the page is, which a folder's index page can be, isn't repeated.
+ */
 export function qualifiedTitle(page: InferPageType<typeof source>): string {
-  return [page.data.title, ...pageSections(page).reverse()].join(" · ");
+  const title = page.data.title;
+  const sections = pageSections(page).filter((section) => section !== title);
+  return [title, ...sections.reverse()].join(" · ");
 }

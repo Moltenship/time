@@ -9,7 +9,7 @@ Time has three layers. The engine and the calendar import no UI framework, and a
 renders them in one:
 
 ```text
-integration   @moltenship/calendar-react         @moltenship/calendar-solid
+integration   @moltenship/calendar (React)       @moltenship/calendar-solid (Solid)
 calendar      @moltenship/calendar-primitives    state, actions, what an agent can call
 engine        @moltenship/calendar-core          adapters, validation, snapshots, queries, changes
               @moltenship/calendar-temporal      ranges, day boundaries, DST helpers
@@ -19,7 +19,7 @@ A React app imports one package, which re-exports the React integration and the 
 
 ```text
 @moltenship/calendar                    what a React app imports: everything below
-├── @moltenship/calendar-react          Root, components, hooks
+├── @moltenship/calendar-react          the React integration: Root, components, hooks
 │   └── @moltenship/calendar-primitives the calendar without a framework: state, actions, agents
 ├── @moltenship/calendar-dnd            drag, resize, and create inside views
 ├── @moltenship/calendar-core           adapters, validation, snapshots, queries, changes

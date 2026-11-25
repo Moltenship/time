@@ -128,9 +128,16 @@ describe("the index's page names", () => {
     expect(groupedLabel("Overview", "API reference")).toBe("API reference: Overview");
   });
 
-  test("a folder whose name holds the page's title stands alone", () => {
-    expect(groupedLabel("Agents", "Agents in your app")).toBe("Agents in your app");
+  test("a folder's index page with the folder's name isn't named twice", () => {
+    expect(groupedLabel("Agents in your app", "Agents in your app")).toBe("Agents in your app");
     expect(groupedLabel("Concepts", "Concepts")).toBe("Concepts");
+  });
+
+  test("a title inside the folder's name still carries the folder's name", () => {
+    expect(groupedLabel("Agents", "Agents in your app")).toBe("Agents in your app: Agents");
+    expect(groupedLabel("Agent reference", "Agents in your app")).toBe(
+      "Agents in your app: Agent reference",
+    );
   });
 });
 

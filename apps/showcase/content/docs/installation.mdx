@@ -4,8 +4,9 @@ description: Requirements, the packages for React and for SolidJS 2, the ui-sdk 
 ---
 
 <Callout type="warn" title="2.0 is a pre-release">
-  These docs describe Time 2.0. Its API can still change before 2.0.0, and so can ui-sdk's while it
-  is in beta. Coming from 1.x? See [Migrating to 2.0](/docs/migrating-to-2).
+  These docs describe Time 2.0, which npm has under the `next` tag. Its API can still change before
+  2.0.0, and so can ui-sdk's while it is in beta. Coming from 1.x? See [Migrating to
+  2.0](/docs/migrating-to-2).
 </Callout>
 
 ## Requirements
@@ -23,7 +24,7 @@ Both frameworks need these:
 - **TypeScript 6 or later** with `"lib": ["DOM", "DOM.Iterable", "ESNext"]`. `ESNext` has the
   `Temporal` types.
 
-And one framework:
+Then install the packages for your framework.
 
 - **React 19.** React and React DOM are peer dependencies. The React integration is complete.
 - **SolidJS 2.0.** `solid-js` and `@solidjs/web` are peer dependencies. The Solid integration is a
@@ -37,32 +38,34 @@ And one framework:
 <Tab value="pnpm">
 
 ```bash
-pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
+pnpm add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 <Tab value="npm">
 
 ```bash
-npm install @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
+npm install @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 <Tab value="yarn">
 
 ```bash
-yarn add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
+yarn add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 <Tab value="bun">
 
 ```bash
-bun add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
+bun add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 </Tabs>
+
+Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
 
 `@moltenship/calendar` is the only calendar package most React apps import. It includes the React
 components, the event engine, the Temporal helpers, and the pointer interactions. Recurring events
@@ -81,39 +84,44 @@ keeps one as long as every `@ui-sdk/*` package is on the same version.
 <Tab value="pnpm">
 
 ```bash
-pnpm add @moltenship/calendar-solid @moltenship/calendar-core solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+pnpm add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 </Tab>
 <Tab value="npm">
 
 ```bash
-npm install @moltenship/calendar-solid @moltenship/calendar-core solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+npm install @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 </Tab>
 <Tab value="yarn">
 
 ```bash
-yarn add @moltenship/calendar-solid @moltenship/calendar-core solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+yarn add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 </Tab>
 <Tab value="bun">
 
 ```bash
-bun add @moltenship/calendar-solid @moltenship/calendar-core solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+bun add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 </Tab>
 </Tabs>
 
+Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
+
 A Solid app installs `@moltenship/calendar-solid` and `@moltenship/calendar-core`, and not
 `@moltenship/calendar`, which is the React package. The event adapter and the functions a view is
 made of come from `@moltenship/calendar-core`. The agent bridge comes from `@ui-sdk/solid/agent`.
+The Temporal helpers are in `@moltenship/calendar-temporal`. Add `@moltenship/calendar-temporal@next`
+when you import one.
 
 Your app's Solid compiler has to compile `@ui-sdk/solid`. [Build setup](/docs/api/solid#build-setup)
-has the Vite and TypeScript configuration. The Temporal and TypeScript sections below apply to
+has the Vite and TypeScript configuration, and [A calendar](/docs/api/solid#a-calendar) is the first
+calendar to build, since the [Quick start](/docs/quick-start) uses React views. The Temporal and TypeScript sections below apply to
 Solid as written. The UI source section doesn't, since the registry has no Solid views yet.
 
 ## Temporal

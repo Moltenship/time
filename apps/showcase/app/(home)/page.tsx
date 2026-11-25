@@ -114,9 +114,9 @@ const agentFacts = [
       "An agent can read or change a calendar only after your app creates ui-sdk's agent bridge.",
   },
   {
-    title: "Your rules run for every step.",
+    title: "Your policies check every change an agent makes.",
     description:
-      "The bridge asks your allow function first. Then your policies and onEventChange run, as they do for a drag.",
+      "The bridge asks your allow function before each step. A change then goes through your policies and onEventChange, as a drag does.",
   },
   {
     title: "Deleting is off.",
@@ -124,21 +124,21 @@ const agentFacts = [
       "A calendar has no deleteEvent action until Root has allowAgentDelete, and your app can ask the person first.",
   },
   {
-    title: "A browser's agent, or a model you run.",
+    title: "Works with a browser's agent or your own model.",
     description:
-      "registerTools offers the same tools through WebMCP where the browser has it. WebMCP is an experimental browser API.",
+      "agentTools hands the bridge's three tools to a model you call. registerTools offers the same tools through WebMCP, an experimental browser API, where the browser has it.",
   },
 ] as const;
 
 /** What each integration has today. `docs/frameworks` has the full table. */
 const frameworkRows = [
   ["Engine, state and event changes", "Yes", "Yes"],
-  ["The fifteen agent actions", "Yes", "Yes"],
+  ["Actions an agent can call", "Yes", "Yes"],
   ["Root, toolbar parts and read hooks", "Yes", "Yes"],
   ["Ready-made views", "shadcn/ui or StyleX source", "Not yet"],
   ["Keyboard navigation in a view", "Yes", "Not yet"],
   ["Drag, resize and create", "Yes", "Not yet"],
-  ["Undo and redo", "Yes", "Not yet"],
+  ["Undo and redo", "A hook and shortcuts", "createEventHistory, no hook yet"],
 ] as const;
 
 const agentDocs = [
@@ -151,7 +151,7 @@ const agentDocs = [
   {
     name: "node_modules/@moltenship/calendar/docs",
     href: "/docs/agents/coding-agents#docs-in-the-package",
-    description: "The same pages inside the npm package, for the version you installed.",
+    description: "The same pages inside @moltenship/calendar@next, for the version you installed.",
   },
 ] as const;
 
@@ -180,8 +180,9 @@ export default async function HomePage() {
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-balance text-fd-muted-foreground">
             One engine computes time zones, daylight saving time and recurrence. React renders it
-            with views you copy and own, and SolidJS 2 renders it as a preview. An AI agent can read
-            the calendar and change it, under rules your app sets.
+            with views you copy and own. A SolidJS 2 package, a preview, renders the parts and
+            leaves the views to you. An AI agent can read the calendar and change it, under rules
+            your app sets.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
@@ -199,8 +200,14 @@ export default async function HomePage() {
             </a>
           </div>
           <div className="mt-6 max-w-full">
-            <InstallCommand command="pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react" />
+            <InstallCommand
+              command="pnpm add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom"
+              label="Copy the React install command"
+            />
           </div>
+          <p className="mt-3 text-xs text-fd-muted-foreground">
+            Time 2.0 is a pre-release under npm&apos;s <code>next</code> tag, and ui-sdk is a beta.
+          </p>
         </div>
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <CalendarPreview sidebar size="h-[34rem] sm:h-[40rem]" view="week" />
@@ -212,7 +219,7 @@ export default async function HomePage() {
           className="max-w-xl text-3xl font-semibold tracking-tight text-balance"
           id="features-title"
         >
-          One engine under every view
+          One engine for React and Solid
         </h2>
         <p className="mt-4 max-w-2xl text-fd-muted-foreground">
           The packages that hold events, time and state import no UI framework. The calendar above
@@ -241,12 +248,13 @@ export default async function HomePage() {
             An AI agent can read this calendar and change it
           </h2>
           <p className="mt-4 max-w-2xl text-fd-muted-foreground">
-            A calendar describes itself to an agent as state, events and fifteen named actions. The
-            agent never reads your markup or simulates a pointer. Below is a live calendar next to
-            what the bridge lists for it. Each button sends the call a model would send.
+            A calendar describes itself to an agent as state, events and fourteen named actions, and
+            a fifteenth, deleting, when you allow it. The agent never reads your markup or simulates
+            a pointer. Here is a live calendar and what the bridge lists for it. Each button sends
+            the call a model would send.
           </p>
         </div>
-        <AgentPreview />
+        <AgentPreview whenNear />
         <dl className="mt-10 grid gap-px overflow-hidden rounded-xl border bg-fd-border sm:grid-cols-2 lg:grid-cols-4">
           {agentFacts.map(({ title, description }) => (
             <div className="bg-fd-background p-6" key={title}>
@@ -280,7 +288,7 @@ export default async function HomePage() {
             >
               ui-sdk
             </a>
-            . React and Solid each have a thin package that renders them. The Solid package has the
+            . React and Solid each have a package that renders that state. The Solid package has the
             typed factory, Root, the structural parts and the read hooks. You write its views
             yourself for now.
           </p>
@@ -384,9 +392,13 @@ export default async function HomePage() {
             </div>
           ))}
           <div className="min-w-0 bg-fd-background p-6">
-            <InstallCommand command="npx skills add Moltenship/time --skill moltenship-time" />
+            <InstallCommand
+              command="npx skills add Moltenship/time --skill moltenship-time"
+              label="Copy the skill install command"
+            />
             <p className="mt-3 text-sm leading-relaxed text-fd-muted-foreground">
-              An Agent Skill with seven references, which also ships in the npm package.
+              The skill has seven reference files. <code>@moltenship/calendar@next</code> ships it
+              under <code>skills/</code>.
             </p>
           </div>
         </div>

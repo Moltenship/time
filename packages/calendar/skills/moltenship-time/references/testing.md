@@ -3,8 +3,10 @@
 `@moltenship/calendar-testing` renders your real `Calendar`, fixes the clock and the zone, and gives you queries and keyboard and pointer drivers. It depends on no test runner; the examples use Vitest with jsdom. The full page is `docs/testing.md`.
 
 ```bash
-pnpm add -D @moltenship/calendar-testing vitest jsdom
+pnpm add -D @moltenship/calendar-testing@next vitest jsdom
 ```
+
+Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
 
 Its peers are `react`, `react-dom`, `@ui-sdk/core` and `@ui-sdk/react`, which a 2.0 app already has.
 

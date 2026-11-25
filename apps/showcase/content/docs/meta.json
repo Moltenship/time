@@ -6,6 +6,7 @@
     "installation",
     "quick-start",
     "frameworks",
+    "migrating-to-2",
     "---Build a calendar---",
     "concepts",
     "views",
@@ -20,12 +21,11 @@
     "theming",
     "theme-builder",
     "stylex",
-    "---Agents---",
+    "---AI---",
     "agents",
     "agents/coding-agents",
     "---Reference---",
     "api",
-    "comparison",
-    "migrating-to-2"
+    "comparison"
   ]
 }

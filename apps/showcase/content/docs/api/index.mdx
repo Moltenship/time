@@ -14,9 +14,9 @@ import { createCalendar, defineCalendarView, plainDateInterval } from "@moltensh
 In a Solid app, the factory, the parts and the hooks come from `@moltenship/calendar-solid`, and
 the engine from `@moltenship/calendar-core`. The pages under "Engine and state" in the sidebar
 name `@moltenship/calendar` as the import. In Solid, events, changes and policies come from
-`@moltenship/calendar-core`, the Temporal helpers from `@moltenship/calendar-temporal`, which you
-install beside it, and the store from `@moltenship/calendar-solid`. The pointer layer is React only
-today.
+`@moltenship/calendar-core`. The Temporal helpers come from `@moltenship/calendar-temporal`, which
+you install beside it as `@moltenship/calendar-temporal@next`. The store comes from
+`@moltenship/calendar-solid`. The pointer layer is React only today.
 
 <Cards>
   <Card
@@ -88,15 +88,15 @@ into it. It's optional and not re-exported, so the calendar's install carries no
 Tests use `@moltenship/calendar-testing`, a development dependency: see [Testing](/docs/testing).
 
 The agent bridge isn't the calendar's: `createAgent`, `agentTools` and `registerTools` come from
-`@ui-sdk/react/agent`, which your app imports itself. See [Agents](/docs/agents).
+`@ui-sdk/react/agent`, which your app imports itself. See [Agents in your app](/docs/agents).
 
 ## Packages
 
 | Package                           | Contents                                                                                                                 | Dependencies                                                                                                                     |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `@moltenship/calendar`            | Re-exports `calendar-react`, `-core`, `-temporal` and `-dnd`. Ships these docs as Markdown and a skill for coding agents | Those four; React 19, `@ui-sdk/core`, `@ui-sdk/react` (peers)                                                                    |
+| `@moltenship/calendar`            | Re-exports `calendar-react`, `-core`, `-temporal` and `-dnd`. Since 2.0 it ships these docs as Markdown and a skill for coding agents | Those four; React 19, `@ui-sdk/core`, `@ui-sdk/react` (peers)                                                                    |
 | `@moltenship/calendar-react`      | `createCalendar`, `defineCalendarView`, components, hooks, store                                                         | `calendar-primitives`, `calendar-dnd`, `calendar-core`, `calendar-temporal`; React 19, `@ui-sdk/core`, `@ui-sdk/react` (peers)   |
-| `@moltenship/calendar-primitives` | The calendar's state, actions, runtime and agent surface, with no framework. Not re-exported.                            | `calendar-core`, `calendar-temporal`; `@ui-sdk/core` (peer)                                                                      |
+| `@moltenship/calendar-primitives` | The calendar's state, actions and runtime, agent actions included, with no framework. Not re-exported.                            | `calendar-core`, `calendar-temporal`; `@ui-sdk/core` (peer)                                                                      |
 | `@moltenship/calendar-solid`      | `createCalendar`, `defineCalendarView`, parts and read hooks for SolidJS 2. A preview. Not re-exported.                  | `calendar-primitives`, `calendar-core`, `calendar-temporal`; `solid-js`, `@solidjs/web`, `@ui-sdk/core`, `@ui-sdk/solid` (peers) |
 | `@moltenship/calendar-core`       | Adapters, validation, snapshots, queries, changes and policies, view strategies, availability. No React.                 | `calendar-temporal`, `@flatten-js/interval-tree`                                                                                 |
 | `@moltenship/calendar-temporal`   | Ranges, grids, rounding, zoned days, DST                                                                                 | None                                                                                                                             |
