@@ -1,0 +1,132 @@
+---
+title: Recurring-event dialog
+description: The Solid registry's dialog that asks whether a change to a recurring event applies to this event, this and following events, or all events.
+---
+
+Try it in the [Solid demo](https://moltenship-time-demo.vercel.app/solid/): drag a Team sync in the
+month grid, or delete one, and the dialog asks which of the series the change applies to.
+
+The `recurrence-scope-dialog` item asks that question while the change waits on screen. It's the
+same dialog as React's registry has, with the same wording and keys, built on the
+[controls kit](/docs/views/controls)'s dialog and buttons. With
+`@moltenship/calendar-recurrence`, which expands each series into its occurrences and turns a
+change to one into what to save, it makes a calendar of recurring events.
+[Recurring events](/docs/recurrence/model) explains the model behind it.
+
+## Add it
+
+The recurrence package is separate from the calendar, and imports neither React nor Solid:
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @moltenship/calendar-recurrence@next
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @moltenship/calendar-recurrence@next
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @moltenship/calendar-recurrence@next
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/calendar-recurrence@next
+```
+
+</Tab>
+</Tabs>
+
+Add the dialog with the shadcn CLI, as [UI source](/docs/installation#ui-source-optional)
+describes. It brings the controls kit:
+
+```bash
+npx shadcn@latest add @moltenship/recurrence-scope-dialog
+```
+
+## Show the occurrences
+
+Your events are series and one-off events. The calendar shows occurrences: an adapter from the
+recurrence package reads your events, and `createOccurrenceAdapter` gives the calendar the
+occurrences' IDs, titles and times:
+
+<include meta='title="team-calendar.tsx"'>../../examples/solid/recurrence.tsx#calendar</include>
+
+Expand the series for the dates the calendar loads, and pass the occurrences to `events`.
+`onVisibleRangeChange` says when those dates change:
+
+<include meta='title="team-calendar.tsx"'>../../examples/solid/recurrence.tsx#expand</include>
+
+The expansion's `issues` list what the expander couldn't read, such as an invalid rule, with each
+event. Bad data never throws: the rest of the series and the other events still show.
+
+## Ask which events a change applies to
+
+A change to an occurrence reaches `onEventChange` with the occurrence as its `event`.
+`useRecurrenceScopePrompt` returns `ask`, which opens the dialog and resolves with the scope picked,
+and `dialog`, to render once:
+
+<include meta='title="team-calendar.tsx"'>../../examples/solid/recurrence.tsx#change</include>
+
+1. **`isRecurringChange`** says whether the change is to an occurrence of a series. A new event, or
+   a change to a one-off event, needs no question.
+2. **`ask`** opens the dialog. `action` picks its wording for an edit or a delete, and `scopes`
+   comes from **`recurrenceEditScopes`**, which offers only the scopes that apply: no "This and
+   following events" on a series' first occurrence, and only "This event" when the rule can't
+   follow the change. When none applies, there's nothing to ask: say why, and roll the change back.
+3. **Cancel** resolves `null`. Throwing rolls the change back, as any error in `onEventChange`
+   does. Throw an `AbortError`, and the calendar's announcements say the change was cancelled
+   rather than that it couldn't be saved.
+4. **`resolveRecurrenceEdit`** turns the change into an edit: what to save for that scope. Pass the
+   calendar's `timeZone`, so the change is replayed on the series' own clock. A change that needs
+   no scope comes back as `type: "event"`, with your event unwrapped from the occurrence. A scope
+   that can't apply comes back as `type: "rejected"`, with a `message`.
+5. **`applyRecurrenceEdit`** applies a series edit to your events and returns the new array. Save
+   it on your server first: the change stays pending until `onEventChange` returns.
+
+"This and following events" and "All events" give the occurrences new IDs. Keep the calendar's
+`focus` and `selection` on them by mapping each through `edit.occurrenceIds` before
+`onEventChange` returns, and the calendar moves focus to the occurrence under its new ID.
+
+Render the dialog beside `Calendar.Root`:
+
+<include meta='title="team-calendar.tsx"'>../../examples/solid/recurrence.tsx#page</include>
+
+## Deleting
+
+The agenda doesn't delete events; your own UI does, with `proposeEventChange`. The change goes
+through the same `onEventChange`, and `ask` uses the dialog's wording for a delete:
+
+<include meta='title="team-calendar.tsx"'>../../examples/solid/recurrence.tsx#delete</include>
+
+## The dialog
+
+The dialog shows one button per scope offered, always in the same order, then Cancel. Focus
+starts on the narrowest scope offered, usually "This event".
+
+| Key            | What it does                                                             |
+| -------------- | ------------------------------------------------------------------------ |
+| Arrow keys     | Move between the scopes, wrapping at the ends. Left and Right follow RTL |
+| Tab, Shift+Tab | Move through the scopes and Cancel, and stay inside the dialog           |
+| Enter, Space   | Pick the focused scope, or cancel                                        |
+| Escape         | Cancel                                                                   |
+
+When it closes, focus goes back to where it was, such as the event, and only then does `ask`
+resolve. Safari skips buttons on Tab unless a setting says otherwise, so the arrow keys reach every
+scope there.
+
+The wording, English, is in `recurrence-scope.ts` beside the dialog, to edit or translate. The
+dialog's look comes from `recurrence-scope-dialog.styles.ts`, the same file React's dialog reads,
+and from the kit's `dialog.tsx` and `button.tsx`. To use a dialog of your own, see
+[Use your own controls](/docs/views/controls#use-your-own-controls).

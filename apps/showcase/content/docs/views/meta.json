@@ -9,6 +9,8 @@
     "agenda",
     "toolbar",
     "controls",
+    "recurrence-dialog",
+    "undo-toast",
     "resource-columns",
     "resource-timeline",
     "custom-views"

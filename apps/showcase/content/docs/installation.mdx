@@ -329,8 +329,9 @@ changes you made.
 ## UI source (optional)
 
 The package renders plain, unstyled elements. The registry has styled Solid views, the
-[month](/docs/views/month) and the [agenda](/docs/views/agenda), with the [toolbar and mini month](/docs/views/toolbar) and the
-[controls](/docs/views/controls) they're built from, as source files that you add to your app and
+[month](/docs/views/month) and the [agenda](/docs/views/agenda), with the [toolbar and mini month](/docs/views/toolbar), the
+[recurring-event dialog](/docs/recurrence/calendar), the [undo toast](/docs/undo-redo#undo-toast)
+and the [controls](/docs/views/controls) they're built from, as source files that you add to your app and
 then own, the way shadcn/ui works. They install with the shadcn CLI from this site's Solid registry,
 at `https://time.molten.sh/r/solid`. The other views aren't in it yet, so you write those: the
 [Quick start](/docs/quick-start) writes the first one, and [Custom views](/docs/views/custom-views)
@@ -340,8 +341,10 @@ covers the rest. [What's coming](/docs/frameworks#whats-coming) has the plan.
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `month-view`     | The [month](/docs/views/month)                                                                                                  |
 | `list-view`      | The [agenda](/docs/views/agenda)                                                                                                |
+| `recurrence-scope-dialog` | The [recurring-event dialog](/docs/recurrence/calendar), which asks which events of a series a change applies to |
+| `calendar-history-toast` | The [undo toast](/docs/undo-redo#undo-toast), with the undo and redo keys |
 | `calendar`       | The [toolbar, view switcher and mini month](/docs/views/toolbar), and the event chip, names and keys the views share            |
-| `calendar-ui`    | The [controls](/docs/views/controls) the views are built from, on ui-sdk: button, badge, tooltip, select, popover and the icons |
+| `calendar-ui`    | The [controls](/docs/views/controls) the views are built from, on ui-sdk: button, badge, tooltip, select, popover, dialog, toast and the icons |
 | `calendar-theme` | The calendar's color tokens and its event colors, in `event-colors.ts`                                                          |
 | `base-tokens`    | shadcn/ui's neutral tokens for light and dark, for an app without them                                                          |
 

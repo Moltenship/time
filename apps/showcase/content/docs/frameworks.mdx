@@ -65,7 +65,7 @@ These work the same in both frameworks, because they run below the integration:
 | Ready-made views              | The registry's views, in shadcn/ui with Tailwind CSS or in StyleX | The month, agenda, toolbar and mini month, in Tailwind CSS. You write the other views' `Renderer` |
 | Keyboard navigation in a view | Yes                                                               | Yes, in the registry's views and in a view you write                                              |
 | Drag, resize and create       | Yes, with a mouse, a pen or touch                                 | Yes, in the registry's month and in a view you write                                              |
-| Undo and redo                 | `useCalendarHistory`, its shortcuts and the registry's toast      | `useCalendarHistory` and its shortcuts. No toast                                                  |
+| Undo and redo                 | `useCalendarHistory`, its shortcuts and the registry's toast      | The same, with the registry's toast |
 | Screen reader announcements   | `Calendar.Announcer`                                              | `Calendar.Announcer`                                                                              |
 | Server rendering              | Yes                                                               | Yes, with `renderToString` and `hydrate`                                                          |
 | Testing package               | `@moltenship/calendar-testing`                                    | None. That package has React as a peer dependency                                                 |
@@ -78,13 +78,12 @@ Solid doesn't have these yet:
 | Missing           | In React it's                                                             |
 | ----------------- | ------------------------------------------------------------------------- |
 | Ready-made views  | The registry's week, day, year and resource views, which are React source |
-| An undo toast     | The registry's `calendar-history-toast`, which is React source            |
 | A testing package | `@moltenship/calendar-testing`, which is React only                       |
 | A dnd-kit adapter | `@moltenship/calendar-dnd-kit`, which has React as a peer dependency      |
 
 The views are the next work. The registry gets Solid versions of its items, installed with the
-same `shadcn add` command. The agenda, the toolbar, the mini month, the controls kit and the month view
-came first, and the week and day views come next. [Issue #279](https://github.com/Moltenship/time/issues/279) tracks each step.
+same `shadcn add` command. The agenda, the toolbar, the mini month, the controls kit, the month view,
+the recurring-event dialog and the undo toast came first, and the week and day views come next. [Issue #279](https://github.com/Moltenship/time/issues/279) tracks each step.
 The testing package and the dnd-kit adapter have no Solid plan yet.
 
 Until the registry has a view in Solid, you write its `Renderer` with the package's hooks, as

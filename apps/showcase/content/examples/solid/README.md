@@ -18,6 +18,10 @@ into a clean Solid app, so what the docs show is what it installs and builds.
 `month-page.tsx` is the Month page's calendar and page, after `shadcn add` of the Solid month. The
 install test copies it into the same app, beside `calendar-page.tsx`.
 
+`recurrence.tsx` is the calendar of Show and edit recurring events, on
+`@moltenship/calendar-recurrence`. The install test leaves it out, since its clean app doesn't
+install that package; `calendar-page.tsx` covers the dialog's install there.
+
 `own-button.tsx` is the Controls page's own button, an app's `components/calendar/ui/button.tsx`
 in place of the kit's. It checks below its region that it takes every prop of the kit's button.
 
