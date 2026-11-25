@@ -255,6 +255,20 @@ test("the output switches to a StyleX theme, for both extents and the copy butto
   Reflect.deleteProperty(navigator, "clipboard");
 });
 
+test("without StyleX it gives CSS alone, with no format to choose", async () => {
+  const container = await render(<ThemeBuilder source={source} stylex={false} />);
+  const names = [...container.querySelectorAll("button")].map((item) => item.textContent);
+
+  expect(container.querySelector('[aria-label="Output format"]')).toBeNull();
+  expect(container.querySelector('[aria-label="Tokens to copy"]')).not.toBeNull();
+  expect(names).not.toContain("StyleX");
+  expect(names).toContain("Ocean");
+  expect(button(container, "Copy CSS")).toBeDefined();
+  await type(input(container, "Today"), "oklch(0.6 0.2 30)");
+  expect(css(container)).toContain("@layer base");
+  expect(css(container)).toContain("--calendar-today: oklch(0.6 0.2 30);");
+});
+
 test("arrow keys move between the preview's views, which the tabs switch", async () => {
   const container = await render(<ThemeBuilder source={source} />);
   const week = button(container, "Week");

@@ -1,0 +1,29 @@
+/* What an app has after `shadcn add` of the Solid registry's items: Tailwind and the calendar's
+   theme, as `../app.css` and Installation's "UI source" set them up. */
+@layer ui-sdk;
+
+@import "tailwindcss";
+@import "../../../../../../registry/shared/calendar-theme/calendar-theme.css";
+
+@source "..";
+@source "../../../../../../registry/solid";
+@source "../../../../../../registry/shared";
+
+@custom-variant dark (&:is(.dark *));
+
+/* The docs site's accent, so an example matches the React previews beside it. */
+:root {
+  --brand: oklch(0.646 0.222 41.116);
+  --calendar-today: var(--brand);
+  --calendar-now: var(--brand);
+}
+
+.dark {
+  --brand: oklch(0.705 0.213 47.604);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}

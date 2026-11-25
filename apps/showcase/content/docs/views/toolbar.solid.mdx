@@ -3,11 +3,14 @@ title: Toolbar and mini month
 description: The Solid registry's toolbar, view switcher and mini month, which move the calendar through its dates and views.
 ---
 
-Try them in the [Solid demo](https://moltenship-time-demo.vercel.app/solid/): the toolbar sits above
-the calendar, and the mini month beside it.
+<SolidExample
+  name="toolbar"
+  title="The toolbar, the view switcher and the mini month"
+  size="h-[34rem]"
+  caption="Live. Step with the toolbar, or pick a date in the mini month."
+/>
 
-The `calendar` item has three parts that move a calendar around, the same ones React's registry
-has:
+The `calendar` item has three parts that move a calendar around:
 
 | Part              | File                   | What it does                                                                      |
 | ----------------- | ---------------------- | --------------------------------------------------------------------------------- |
@@ -113,8 +116,8 @@ screen reader hears the new month after a step. Each day is a button named by it
 In a right-to-left page, the arrows point the other way and the buttons keep their places at the
 inline start and end. With reduced motion, the select's list and the tooltips fade in without
 growing. On a touch screen, every target is at least 24 px. The parts take their classes from
-`calendar-toolbar.styles.ts` and `mini-month.styles.ts`, the same files React's registry installs,
-so the two frameworks look alike. Edit them to restyle the parts.
+`calendar-toolbar.styles.ts` and `mini-month.styles.ts`. Edit them to restyle the parts.
+[A control's look](/docs/theming#a-controls-look) lists every such file.
 
 The words, such as "Today" and "Next month", are in `navigation-labels.ts`. Change them there to
 translate the parts.

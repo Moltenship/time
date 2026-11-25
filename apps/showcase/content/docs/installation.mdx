@@ -438,8 +438,8 @@ src/components/calendar
     └── use-agenda-virtualizer.ts
 ```
 
-The `.styles.ts`, label, row, key map and virtualizer files are plain TypeScript, the same files
-React's registry installs, so the Solid agenda looks, reads and moves as React's does. `shadcn add`
+The `.styles.ts`, label, row, key map and virtualizer files are plain TypeScript, with no JSX:
+a view's classes, its words and its keys are each in one file. `shadcn add`
 adds the npm packages the files import, such as `@tanstack/virtual-core`, if your app doesn't have
 them yet. Each item names the range of `@moltenship/calendar-solid` it's built for, so the CLI
 installs a version the files compile against.
@@ -464,7 +464,8 @@ around it.
 The theme switches when an ancestor of the calendar has the `dark` class, as shadcn/ui does. Toggle
 it on `<html>` from your app's theme setting; the `@custom-variant` line in `src/app.css` makes the
 files' `dark:` classes follow the same class. The theme's tokens go into `src/app.css` inside
-`@layer base`, so your own rules win over them: change a token in a rule of your own.
+`@layer base`, so your own rules win over them: change a token in a rule of your own, as
+[Theming](/docs/theming#changing-tokens) shows.
 
 The files are copies you own: edit them as you would any component. A fix in the registry reaches
 your app when you add the item again. The command writes the files your app doesn't have, skips

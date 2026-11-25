@@ -182,7 +182,14 @@ function Contrast({
  * Every token of `calendar-theme.css` beside a live calendar. Edits restyle only the preview: its
  * CSS is scoped to the preview's attribute, so the docs page keeps its own theme.
  */
-export default function ThemeBuilder({ source }: { readonly source: ThemeSource }) {
+export default function ThemeBuilder({
+  source,
+  stylex = true,
+}: {
+  readonly source: ThemeSource;
+  /** Whether to offer the theme as StyleX too. */
+  readonly stylex?: boolean;
+}) {
   const [theme, setTheme] = useState(() => defaultTheme(source));
   const docs = useSyncExternalStore(subscribeToDocsTheme, docsMode, serverMode);
   // A mode picked here holds until the docs switch theme; then the preview follows the docs.
@@ -479,7 +486,7 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
           </Section>
         </div>
       </div>
-      <CssOutput source={source} theme={theme} />
+      <CssOutput source={source} stylex={stylex} theme={theme} />
     </div>
   );
 }

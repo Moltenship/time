@@ -3,8 +3,15 @@ title: Agenda
 description: The Solid agenda, a chronological list of events grouped by day that renders only the days in view, from the Solid registry.
 ---
 
-Try it in the [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=agenda): pick Agenda
-in the view switcher.
+<SolidExample
+  name="agenda"
+  title="The agenda view"
+  size="h-80"
+  caption="Live. The page that Add it builds, with two events in October 2026."
+/>
+
+The [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=agenda) has it beside a month
+grid: pick Agenda in the view switcher.
 
 `createAgendaView` lists the events in the coming weeks, one group per day. Days without events are
 left out. Only the days in view render, so a long range, such as `weeks: 104` with thousands of
@@ -46,7 +53,8 @@ Pass them to `createAgendaView`, or per root in `viewOptions`, where they overri
       description: (
         <>
           The color for each event, one of <code>calendarEventColors</code> in{" "}
-          <code>event-colors.ts</code>, which <code>calendar-theme</code> installs.
+          <code>event-colors.ts</code>, which <code>calendar-theme</code> installs. See{" "}
+          <a href="/docs/theming#event-colors">event colors</a>.
         </>
       ),
     },

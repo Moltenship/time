@@ -124,6 +124,11 @@ export const consumers: readonly Consumer[] = [
         }
         return workspace;
       });
+      // The live examples of Solid's docs, which the app's `build` script builds before Next.js
+      // does. They compile the Solid registry's source against the dry run's tarballs.
+      await step("build the Solid examples", async () =>
+        note(outcome(await site.run("apps/showcase", process.execPath, ["--run", "examples"]))),
+      );
       await step("build", async () =>
         note(outcome(await site.run("apps/showcase", "next", ["build"]))),
       );

@@ -122,10 +122,15 @@ try {
       staticClient({ from: `${origin}/api/search`, tag: framework }),
     ]),
   );
+  const solidExamples = new Set();
   for (const page of pages) {
     const response = await fetch(`${origin}${page.url}`, { redirect: "manual" });
     assert.equal(response.status, 200, `${page.url} did not render.`);
-    const canonical = /<link rel="canonical" href="([^"]+)"/.exec(await response.text())?.[1];
+    const html = await response.text();
+    for (const [, example] of html.matchAll(/<iframe[^>]* src="(\/examples\/solid\/[^"]+)"/g)) {
+      solidExamples.add(example.replaceAll("&amp;", "&"));
+    }
+    const canonical = /<link rel="canonical" href="([^"]+)"/.exec(html)?.[1];
     assert.equal(
       canonical === undefined ? undefined : new URL(canonical).pathname,
       page.canonical,
@@ -151,6 +156,26 @@ try {
       await markdown.text(),
       blockTag,
       `${page.url}.md kept a framework's block.`,
+    );
+  }
+
+  // The live examples of Solid's docs: the page each frame loads, the script it runs, and the
+  // example the frame names in it. They are a build of their own (`node --run examples`), so a site
+  // built without it would frame a 404.
+  assert(solidExamples.size > 0, "No page of Solid's docs frames a live example.");
+  for (const example of solidExamples) {
+    const frame = await fetch(`${origin}${example}`);
+    assert.equal(frame.status, 200, `${example} is not served.`);
+    assert.match(frame.headers.get("content-type") ?? "", /^text\/html/);
+    const script = /<script type="module"[^>]* src="([^"]+)"/.exec(await frame.text())?.[1];
+    assert(script, `${example} runs no script.`);
+    const code = await fetch(new URL(script, `${origin}${example}`));
+    assert.equal(code.status, 200, `${example} asks for ${script}, which is not served.`);
+    assert.match(code.headers.get("content-type") ?? "", /javascript/);
+    const name = new URL(example, origin).searchParams.get("example");
+    assert(
+      (await code.text()).includes(`./${name}.example.tsx`),
+      `${example} names an example the build doesn't have.`,
     );
   }
 
@@ -241,7 +266,7 @@ try {
   );
 
   console.log(
-    "Verified the landing page, every page of the React and Solid docs with its Markdown, canonical address and search, the redirects, the sitemap, the App Router example, the shadcn registry and not-found handling.",
+    "Verified the landing page, every page of the React and Solid docs with its Markdown, canonical address and search, the redirects, the sitemap, the App Router example, the live Solid examples, the shadcn registry and not-found handling.",
   );
 } finally {
   server.kill("SIGTERM");

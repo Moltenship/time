@@ -1,0 +1,7 @@
+/* For an example of the package's plain elements: the browser's own styles, in the page's theme.
+   The frame's background shows through. */
+body {
+  margin: 0;
+  padding: 1rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}

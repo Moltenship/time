@@ -1,0 +1,54 @@
+---
+title: Theme builder
+description: Change the calendar's tokens in light and dark, see them live, and copy the CSS for your Solid app.
+full: true
+---
+
+Pick a preset or change a token, and the calendar follows. Light and dark have their own values:
+the preview starts in the docs' theme, and **Light** and **Dark** above it switch the theme you see
+and edit. Your changes stay in the preview, and nothing is saved.
+
+The preview is React's calendar. The Solid registry installs the same theme and the same class
+files, so a token you change here changes a Solid app the same way. The preview shows more views
+than the Solid registry has yet, and [Tokens](/docs/theming#tokens) says which tokens the Solid
+files read today.
+
+<ThemeBuilder stylex={false} />
+
+## Paste the CSS into your app
+
+The CSS has the shape of the theme `shadcn add` wrote into `src/app.css`: tokens inside
+`@layer base`, light values on `:root` and dark ones on `.dark`. Paste it at the end of that file,
+after the theme's own blocks, so it comes later in the same layer and wins.
+
+- **Changed tokens** copies what differs from the theme as it ships. A token you changed only in
+  light mode is restated in `.dark` too, so the dark theme keeps its own value.
+- **All tokens** copies the whole theme, so your CSS restates every token.
+
+Rules your app writes outside a layer win over the pasted ones: its own shadcn/ui-style theme, or
+overrides like those in [Changing tokens](/docs/theming#changing-tokens). Change those tokens there
+instead.
+
+Leave **Shading recipe**, under Availability, at **Flat**. The other recipes add a rule for the
+band of closed time in the registry's time grids, which Solid doesn't have yet.
+
+## What you can change
+
+- **Colors.** The tokens in [Theming](/docs/theming#tokens), and the base tokens under **Base
+  colors**. Many calendar tokens derive from those: grid lines are `var(--border)`, and the default
+  event fill mixes `--primary` into `--background`. A derived token follows its source until you
+  set it. `--calendar-surface` isn't here: it's unset until a container with its own background
+  sets it.
+- **Density.** The hour height and the event padding in time grids, and `--radius`, which rounds
+  events, buttons and badges.
+- **Availability.** The tints for closed time and closed days, the busy and free dots, and the
+  outlines of changes the policies reject or flag.
+- **Event palette.** Each color's hue and chroma, and how every color derives its fill, text and
+  edge from them, per theme. To add a color, see [Adding a color](/docs/theming#adding-a-color).
+
+**Contrast** checks, as the preview paints them, the pairs the theme's own test holds to WCAG AA on
+the background, plus body text and the hour labels: 4.5:1 for text, 3:1 for the now line, the
+focus ring and the status marks. When event text falls short, it names the palette color with the
+lowest contrast.
+
+Menus, tooltips and popovers open outside the preview, in the docs' own theme.

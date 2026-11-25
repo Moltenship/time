@@ -62,7 +62,7 @@ const events: readonly Event[] = [
 
 export default function CalendarPage() {
   return (
-    <div class="h-dvh">
+    <div class="flex h-dvh flex-col">
       <Calendar.Root
         defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
         defaultTimeZone="UTC"
@@ -74,7 +74,10 @@ export default function CalendarPage() {
         <h1 class="p-4 text-lg font-semibold">
           <Calendar.Title />
         </h1>
-        <Calendar.ActiveView />
+        {/* The view fills what the title leaves, and scrolls inside it. */}
+        <div class="min-h-0 flex-1">
+          <Calendar.ActiveView />
+        </div>
       </Calendar.Root>
     </div>
   );
@@ -99,6 +102,7 @@ function Sidebar() {
   const { setAnchorDate } = Calendar.useCalendarActions();
   return (
     <MiniMonth
+      class="mx-auto max-w-60"
       locale="en-US"
       onSelectDate={(date) => setAnchorDate(date)}
       selectedDate={anchorDate()}
@@ -119,11 +123,12 @@ export function CalendarWithToolbar() {
       locale="en-US"
       weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
     >
-      <Calendar.Frame class="flex h-dvh">
-        <aside class="w-64 shrink-0 border-e p-3">
+      {/* The mini month sits beside the calendar on a wide screen, and above it on a narrow one. */}
+      <Calendar.Frame class="flex h-dvh flex-col md:flex-row">
+        <aside class="shrink-0 border-b p-3 md:w-64 md:border-e md:border-b-0">
           <Sidebar />
         </aside>
-        <main class="flex min-w-0 flex-1 flex-col">
+        <main class="flex min-h-0 min-w-0 flex-1 flex-col">
           <CalendarToolbar calendar={Calendar} class="border-b">
             <Refresh onRefresh={() => new Promise((resolve) => setTimeout(resolve, 500))} />
             <CalendarViewSwitcher />

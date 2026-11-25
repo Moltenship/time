@@ -17,10 +17,11 @@ gives them their keyboard, focus and ARIA. It's your code once you add it, to ed
 | `popover.tsx` | The month's "+N more" and the day's events it shows               |
 | `icons.tsx`   | The chevrons and the other icons, drawn inline                    |
 
-React's kit has the same files, with the same exports and props, and takes its look from the same
-`.styles.ts` files. A control looks and behaves alike in both frameworks, and the registry's tests
-check that the two kits render the same elements and attributes. The dialog and toast come with the
-views that use them.
+The dialog and toast come with the views that use them.
+
+A team with an app in each framework finds the same files in React's kit, with the same exports,
+props and `.styles.ts` files. The registry's tests check that the two kits render the same elements
+and attributes.
 
 ## Add it
 
@@ -34,11 +35,23 @@ and Tailwind's win over it. The select's list, the tooltips and the popovers ope
 through the Popover API: Chrome and Edge 114, Safari 17 and Firefox 125 or later.
 
 Tooltips wait 400 ms. Change `tooltipDefaults` in `components/calendar/ui/tooltip.styles.ts`, or
-pass `delay` to one `Tooltip`.
+pass `delay` to one `Tooltip`. Each control keeps its classes in such a `.styles.ts` file, and
+[A control's look](/docs/theming#a-controls-look) shows how to change them.
 
 In your own components, use the kit's controls as you would any other:
 
 <include meta='title="refresh.tsx"'>../../examples/solid/calendar-page.tsx#own-controls</include>
+
+Here is each control once: two buttons, an icon button with a tooltip, a select and a badge.
+
+<SolidExample
+  name="controls"
+  title="The kit's controls"
+  size="h-40"
+  caption="Live. Save stays pending while its promise settles, and the tooltip waits 400 ms."
+/>
+
+<include meta='title="controls.tsx"'>../../examples/solid/controls.tsx#controls</include>
 
 ## Use your own controls
 
@@ -65,8 +78,8 @@ What the views import from each file, and what they pass:
 | `select.tsx`  | `Select`, `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectGroup`, `SelectItem` | `Select`: `items` (`{ label, value }`), `value` and `onValueChange`, which gets the new value. `SelectTrigger`: `aria-label` and `class`. `SelectContent`: `align` and `alignItemWithTrigger`. `SelectItem`: `value`, `label`, and the label with its shortcut as children |
 | `popover.tsx` | `Popover`, `PopoverTrigger`, `PopoverContent`                                          | `PopoverTrigger`: `aria-label`, `class`, `style` and `tabIndex={-1}`, since the grid keeps one tab stop, and its text as children. `PopoverContent`: `align`, `aria-label`, which names the popover, and `class`                                                           |
 
-Props take Solid's names, such as `class`, and otherwise React's kit's, so a control you write for
-both frameworks takes the same props in each.
+Props take Solid's names, such as `class`. React's kit takes the same props under React's names,
+so a control you write for both frameworks has one set of props.
 
 What changes when you swap a control:
 
