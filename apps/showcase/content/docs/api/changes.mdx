@@ -271,7 +271,10 @@ event being dragged has `data-dragging`. Preview elements have `data-calendar-gh
 `"range"`, and `data-invalid` or `data-warning` when `check` says a policy would reject or flag the
 drop. Range previews read `--calendar-ghost-background` and `--calendar-ghost-radius`, event
 previews `--calendar-ghost-shadow` and `--calendar-ghost-opacity`, and both
-`--calendar-ghost-z-index`.
+`--calendar-ghost-z-index`. The registry's themes put the surface's background under an event
+preview, so a chip of an app's without a background of its own stays readable while it moves; set
+`--calendar-ghost-event-background` to change it. A month's timed chip, see-through at rest, takes
+its event colour while it moves.
 
 With `preview: "free"`, the copy that follows the pointer is an event preview too. The marker of
 where the drop would land has `data-calendar-ghost="landing"`, sits one layer below the copy, and

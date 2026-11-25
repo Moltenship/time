@@ -51,7 +51,9 @@ const styles = stylex.create({
   },
   item: {
     backgroundColor: {
+      // See-through on the grid, but tinted as a dragged copy, so the grid doesn't show through.
       default: "transparent",
+      "[data-calendar-ghost]": calendarVars["--calendar-event"],
       ":hover": calendarVars["--accent"],
       "@media (max-width: 639.98px)": {
         default: calendarVars["--calendar-event"],

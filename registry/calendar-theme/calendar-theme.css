@@ -142,6 +142,15 @@
   }
 
   /*
+   * A dragged event's copy: the surface's background under it, so a chip without a background
+   * of its own stays readable over the grid. A chip's own background wins.
+   */
+  [data-calendar-ghost="event"] {
+    background-color: var(--calendar-ghost-event-background, var(--color-calendar-surface));
+    border-radius: var(--calendar-ghost-radius, 6px);
+  }
+
+  /*
    * A drag preview the policies would reject or flag: outlined in dashes, so the state doesn't
    * rest on colour alone, with a rejected range tinted. An outline, because the preview's own
    * inline shadow would hide a ring.
