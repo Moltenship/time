@@ -37,7 +37,7 @@ const { dates } = expandRecurrenceRule(
 
 ## Documentation
 
-- [Recurrence API](https://time.molten.sh/docs/api/recurrence)
+- [Recurring events](https://time.molten.sh/docs/recurrence)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

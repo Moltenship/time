@@ -1,0 +1,93 @@
+---
+title: Read an .ics file
+description: Parse an iCalendar file a person picks or uploads, report its problems with their lines, and turn its dates into instants.
+---
+
+A person exports a calendar from Google Calendar or Outlook and gives your app the `.ics` file.
+This page reads it in the browser, tells the person what the file got wrong, and checks an upload
+on a server. Nothing here needs the calendar or a UI framework.
+
+## Read the file
+
+`readIcsFile` takes the `File` from an `<input type="file">` or a drop, and the viewer's time
+zone. It returns the events with their times as instants, and a line for each problem:
+
+<include meta='title="read-ics-file.ts"'>../../examples/ics-import.ts#read</include>
+
+`parseIcs` takes a string, not bytes. `File.text()` decodes the file as UTF-8, which is the
+encoding RFC 5545 names as the default. Read a `Response` with `response.text()`, and other bytes
+with `new TextDecoder().decode(bytes)`.
+
+A file can hold more than one VCALENDAR, so the function reads every calendar in `calendars`.
+
+## Turn dates into instants
+
+An ICS start is one of five shapes, and `kind` says which. Two of them are instants already. The
+other three need a time zone, which you choose:
+
+<include meta='title="read-ics-file.ts"'>../../examples/ics-import.ts#instant</include>
+
+| `kind`       | The file wrote                        | How the function reads it                    |
+| ------------ | ------------------------------------- | -------------------------------------------- |
+| `utc`        | A time in UTC, ending in `Z`          | The instant itself                           |
+| `zoned`      | A time with a `TZID` the parser knows | The instant in that zone                     |
+| `date`       | A date, for an all-day event          | The start of that date in the zone you chose |
+| `floating`   | A time with no zone                   | That wall time in the zone you chose         |
+| `unresolved` | A time with a `TZID` nobody knows     | That wall time in the zone you chose         |
+
+The parser never falls back to the host's time zone, so the choice is in your code. This function
+uses the calendar's `X-WR-TIMEZONE`, which Google Calendar writes, and the viewer's zone when the
+file has none. [Time zones](/docs/ics/reference#time-zones) lists how a `TZID` is resolved,
+Outlook's Windows names included.
+
+`getEventEnd` returns the end in the start's kind: the file's `DTEND`, or the start plus
+`DURATION`. An event with neither ends the next day when it's all-day, and when it starts when it's
+timed, so give such an event a length of your own before you show it.
+
+An all-day event keeps its date in `event.start.date`. Keep that `Temporal.PlainDate` instead of
+an instant if your app shows all-day events on a date, as the calendar does.
+
+## Tell the person what went wrong
+
+The parser is lenient. It keeps every event it can read and lists what it couldn't in `issues`. An
+issue with the severity `"error"` dropped a value or a whole component, and one with `"warning"`
+kept a value read leniently. Each has the line it came from, when it came from one:
+
+<include meta='title="read-ics-file.ts"'>../../examples/ics-import.ts#problems</include>
+
+For a file whose second event has no `DTSTART`, `problems` holds one line, and `events` holds the
+other events:
+
+```text
+Line 9: VEVENT has no DTSTART; skipped
+```
+
+[Issues and strict mode](/docs/ics/reference#issues-and-strict-mode) lists every code.
+
+## Refuse a file with errors
+
+To import all of a file or none of it, parse with `strict: true`. The parser then throws an
+`IcsParseError` when the text has an error. Its `message` is the first error's, with a count of the
+others, and its `issues` lists them all. Warnings never throw:
+
+<include meta='title="read-strictly.ts"'>../../examples/ics-import.ts#strict</include>
+
+Text without a VCALENDAR is an error too, so this also refuses a file that isn't a calendar.
+
+## Check an upload on a server
+
+A parser is a [Standard Schema](https://standardschema.dev): its `validate` fails with the errors,
+or succeeds with the parse result. A value that isn't a string fails as well, so a form without a
+file gets the same answer as a bad file. This handler runs wherever `Request` and `Response` do:
+
+<include meta='title="route.ts"'>../../examples/ics-import.ts#upload</include>
+
+Anything that takes a Standard Schema takes the parser the same way, such as a form library or a
+router's body validation.
+
+## Recurring events
+
+A recurring event arrives as one event with a `recurrenceRule`, and each changed occurrence as
+another event with the same `uid` and a `recurrenceId`. So `uid` alone doesn't identify an event
+in a file with series. [`@moltenship/calendar-recurrence`](/docs/recurrence) groups such events
+into series with `recurringEventsFromIcs` and lists their occurrences for a range of dates.

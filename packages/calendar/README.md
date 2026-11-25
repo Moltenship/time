@@ -5,10 +5,10 @@ React app installs and imports. It has the React components and hooks, the event
 Temporal helpers and the pointer interactions. Its parts are [ui-sdk](https://ui-sdk.dev)
 components, so an AI agent can read a calendar and act on it once your app creates ui-sdk's agent
 bridge. A SolidJS 2 app installs
-[`@moltenship/calendar-solid`](https://time.molten.sh/docs/api/solid), a preview, instead.
+[`@moltenship/calendar-solid`](https://time.molten.sh/docs/solid), a preview, instead.
 
 > **2.0 pre-release.** The API can still change before 2.0.0. Coming from 1.x? See
-> [Migrating to 2.0](https://time.molten.sh/docs/migrating-to-2).
+> [Migrating to 2.0](https://time.molten.sh/docs/react/migrating-to-2).
 
 ```ts
 import { createCalendar, defineCalendarView, plainDateInterval } from "@moltenship/calendar";
@@ -38,7 +38,7 @@ Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 The styled views, toolbar and theme aren't in this package. They're source files
 that you add to your app with the shadcn CLI and then own; see
-[Installation](https://time.molten.sh/docs/installation).
+[Installation](https://time.molten.sh/docs/react/installation).
 
 ## For coding agents
 
@@ -50,13 +50,13 @@ installed:
   `references/`. Install it with `npx skills add Moltenship/time --skill moltenship-time`, or copy
   the folder into your agent's skills folder.
 
-See [Build with a coding agent](https://time.molten.sh/docs/agents/coding-agents).
+See [Build with a coding agent](https://time.molten.sh/docs/react/agents/coding-agents).
 
 ## Documentation
 
 - [Docs](https://time.molten.sh/docs), starting with the
-  [Quick start](https://time.molten.sh/docs/quick-start)
-- [Agents](https://time.molten.sh/docs/agents)
+  [Quick start](https://time.molten.sh/docs/react/quick-start)
+- [Agents](https://time.molten.sh/docs/react/agents)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

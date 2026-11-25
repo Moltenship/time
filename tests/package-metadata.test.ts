@@ -105,12 +105,23 @@ describe("published package metadata", () => {
       // `pnpm publish` in the package folder fails, so nothing skips the release dry run.
       expect(manifest.scripts?.prepublishOnly).toMatch(/vp run release,.*&& exit 1$/);
 
-      // The homepage is a docs page that exists in the showcase.
-      const page = /^https:\/\/time\.molten\.sh\/docs(?:\/(.+))?$/.exec(manifest.homepage ?? "");
+      // The homepage is a docs page that exists in the showcase. Its address names a framework
+      // (`/docs/react/api/components`), or names none and is a page both frameworks' docs have
+      // (`/docs/ics`), which opens in the framework the reader last read.
+      const page = /^https:\/\/time\.molten\.sh\/docs(?:\/(react|solid)(?=\/|$))?(?:\/(.+))?$/.exec(
+        manifest.homepage ?? "",
+      );
       expect(page, manifest.homepage).not.toBeNull();
-      const content = join("apps/showcase/content/docs", page![1] ?? "index");
+      const [, framework, path = "index"] = page!;
+      const content = join("apps/showcase/content/docs", path);
+      // `page.react.mdx` is React's page alone; `page.mdx` is in both sets.
+      const suffixes = framework === undefined ? [""] : ["", `.${framework}`];
+      const files = suffixes.flatMap((suffix) => [
+        `${content}${suffix}.mdx`,
+        join(content, `index${suffix}.mdx`),
+      ]);
       expect(
-        (await exists(`${content}.mdx`)) || (await exists(join(content, "index.mdx"))),
+        (await Promise.all(files.map((file) => exists(file)))).some(Boolean),
         manifest.homepage,
       ).toBe(true);
     },

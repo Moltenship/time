@@ -22,7 +22,7 @@ the registry views, your policies and your save logic.
   read the `Announcer`; `placementOf(event)` says where an event shows, as comparable text.
 - **Agents.** An AI agent's steps run through ui-sdk's real bridge inside `calendar.act`, with no
   model involved, and `results` says each change's input was `"agent"`. See
-  [Changes an agent makes](https://time.molten.sh/docs/testing#changes-an-agent-makes).
+  [Changes an agent makes](https://time.molten.sh/docs/react/testing#changes-an-agent-makes).
 
 It uses only the public API of `@moltenship/calendar` and `@moltenship/calendar-recurrence`, and
 depends on no test runner: it works in Vitest with jsdom or happy-dom, and in Vitest's browser
@@ -68,7 +68,7 @@ Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 ## Documentation
 
-- [Testing](https://time.molten.sh/docs/testing)
+- [Testing](https://time.molten.sh/docs/react/testing)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

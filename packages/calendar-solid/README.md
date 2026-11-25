@@ -39,7 +39,7 @@ it.
 
 ## Documentation
 
-- [Solid](https://time.molten.sh/docs/api/solid)
+- [Solid](https://time.molten.sh/docs/solid)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

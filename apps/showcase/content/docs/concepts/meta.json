@@ -1,4 +1,11 @@
 {
   "title": "Concepts",
-  "pages": ["how-it-works", "anatomy", "events", "time", "state", "recurrence"]
+  "pages": [
+    "how-it-works",
+    "anatomy",
+    "events",
+    "time",
+    "state",
+    "[Recurring events](/docs/concepts/recurrence)"
+  ]
 }

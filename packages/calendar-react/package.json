@@ -15,7 +15,7 @@
     "temporal",
     "typescript"
   ],
-  "homepage": "https://time.molten.sh/docs/api/react",
+  "homepage": "https://time.molten.sh/docs/react/api/components",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
   },

@@ -2,18 +2,16 @@
   "title": "API reference",
   "pages": [
     "index",
-    "---React and Solid---",
-    "react",
-    "solid",
+    "components",
     "---Engine and state---",
     "events",
     "changes",
     "store",
-    "temporal",
     "primitives",
+    "[Temporal helpers](/docs/api/temporal)",
     "---Other packages---",
-    "recurrence",
-    "ics",
+    "[Recurrence](/docs/api/recurrence)",
+    "[iCalendar (ICS)](/docs/api/ics)",
     "dnd-kit"
   ]
 }

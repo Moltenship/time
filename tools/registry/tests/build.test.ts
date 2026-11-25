@@ -205,7 +205,7 @@ describe("registry build", () => {
     for (const name of names) {
       if (!name.startsWith(stylexItemPrefix)) expect(installation).toContain(`| \`${name}\``);
     }
-    expect(await readFile(join(docs, "stylex.mdx"), "utf8")).toContain(
+    expect(await readFile(join(docs, "stylex.react.mdx"), "utf8")).toContain(
       `npx shadcn@latest add ${defaultRegistryBaseUrl}/${stylexFullItemName}.json`,
     );
 

@@ -10,7 +10,7 @@ describe("the API reference", () => {
       "utf8",
     );
     const page = await readFile(
-      fileURLToPath(new URL("../content/docs/api/recurrence.mdx", import.meta.url)),
+      fileURLToPath(new URL("../content/docs/recurrence/reference.mdx", import.meta.url)),
       "utf8",
     );
     const names = [...index.matchAll(/export (?:type )?\{([^}]*)\}/g)].flatMap((match) =>

@@ -1,22 +1,35 @@
 ---
 title: Installation
-description: Requirements, the packages for React and for SolidJS 2, the ui-sdk peer dependencies, and Temporal setup.
+description: Requirements, the packages to install, the ui-sdk peer dependencies, and Temporal setup.
 ---
 
 <Callout type="warn" title="2.0 is a pre-release">
   These docs describe Time 2.0, which npm has under the `next` tag. Its API can still change before
-  2.0.0, and so can ui-sdk's while it is in beta. Coming from 1.x? See [Migrating to
-  2.0](/docs/migrating-to-2).
+  2.0.0, and so can ui-sdk's while it is in beta.
+  <React>Coming from 1.x? See [Migrating to 2.0](/docs/migrating-to-2).</React>
 </Callout>
 
 ## Requirements
 
-Both frameworks need these:
+<React>
 
-- **ui-sdk.** `@ui-sdk/core` is a peer dependency since 2.0, with `@ui-sdk/react` or
-  `@ui-sdk/solid` beside it. The calendar's parts are [ui-sdk](https://ui-sdk.dev) components,
-  which is how an [agent](/docs/agents) reaches them. ui-sdk is in beta, and the calendar takes
+- **React 19.** React and React DOM are peer dependencies.
+- **ui-sdk.** `@ui-sdk/core` and `@ui-sdk/react` are peer dependencies since 2.0. The calendar's
+  parts are [ui-sdk](https://ui-sdk.dev) components, which is how an [agent](/docs/agents) reaches
+  them. ui-sdk is in beta, and the calendar takes `0.1.0-beta.16` and the betas after it.
+
+</React>
+
+<Solid>
+
+- **SolidJS 2.0.** `solid-js` and `@solidjs/web` are peer dependencies.
+- **ui-sdk.** `@ui-sdk/core` and `@ui-sdk/solid` are peer dependencies. The calendar's parts are
+  [ui-sdk](https://ui-sdk.dev) components, which is how an
+  [agent](/docs/api/components#agents) reaches them. ui-sdk is in beta, and the calendar takes
   `0.1.0-beta.16` and the betas after it.
+
+</Solid>
+
 - **A JavaScript runtime with `Temporal`.** Node.js 26 and later include it. Browser support is
   still rolling out, so check the
   [MDN compatibility table](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal#browser_compatibility)
@@ -24,15 +37,9 @@ Both frameworks need these:
 - **TypeScript 6 or later** with `"lib": ["DOM", "DOM.Iterable", "ESNext"]`. `ESNext` has the
   `Temporal` types.
 
-You also need one of these frameworks:
-
-- **React 19.** React and React DOM are peer dependencies. The React integration is complete.
-- **SolidJS 2.0.** `solid-js` and `@solidjs/web` are peer dependencies. The Solid integration is a
-  preview. [React and Solid](/docs/frameworks) lists what it has.
-
 ## Install
 
-### React
+<React>
 
 <Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
 <Tab value="pnpm">
@@ -69,16 +76,18 @@ Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 `@moltenship/calendar` is the only calendar package most React apps import. It includes the React
 components, the event engine, the Temporal helpers, and the pointer interactions. Recurring events
-add `@moltenship/calendar-recurrence`, reading ICS feeds `@moltenship/ics`, and dragging your own
-dnd-kit items into the calendar `@moltenship/calendar-dnd-kit`. See
-[How it works](/docs/concepts/how-it-works) for what's inside.
+add [`@moltenship/calendar-recurrence`](/docs/recurrence), reading ICS feeds
+[`@moltenship/ics`](/docs/ics), and dragging your own dnd-kit items into the calendar
+`@moltenship/calendar-dnd-kit`. See [How it works](/docs/concepts/how-it-works) for what's inside.
 
 You import ui-sdk yourself in one case: to create the [agent bridge](/docs/agents/connect), from
 `@ui-sdk/react/agent`. Keep one copy of `@ui-sdk/core` in your app. The calendar and the bridge
 find each other through it, and with two copies an agent sees no calendar. Your package manager
 keeps one as long as every `@ui-sdk/*` package is on the same version.
 
-### Solid
+</React>
+
+<Solid>
 
 <Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
 <Tab value="pnpm">
@@ -113,16 +122,45 @@ bun add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js 
 
 Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
-A Solid app installs `@moltenship/calendar-solid` and `@moltenship/calendar-core`, and not
-`@moltenship/calendar`, which is the React package. The event adapter and the functions a view is
-made of come from `@moltenship/calendar-core`. The agent bridge comes from `@ui-sdk/solid/agent`.
-The Temporal helpers are in `@moltenship/calendar-temporal`. Add `@moltenship/calendar-temporal@next`
-when you import one.
+- **`@moltenship/calendar-solid`** has the parts and the hooks.
+- **`@moltenship/calendar-core`** has the event adapter and the functions a view is made of. The
+  Solid package doesn't re-export them.
+- **Don't install `@moltenship/calendar`.** It's the React package, and it doesn't re-export the
+  Solid one.
 
-Your app's Solid compiler has to compile `@ui-sdk/solid`. [Build setup](/docs/api/solid#build-setup)
-has the Vite and TypeScript configuration, and [A calendar](/docs/api/solid#a-calendar) is the first
-calendar to build, since the [Quick start](/docs/quick-start) uses React views. The Temporal and TypeScript sections below apply to
-Solid as written. The UI source section doesn't, since the registry has no Solid views yet.
+Three more packages are optional, and none of them imports a framework. The
+[Temporal helpers](/docs/temporal) are in `@moltenship/calendar-temporal`, recurring events add
+[`@moltenship/calendar-recurrence`](/docs/recurrence), and reading ICS feeds adds
+[`@moltenship/ics`](/docs/ics). Install each with `@next` when you import it.
+
+You import ui-sdk yourself in one case: to create the
+[agent bridge](/docs/api/components#agents), from `@ui-sdk/solid/agent`. Keep one copy of
+`@ui-sdk/core` in your app. The calendar and the bridge find each other through it, and with two
+copies an agent sees no calendar. Your package manager keeps one as long as every `@ui-sdk/*`
+package is on the same version.
+
+## Build setup
+
+The integration is plain TypeScript, and `@ui-sdk/solid` ships JSX for your app's Solid compiler.
+With Vite, use Solid's plugin:
+
+<include meta='title="vite.config.ts"'>../examples/solid/vite.config.ts#config</include>
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "jsx": "preserve",
+    "jsxImportSource": "@solidjs/web",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"]
+  }
+}
+```
+
+If the page fails with `React is not defined` from a file in `@ui-sdk/solid`, the plugin didn't
+compile that package as Solid. Check that `@ui-sdk/solid` is in your app's own `dependencies`,
+where the install command puts it.
+
+</Solid>
 
 ## Temporal
 
@@ -140,6 +178,8 @@ const { App } = await import("./app");
 
 Any polyfill that defines `globalThis.Temporal` works.
 
+<React>
+
 ## TypeScript
 
 Make sure your `tsconfig.json` includes the `ESNext` library so `Temporal` is typed:
@@ -151,6 +191,16 @@ Make sure your `tsconfig.json` includes the `ESNext` library so `Temporal` is ty
   }
 }
 ```
+
+</React>
+
+<Solid>
+
+The `ESNext` library in the `tsconfig.json` above has the `Temporal` types.
+
+</Solid>
+
+<React>
 
 ## UI source (optional)
 
@@ -205,7 +255,7 @@ Or add only the views you use. Each one brings what it builds on: the theme, the
 | `scrolling-list-view`      | The scrolling agenda                                                         |
 | `resource-columns-view`    | The [resource columns](/docs/views/resource-columns) view                    |
 | `resource-timeline-view`   | The [resource timeline](/docs/views/resource-timeline) views                 |
-| `recurrence-scope-dialog`  | The [recurrence scope dialog](/docs/guides/recurring-events)                 |
+| `recurrence-scope-dialog`  | The [recurrence scope dialog](/docs/recurrence/calendar)                     |
 | `calendar-history-toast`   | The [undo toast](/docs/undo-redo#undo-toast)                                 |
 | `base-tokens`              | shadcn/ui's neutral tokens, for an app without them                          |
 
@@ -266,6 +316,18 @@ as [Theming](/docs/theming#changing-tokens) shows. Run `shadcn add` again to upd
 asks before it replaces a file you already have, and `--overwrite` replaces them all, with any
 changes you made.
 
+</React>
+
+<Solid>
+
+## Views
+
+The package has no ready-made views yet. You write each view as a Solid component, and the
+[Quick start](/docs/quick-start) writes the first one. [What's coming](/docs/frameworks#whats-coming)
+has the plan for Solid views in the registry.
+
+</Solid>
+
 ## Run from source
 
 To work on Time, or to try changes that aren't released yet, run it and this documentation site
@@ -279,7 +341,8 @@ vp run dev
 ```
 
 `vp run dev` starts this site locally. The examples on these pages are real files in
-`apps/showcase/content/examples`, type-checked against the current packages.
 
-Next, build a React calendar in the [Quick start](/docs/quick-start), or a Solid one in
-[A calendar](/docs/api/solid#a-calendar).
+<React>`apps/showcase/content/examples`</React>
+<Solid>`apps/showcase/content/examples/solid`</Solid>, type-checked against the current packages.
+
+Next, build a calendar in the [Quick start](/docs/quick-start).

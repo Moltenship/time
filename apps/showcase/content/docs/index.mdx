@@ -1,41 +1,57 @@
 ---
 title: Introduction
-description: A calendar engine on the Temporal API with a complete React integration, a SolidJS 2 preview, views you copy and own, and actions an AI agent can call.
+description: A calendar engine on the Temporal API, rendered in React and in SolidJS 2, with actions an AI agent can call.
 ---
 
 Moltenship Time is a calendar for scheduling screens such as bookings, rooms, shifts and team
 calendars. Its engine handles dates, time zones, recurrence, calendar state, event lookups and
-saving changes, and it imports no UI framework. React renders it. A SolidJS 2 package, a preview,
-renders the parts and leaves the views to you. Your events stay in the shape your app already uses, and Time reads them through an
-adapter. The week, day, month, year, agenda and resource views are React source files you copy into
-your app. An AI agent can read the same calendar and act on it through named actions, under rules
-your app sets.
+saving changes, and it imports no UI framework. Your events stay in the shape your app already
+uses, and Time reads them through an adapter. An AI agent can read the same calendar and act on it
+through named actions, under rules your app sets.
+
+<React>
+
+These are the React docs. `@moltenship/calendar` renders the engine in React 19, and the week, day,
+month, year, agenda and resource views are React source files you copy into your app. The select
+at the top of the sidebar switches to the Solid docs.
 
 <CalendarPreview switcher />
 
 To see every view with more data, try the [live demo](https://moltenship-time-demo.vercel.app), a
-Google Calendar-style app built from the same views. A switch in it opens the
-[Solid demo](https://moltenship-time-demo.vercel.app/solid/), which has a month grid and an agenda
-you can drag events in, undo and redo, and an agent panel.
+Google Calendar-style app built from the same views.
+
+</React>
+
+<Solid>
+
+These are the Solid docs. `@moltenship/calendar-solid` renders the engine in SolidJS 2: the parts,
+the hooks, keyboard navigation, dragging, undo and the actions an agent calls. It is a preview. It
+has no ready-made views yet, so you write each view as a Solid component that draws a layout the
+engine computes. [What's coming](/docs/frameworks#whats-coming) says what Solid doesn't have yet.
+The select at the top of the sidebar switches to the React docs.
+
+The [Solid demo](https://moltenship-time-demo.vercel.app/solid/) is a running Solid calendar. It
+has a month grid and an agenda you can drag events in, undo and redo, and an agent panel. Its
+source is the repository's
+[`apps/demo-solid`](https://github.com/Moltenship/time/tree/main/apps/demo-solid).
+
+</Solid>
 
 <Callout type="warn" title="2.0 is a pre-release">
   These docs describe Time 2.0, which is built on [ui-sdk](https://ui-sdk.dev). Time 2.0 is a
-  pre-release and ui-sdk is a beta, so both APIs can still change before 2.0.0. Coming from 1.x? See
-  [Migrating to 2.0](/docs/migrating-to-2).
+  pre-release and ui-sdk is a beta, so both APIs can still change before 2.0.0.
+  <React>Coming from 1.x? See [Migrating to 2.0](/docs/migrating-to-2).</React>
 </Callout>
 
 ## Where to start
 
+<React>
+
 <Cards>
   <Card
-    title="Build a calendar in React"
+    title="Build a calendar"
     href="/docs/quick-start"
     description="Install the package, add the views with the shadcn CLI, and render a week, day, month and agenda calendar."
-  />
-  <Card
-    title="Build a calendar in Solid"
-    href="/docs/frameworks#start-in-solid"
-    description="What the SolidJS 2 preview has, what it doesn't have yet, and a first calendar with a view you write."
   />
   <Card
     title="Let an AI agent use a calendar"
@@ -47,26 +63,78 @@ you can drag events in, undo and redo, and an agent panel.
     href="/docs/agents/coding-agents"
     description="These docs as Markdown, llms.txt, and a skill that ships in @moltenship/calendar@next."
   />
+  <Card
+    title="Parse an ICS feed"
+    href="/docs/ics"
+    description="@moltenship/ics reads iCalendar text into Temporal values, with or without the calendar."
+  />
 </Cards>
+
+</React>
+
+<Solid>
+
+<Cards>
+  <Card
+    title="Build a calendar"
+    href="/docs/quick-start"
+    description="Install the packages, set up the Solid compiler, and render a calendar with an agenda you write."
+  />
+  <Card
+    title="Components and hooks"
+    href="/docs/api/components"
+    description="Every part and hook, keyboard navigation and dragging in a view, undo, server rendering and agents."
+  />
+  <Card
+    title="React and Solid"
+    href="/docs/frameworks"
+    description="What the two integrations share, what Solid has today, and what's coming."
+  />
+  <Card
+    title="Parse an ICS feed"
+    href="/docs/ics"
+    description="@moltenship/ics reads iCalendar text into Temporal values, with or without the calendar."
+  />
+</Cards>
+
+</Solid>
 
 ## What it looks like
 
-This is the render part of the [Quick start](/docs/quick-start), in React. `Calendar` comes from
+<React>
+
+This is the render part of the [Quick start](/docs/quick-start). `Calendar` comes from
 `createCalendar`, and `meetings` is a plain array of your own records.
 
 <include meta='title="calendar.tsx"'>../examples/quick-start.tsx#root</include>
+
+</React>
+
+<Solid>
+
+This is the status line of a calendar, as a Solid component. `Calendar` comes from
+`createCalendar`, and each hook returns an accessor. The [Quick start](/docs/quick-start) builds
+the calendar around it.
+
+<include meta='title="status.tsx"'>../examples/solid/status.tsx#status</include>
+
+</Solid>
 
 ## Who it's for
 
 Time is for developers who build scheduling screens and want to:
 
 - keep their existing event data and API,
-- style the calendar with their own design system, or start from shadcn/ui,
+- style the calendar with their own design system<React>, or start from shadcn/ui</React>,
 - get time zones and daylight saving time right without writing that math themselves,
 - let an AI agent work with the calendar without handing it the page's markup.
 
+<React>
+
 [Comparison](/docs/comparison) sets Time beside FullCalendar and react-big-calendar, including
 where they're ahead.
+
+</React>
 
 ## What you get today
 
@@ -74,45 +142,59 @@ The engine, the calendar's state, the keyboard, the gestures and the hooks are t
 and Solid. The ready-made views and the testing package exist in React only.
 [React and Solid](/docs/frameworks) has the full table.
 
-### In React and in Solid
-
 - **Your data, read through an adapter.** You describe how to read an ID, a title and a time range
   from your records. TypeScript keeps your record and ID types in every hook and callback.
 - **Three kinds of time.** Timed events use `Temporal.Instant`, all-day events use
   `Temporal.PlainDate`, and floating events use `Temporal.PlainDateTime`. No `Date` objects.
 - **Time zones and daylight saving time.** The engine lays out days that are 23 or 25 hours long,
-  and hours that a clock change skips or repeats. See [Time and time zones](/docs/concepts/time).
-- **Recurrence and iCalendar.** `@moltenship/calendar-recurrence` expands RRULE series inside the
-  dates on screen, and `@moltenship/ics` parses ICS feeds. Neither imports a framework.
+  and hours that a clock change skips or repeats. <React>See
+  [Time and time zones](/docs/concepts/time).</React>
+- **Recurrence and iCalendar.** [`@moltenship/calendar-recurrence`](/docs/recurrence) expands
+  RRULE series inside the dates on screen, and [`@moltenship/ics`](/docs/ics) parses ICS feeds.
+  Neither imports a framework.
 - **Changes you save.** A move, a resize, a create or a delete arrives as a change in
   `onEventChange`. It shows as pending while it saves, rolls back if saving fails, and passes
-  through policies you choose. See [Interactions](/docs/interactions).
+  through policies you choose. <React>See [Interactions](/docs/interactions).</React>
 - **Controlled or uncontrolled state.** The calendar or your app can own the visible date, the
   view, the time zone, the selection and the focus, one value at a time.
 - **Headless parts.** `Root`, the previous, next and today buttons, `Title` and `ActiveView` render
-  plain elements. A [custom view](/docs/views/custom-views) is a strategy and a component. The
-  registry's React views are one UI built on these parts, and
-  [Customization](/docs/customization) shows how to restyle it, edit it or build your own.
+  plain elements. A view is a strategy and a component.
+  <React>
+    [Custom views](/docs/views/custom-views) shows how to write one. The registry's views are one UI
+    built on these parts, and [Customization](/docs/customization) shows how to restyle it, edit it
+    or build your own.
+  </React>
+  <Solid>The [Quick start](/docs/quick-start) writes one.</Solid>
 - **Actions for agents.** A calendar gives an AI agent fourteen actions, and a fifteenth, deleting,
   when you allow it. They describe the calendar, list its events, navigate, switch view, and
   create, rename, move and resize events. An agent sees nothing until your app creates ui-sdk's
-  agent bridge. An agent's change goes through your
-  policies and your `onEventChange`, marked as an agent's, and the agent gets back how it ended.
-  A browser's built-in agent reaches them through WebMCP, an experimental browser API, and a model
-  you run reaches them through `agentTools`. See [Agents in your app](/docs/agents).
+  agent bridge. An agent's change goes through your policies and your `onEventChange`, marked as an
+  agent's, and the agent gets back how it ended. A browser's built-in agent reaches them through
+  WebMCP, an experimental browser API, and a model you run reaches them through `agentTools`.
+  <React>See [Agents in your app](/docs/agents).</React>
+  <Solid>See [Agents](/docs/api/components#agents).</Solid>
 - **Editing by pointer and keyboard.** `useCalendarPointer` turns drags into moves, resizes and
   creates, with a mouse, a pen or touch, and `useCalendarKeyboard` moves focus through a view and
-  moves and resizes events [from the keyboard](/docs/accessibility#changing-events). The
-  `Announcer` says each step to a screen reader.
+  moves and resizes events from the keyboard. The `Announcer` says each step to a screen reader.
+  <React>See [Changing events](/docs/accessibility#changing-events).</React>
+  <Solid>
+    See [Keyboard and dragging in a view](/docs/api/components#keyboard-and-dragging-in-a-view).
+  </Solid>
 - **Undo and redo.** `createEventHistory` records changes, and `useCalendarHistory` and its
-  keyboard shortcuts take them back. See [Undo and redo](/docs/undo-redo).
+  keyboard shortcuts take them back. <React>See [Undo and redo](/docs/undo-redo).</React>
+  <Solid>See [Undo and redo](/docs/api/components#undo-and-redo).</Solid>
 - **Server rendering.** During server rendering, Time doesn't read the clock, the host time zone or
   `window`, so the server and the browser render the same markup from the same props.
-- **Docs your coding agent can read.** Every page has a Markdown version, the docs ship inside
-  `@moltenship/calendar@next`, and a skill teaches a coding agent the library. See
-  [Build with a coding agent](/docs/agents/coding-agents).
+- **Docs your coding agent can read.** Every page has a Markdown version, at its own address with
+  `.md` added, and [`/llms.txt`](/llms.txt) lists them.
+  <React>
+    The docs ship inside `@moltenship/calendar@next`, and a skill teaches a coding agent the
+    library. See [Build with a coding agent](/docs/agents/coding-agents).
+  </React>
 
-### In React
+<React>
+
+### Only in React today
 
 - **Built-in views.** [Week, day](/docs/views/week-and-day), [month](/docs/views/month),
   [year](/docs/views/year), [agenda](/docs/views/agenda),
@@ -126,18 +208,12 @@ and Solid. The ready-made views and the testing package exist in React only.
 - **A testing package.** [`@moltenship/calendar-testing`](/docs/testing) has a fixed clock, typed
   builders, a render harness, and keyboard and pointer drivers.
 
-### In Solid, as a preview
-
-`@moltenship/calendar-solid` has the parts and hooks React has, so a view you write gets keyboard
-navigation, dragging, drafts and undo. It has no ready-made views and no testing package yet. See
-[Solid](/docs/api/solid).
-
 <Cards>
   <Card title="Installation" href="/docs/installation" description="Requirements and setup." />
   <Card
     title="Quick start"
     href="/docs/quick-start"
-    description="A week, day, month and agenda calendar in React."
+    description="A week, day, month and agenda calendar."
   />
   <Card
     title="React and Solid"
@@ -150,3 +226,33 @@ navigation, dragging, drafts and undo. It has no ready-made views and no testing
     description="The packages, events, time and state."
   />
 </Cards>
+
+</React>
+
+<Solid>
+
+### Not in Solid yet
+
+Ready-made views, the undo toast, the testing package and the dnd-kit adapter exist in React only.
+[What's coming](/docs/frameworks#whats-coming) lists them and links the issue that tracks the
+work.
+
+<Cards>
+  <Card
+    title="Installation"
+    href="/docs/installation"
+    description="Requirements, packages and the Solid compiler's setup."
+  />
+  <Card
+    title="Quick start"
+    href="/docs/quick-start"
+    description="A calendar with an agenda you write."
+  />
+  <Card
+    title="Components and hooks"
+    href="/docs/api/components"
+    description="The API of @moltenship/calendar-solid."
+  />
+</Cards>
+
+</Solid>

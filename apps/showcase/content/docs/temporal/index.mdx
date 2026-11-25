@@ -1,0 +1,119 @@
+---
+title: Overview
+description: What @moltenship/calendar-temporal is, how to install it, and a first example of its date ranges.
+---
+
+`@moltenship/calendar-temporal` is the date math under the calendar: ranges, week and month grids,
+rounding and snapping, the real length of a day in a time zone, and what happens to a time when
+the clocks change. Dates and times go in and out as native `Temporal` values.
+
+Apart from `createSystemClock`, nothing in it reads the clock, and nothing reads the host's time
+zone. Every function takes the date, the time zone and the first day of the week as arguments, so
+the same call gives the same answer on a server, in a browser and in a test.
+
+## Use it without the calendar
+
+The package has no dependencies and imports no UI framework. Install it alone for a date picker of
+your own, a booking form, a report grouped by week, or any code that needs a correct month grid or
+a day that is 23 hours long.
+
+<React>
+
+`@moltenship/calendar` re-exports all of it. An app that has the calendar imports these functions
+from there, and needs nothing more installed:
+
+```ts
+import { plainDateInterval, zonedDayRange } from "@moltenship/calendar";
+```
+
+</React>
+
+<Solid>
+
+`@moltenship/calendar-solid` doesn't re-export it. A Solid app installs it beside the calendar and
+imports from it by name.
+
+</Solid>
+
+## Install
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @moltenship/calendar-temporal@next
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @moltenship/calendar-temporal@next
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @moltenship/calendar-temporal@next
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/calendar-temporal@next
+```
+
+</Tab>
+</Tabs>
+
+The package is versioned with the calendar. 2.0 is a pre-release on npm's `next` tag, so the
+command installs `@next`.
+
+It needs a runtime with `Temporal`, or a polyfill loaded first, and TypeScript's `ESNext` library.
+[Installation](/docs/installation#temporal) shows both.
+
+## A first example
+
+A range has a `start` and an `end`. It includes the start and excludes the end, which is how
+nights, bookings and visible dates are counted:
+
+<include meta='title="stay.ts"'>../../examples/temporal-first.ts#first</include>
+
+`nights` runs from October 9 up to October 12: the three nights of the stay that fall in that
+week. `plainDateInterval` throws an `InvalidHalfOpenIntervalError` when the start isn't before the
+end, so a range that exists is valid.
+
+## What's in it
+
+| You need                                                    | Use                                                             |
+| ----------------------------------------------------------- | --------------------------------------------------------------- |
+| A range of dates, instants or wall-clock times              | `plainDateInterval`, `instantInterval`, `plainDateTimeInterval` |
+| Whether two ranges overlap, and where                       | `plainDateIntervalsIntersect`, `intersectPlainDateIntervals`    |
+| The week or the month grid around a date                    | `weekRange`, `monthGrid`, `iteratePlainDates`                   |
+| A time rounded to a grid of minutes                         | `snapPlainTime`, `snapZonedDateTime`, `snapZonedWallTime`       |
+| When a date starts and ends in a time zone                  | `zonedDayRange`, `splitInstantRangeByZonedDay`                  |
+| The instant of a wall-clock time, with gaps and folds named | `resolveZonedWallTime`                                          |
+| The rows of a day view                                      | `slotsInZonedDay`                                               |
+| A clock you can fix in a test                               | `createFixedClock`, `createSystemClock`                         |
+
+## Next
+
+<Cards>
+  <Card
+    title="Build a month grid"
+    href="/docs/temporal/month-grid"
+    description="The weeks of a month, the weekday names above them, and the days of the months around it."
+  />
+  <Card
+    title="Handle daylight saving time"
+    href="/docs/temporal/daylight-saving-time"
+    description="Days of 23 and 25 hours, times the clocks skip or repeat, and the rows of a day view."
+  />
+  <Card
+    title="API reference"
+    href="/docs/temporal/reference"
+    description="Every function, by what it works on."
+  />
+</Cards>

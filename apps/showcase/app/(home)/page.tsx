@@ -10,6 +10,7 @@ import {
 import { AgentPreview } from "@/components/agent-preview";
 import InstallCommand from "@/components/install-command";
 import { CalendarPreview } from "@/components/calendar-preview";
+import { ReactLogo, SolidLogo } from "@/components/framework-logos";
 import { codeThemes } from "@/lib/code-themes";
 import {
   demoUrl,
@@ -151,7 +152,7 @@ const agentDocs = [
   },
   {
     name: "node_modules/@moltenship/calendar/docs",
-    href: "/docs/agents/coding-agents#docs-in-the-package",
+    href: "/docs/react/agents/coding-agents#docs-in-the-package",
     description: "The same pages inside the package since 2.0, for the version you installed.",
   },
 ] as const;
@@ -188,9 +189,16 @@ export default async function HomePage() {
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               className={`${buttonClass} bg-fd-primary text-fd-primary-foreground hover:bg-fd-primary/85`}
-              href="/docs"
+              href="/docs/react"
             >
-              Get started
+              React docs
+              <ArrowRightIcon />
+            </Link>
+            <Link
+              className={`${buttonClass} border bg-fd-background hover:bg-fd-accent`}
+              href="/docs/solid"
+            >
+              Solid docs
               <ArrowRightIcon />
             </Link>
             <a
@@ -228,7 +236,7 @@ export default async function HomePage() {
           styles, and those views are one UI on top of them. You can{" "}
           <Link
             className="underline underline-offset-4 hover:text-fd-foreground"
-            href="/docs/customization"
+            href="/docs/react/customization"
           >
             restyle it, edit its files or build your own
           </Link>{" "}
@@ -274,7 +282,7 @@ export default async function HomePage() {
             </div>
           ))}
         </dl>
-        <Link className={`${sectionLinkClass} mt-8 px-2 sm:px-0`} href="/docs/agents">
+        <Link className={`${sectionLinkClass} mt-8 px-2 sm:px-0`} href="/docs/react/agents">
           Read the agents guide
           <ArrowRightIcon className="size-3.5" />
         </Link>
@@ -304,10 +312,22 @@ export default async function HomePage() {
           <p className="mt-4 text-fd-muted-foreground">
             Time 2.0 is a pre-release and ui-sdk is a beta, so both APIs can still change.
           </p>
-          <Link className={`${sectionLinkClass} mt-8`} href="/docs/frameworks">
-            Compare React and Solid
-            <ArrowRightIcon className="size-3.5" />
-          </Link>
+          <div className="mt-8 flex flex-col items-start gap-3">
+            <Link className={sectionLinkClass} href="/docs/react/quick-start">
+              <ReactLogo className="size-4" />
+              Start with React
+              <ArrowRightIcon className="size-3.5" />
+            </Link>
+            <Link className={sectionLinkClass} href="/docs/solid/quick-start">
+              <SolidLogo className="size-4" />
+              Start with Solid
+              <ArrowRightIcon className="size-3.5" />
+            </Link>
+            <Link className={sectionLinkClass} href="/docs/react/frameworks">
+              Compare React and Solid
+              <ArrowRightIcon className="size-3.5" />
+            </Link>
+          </div>
         </div>
         <div className="overflow-x-auto rounded-xl border bg-fd-background shadow-sm">
           <table className="w-full text-left text-sm">
@@ -360,7 +380,7 @@ export default async function HomePage() {
               </li>
             ))}
           </ol>
-          <Link className={`${sectionLinkClass} mt-8`} href="/docs/quick-start">
+          <Link className={`${sectionLinkClass} mt-8`} href="/docs/react/quick-start">
             Build the React quick start
             <ArrowRightIcon className="size-3.5" />
           </Link>
@@ -388,7 +408,7 @@ export default async function HomePage() {
             A coding agent trained before 2.0 guesses at this API. The docs come as Markdown, on the
             site and inside the package, and a skill tells the agent where to look first.
           </p>
-          <Link className={`${sectionLinkClass} mt-8`} href="/docs/agents/coding-agents">
+          <Link className={`${sectionLinkClass} mt-8`} href="/docs/react/agents/coding-agents">
             Build with a coding agent
             <ArrowRightIcon className="size-3.5" />
           </Link>

@@ -17,7 +17,7 @@ create, update, move, resize and delete events. Each action takes one JSON objec
 action returns the change with how it ended. An agent's change says it came from an agent
 (`input: "agent"`) and goes through the same policies and `onEventChange` as any other, so the app
 can refuse it. The app creates the bridge; this package never does. See
-[Agents](https://time.molten.sh/docs/agents).
+[Agents](https://time.molten.sh/docs/react/agents).
 
 The dates, time zones, recurrence, layouts and policies stay in the calendar's own engine
 (`@moltenship/calendar-core` and `@moltenship/calendar-temporal`). This package imports no UI
@@ -41,8 +41,8 @@ Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 ## Documentation
 
-- [Primitives](https://time.molten.sh/docs/api/primitives)
-- [Agent reference](https://time.molten.sh/docs/agents/reference)
+- [Primitives](https://time.molten.sh/docs/react/api/primitives)
+- [Agent reference](https://time.molten.sh/docs/react/agents/reference)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

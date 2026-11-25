@@ -35,7 +35,7 @@ const seed: readonly Meeting[] = [
 const weekRules: CalendarWeekRules = { firstDay: 1, minimalDays: 4, weekend: [6, 7] };
 
 // The Solid integration's docs, which say what the preview has and what comes next.
-const docsUrl = "https://time.molten.sh/docs/api/solid";
+const docsUrl = "https://time.molten.sh/docs/solid";
 
 const local = (date: Temporal.PlainDate, time: string) => `${date.toString()}T${time}`;
 

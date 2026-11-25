@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="https://time.molten.sh/docs"><b>Documentation</b></a> ·
-  <a href="https://time.molten.sh/docs/quick-start">Quick start</a> ·
+  <a href="https://time.molten.sh/docs/react/quick-start">Quick start</a> ·
   <a href="https://moltenship-time-demo.vercel.app">Live demo</a> ·
   <a href="https://github.com/Moltenship/time/releases">Releases</a>
 </p>
@@ -43,7 +43,7 @@ React app built from the same views. Its source is in [`apps/demo`](./apps/demo)
 > [!NOTE]
 > Time 2.0 is a pre-release. It rebuilds the calendar's parts on [ui-sdk](https://ui-sdk.dev),
 > which is itself in beta, so the API can still change before 2.0.0. Coming from 1.x? See
-> [Migrating to 2.0](https://time.molten.sh/docs/migrating-to-2).
+> [Migrating to 2.0](https://time.molten.sh/docs/react/migrating-to-2).
 
 ## Features
 
@@ -58,7 +58,7 @@ React app built from the same views. Its source is in [`apps/demo`](./apps/demo)
   or StyleX.
 - **Headless underneath.** The packages ship no styles, and the registry's views are one UI on top
   of them. Restyle it with tokens, edit the files, swap its controls, or build your own UI with
-  MUI or any other library. See [Customization](https://time.molten.sh/docs/customization).
+  MUI or any other library. See [Customization](https://time.molten.sh/docs/react/customization).
 - **Editing.** In React, people drag, resize and create events with a mouse, a pen or touch. Each
   edit arrives as a change for you to save. It shows as pending while it saves and rolls back if
   saving fails.
@@ -72,15 +72,15 @@ React app built from the same views. Its source is in [`apps/demo`](./apps/demo)
   events, navigate, switch views, and create, rename, move, resize and delete events. An agent
   reaches a calendar only after your app creates ui-sdk's agent bridge, and deleting is off until
   you turn it on. Your app decides what an agent may do and saves every change itself. See
-  [Agents](https://time.molten.sh/docs/agents).
+  [Agents](https://time.molten.sh/docs/react/agents).
 - **React and Solid.** One package holds the calendar's state and actions, and it imports no
   framework. The React integration is complete. The
-  [SolidJS 2](https://time.molten.sh/docs/api/solid) integration is a preview. It has `Root`, the
-  structural parts and the hooks that read state, and it has no ready-made views, keyboard
-  navigation or dragging yet. [React and Solid](https://time.molten.sh/docs/frameworks) lists what
-  the two share.
+  [SolidJS 2](https://time.molten.sh/docs/solid) integration is a preview. It has the same parts
+  and hooks, keyboard navigation, dragging and undo, and no ready-made views yet, so you write each
+  view as a Solid component. [React and Solid](https://time.molten.sh/docs/react/frameworks) lists
+  what the two share.
 
-[Comparison](https://time.molten.sh/docs/comparison) sets Time beside FullCalendar and
+[Comparison](https://time.molten.sh/docs/react/comparison) sets Time beside FullCalendar and
 react-big-calendar, including where they're ahead.
 
 ## Install
@@ -108,7 +108,7 @@ Time needs:
   polyfill before the calendar. Time never bundles one.
 - TypeScript 6 or later with `"lib": ["DOM", "DOM.Iterable", "ESNext"]`.
 
-[Installation](https://time.molten.sh/docs/installation) covers the polyfill, the TypeScript setup
+[Installation](https://time.molten.sh/docs/react/installation) covers the polyfill, the TypeScript setup
 and the Solid compiler.
 
 ## Quick start
@@ -177,7 +177,7 @@ export function MeetingCalendar({ meetings }: { meetings: readonly Meeting[] }) 
 
 In a Solid app the adapter and the view's strategy are the same, `createCalendar` comes from
 `@moltenship/calendar-solid`, and the `Renderer` is a Solid component.
-[Solid](https://time.molten.sh/docs/api/solid#a-calendar) has that calendar.
+[Solid](https://time.molten.sh/docs/solid/quick-start) has that calendar.
 
 ### Add the built-in views
 
@@ -192,7 +192,7 @@ npx shadcn@latest add \
 ```
 
 The files land in `components/calendar/`, along with the theme, the toolbar and the view switcher.
-The [Quick start](https://time.molten.sh/docs/quick-start) wires them into `createCalendar`.
+The [Quick start](https://time.molten.sh/docs/react/quick-start) wires them into `createCalendar`.
 
 ## Packages
 
@@ -203,7 +203,7 @@ core and Temporal packages. A Solid app imports `@moltenship/calendar-solid` and
 | Package | What it does |
 | --- | --- |
 | [`@moltenship/calendar`](./packages/calendar) | The package a React app installs: React components and hooks, the event engine, Temporal helpers and pointer interactions. |
-| [`@moltenship/calendar-solid`](./packages/calendar-solid) | The SolidJS 2 integration, a preview with `Root`, the structural parts and the hooks that read state. |
+| [`@moltenship/calendar-solid`](./packages/calendar-solid) | The SolidJS 2 integration, a preview: the parts, the hooks, keyboard navigation, dragging and undo, without ready-made views. |
 | [`@moltenship/calendar-recurrence`](./packages/calendar-recurrence) | RRULE expansion inside a range, exceptions and series edits. |
 | [`@moltenship/ics`](./packages/ics) | Typed iCalendar (RFC 5545) parsing into Temporal values, with Standard Schema support. |
 | [`@moltenship/calendar-dnd-kit`](./packages/calendar-dnd-kit) | A dnd-kit adapter: drag your own items into the calendar and events out. |
@@ -218,12 +218,12 @@ core and Temporal packages. A Solid app imports `@moltenship/calendar-solid` and
 
 The docs are at **[time.molten.sh](https://time.molten.sh/docs)**. Good places to start:
 
-- [Quick start](https://time.molten.sh/docs/quick-start)
-- [React and Solid](https://time.molten.sh/docs/frameworks)
-- [Events and adapters](https://time.molten.sh/docs/concepts/events)
-- [Interactions](https://time.molten.sh/docs/interactions)
-- [Theming](https://time.molten.sh/docs/theming)
-- [Agents](https://time.molten.sh/docs/agents)
+- [Quick start](https://time.molten.sh/docs/react/quick-start)
+- [React and Solid](https://time.molten.sh/docs/react/frameworks)
+- [Events and adapters](https://time.molten.sh/docs/react/concepts/events)
+- [Interactions](https://time.molten.sh/docs/react/interactions)
+- [Theming](https://time.molten.sh/docs/react/theming)
+- [Agents](https://time.molten.sh/docs/react/agents)
 
 ### For coding agents
 
@@ -243,7 +243,7 @@ The docs are written to be read by a coding agent too:
   Its source is in [`packages/calendar/skills`](./packages/calendar/skills/moltenship-time), and it
   ships in the package beside the docs.
 
-See [Build with a coding agent](https://time.molten.sh/docs/agents/coding-agents).
+See [Build with a coding agent](https://time.molten.sh/docs/react/agents/coding-agents).
 
 To work on the docs, run `vp run dev` and edit the MDX in
 [`apps/showcase/content/docs`](./apps/showcase/content/docs). Start the demo with

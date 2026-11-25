@@ -1,0 +1,96 @@
+---
+title: Quick start
+description: Build a Solid calendar with a toolbar and an agenda view you write, showing your own meetings.
+---
+
+You'll build a calendar in SolidJS 2: a toolbar with previous, next and today buttons, a title, and
+an agenda of your own meetings. `@moltenship/calendar-solid` has no ready-made views yet, so the
+agenda is a Solid component you write. It draws a layout the engine computes.
+
+This page shows code only, since this site is a React app. The
+[Solid demo](https://moltenship-time-demo.vercel.app/solid/) is a running Solid calendar built the
+same way, with a month grid, an agenda and an agent panel. Its source is the repository's
+[`apps/demo-solid`](https://github.com/Moltenship/time/tree/main/apps/demo-solid).
+
+<Steps>
+<Step>
+
+### Install
+
+Install `@moltenship/calendar-solid`, `@moltenship/calendar-core` and their peer dependencies as
+[Installation](/docs/installation#install) describes, and set up the Solid compiler as
+[Build setup](/docs/installation#build-setup) shows.
+
+</Step>
+<Step>
+
+### Create the calendar
+
+One file holds the three things a calendar is made of:
+
+- **An adapter.** `defineEventAdapter` says how to read an ID, a title and a time range from your
+  records. `Meeting` here is the app's own type.
+- **A view.** `defineCalendarView` takes a name, a strategy and a `Renderer`. The strategy picks
+  the dates and lays out the events. This one uses the engine's list functions, and `projectList`
+  returns the days with their events. `Agenda` is the `Renderer`, a Solid component that draws
+  that projection.
+- **The calendar.** `createCalendar` returns `Calendar`, the parts and hooks typed for your
+  records. The first view in the list is shown first.
+
+<include meta='title="calendar.tsx"'>../examples/solid/calendar.tsx#calendar</include>
+
+A `Renderer`'s props are getters, as every Solid component's are. Read `props.projection` where
+it's used, and don't destructure it.
+
+</Step>
+<Step>
+
+### Render it
+
+`Root` takes your events and the handler that saves a change. The events live in a signal of
+yours, and the calendar never stores them. Pass the signal's value: `events={meetings()}`.
+
+<include meta='title="app.tsx"'>../examples/solid/app.tsx#app</include>
+
+`Root` renders no element. `Frame` is the calendar's `<section>`, named by `label`, and
+`ActiveView` renders the active view's `Renderer`. The parts render plain elements with a
+`data-calendar-part` attribute and bring no styles, so the look is your CSS.
+
+`onEventChange` receives every change to an event: a move, a resize, a create or a delete. This
+agenda binds no dragging, so here the changes come from an
+[agent](/docs/api/components#agents), and `titleFrom` reads the title the agent sent.
+
+</Step>
+<Step>
+
+### Mount it
+
+Load a `Temporal` polyfill where the browser lacks one, then import the app, so no module runs
+before `Temporal` exists:
+
+<include meta='title="main.tsx"'>../examples/solid/main.tsx#main</include>
+
+The calendar now shows the two weeks from Monday, October 5, 2026, with the standup on Thursday,
+and the toolbar's buttons move it two weeks at a time.
+
+</Step>
+</Steps>
+
+## Read the state
+
+The hooks read the calendar from any component inside `Root`. Each one that reads a value returns
+an accessor, so call it where you use it: `view()`, `range()`.
+
+<include meta='title="status.tsx"'>../examples/solid/status.tsx#status</include>
+
+## Next steps
+
+- [Components and hooks](/docs/api/components) lists every part, hook and export of the package.
+- [Keyboard and dragging in a view](/docs/api/components#keyboard-and-dragging-in-a-view) writes a
+  month grid with roving focus, and drags that move, resize and create events.
+- [Undo and redo](/docs/api/components#undo-and-redo) records changes and takes them back.
+- [Agents](/docs/api/components#agents) lets an AI agent read the calendar and change it.
+- [Recurring events](/docs/recurrence) and [iCalendar](/docs/ics) turn series and ICS feeds into
+  events the calendar shows.
+- [React and Solid](/docs/frameworks) says what the two integrations share, and what Solid
+  doesn't have yet.

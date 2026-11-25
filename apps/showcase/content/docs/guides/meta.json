@@ -3,8 +3,8 @@
   "pages": [
     "nextjs",
     "nextjs-app-router",
-    "ics",
-    "recurring-events",
+    "[Show an ICS feed](/docs/guides/ics)",
+    "[Show and edit recurring events](/docs/guides/recurring-events)",
     "google-calendar",
     "google-calendar-sync",
     "tanstack-query",
