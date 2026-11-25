@@ -311,33 +311,18 @@ interface Scenario {
 }
 
 /**
- * The views the Solid demo doesn't register yet, with their keys: their PRs add them (#279). Their
- * options and shortcuts are left out of the comparison.
- */
-const viewsNotInSolid = [{ key: "L", name: "Timeline" }];
-const missingView = new RegExp(
-  `^(?:${viewsNotInSolid.map(({ key, name }) => `dt: ${name} view|option: ${name}${key}|text: ${name}|kbd: ${key}`).join("|")})(?: #\\d+)?$`,
-  "u",
-);
-
-/**
- * What the Solid demo can't match yet. It has no UI switch, as StyleX is a React page's, so the top
- * bar's controls after it sit further right; and it registers fewer views, so the rows after them
- * in the switcher and the shortcuts dialog sit higher. Its boxes are compared by size, and a list's
- * by width, since the list is shorter too.
+ * What the Solid demo can't match. It has no UI switch, as StyleX is a React page's, so the top
+ * bar's controls after it sit further right. Its boxes are compared by size.
  */
 function notInSolid(line: string) {
   if (/^only in Tailwind: (?:group: UI|a: UI, )/u.test(line)) return true;
   const box =
-    /^(.+): box is [\d.]+ [\d.]+ ([\d.]+) ([\d.]+) in Tailwind, [\d.]+ [\d.]+ ([\d.]+) ([\d.]+) in Solid$/u.exec(
+    /^.+: box is [\d.]+ [\d.]+ ([\d.]+) ([\d.]+) in Tailwind, [\d.]+ [\d.]+ ([\d.]+) ([\d.]+) in Solid$/u.exec(
       line,
     );
   if (box === null) return false;
-  const [, name, width, height, solidWidth, solidHeight] = box;
-  return (
-    width === solidWidth &&
-    (height === solidHeight || /^(?:listbox|group of options)$/u.test(name!))
-  );
+  const [, width, height, solidWidth, solidHeight] = box;
+  return width === solidWidth && height === solidHeight;
 }
 
 /**
@@ -432,13 +417,9 @@ describe("the demo's StyleX page and the Solid demo look like its Tailwind page"
 
         expect(read.tailwind!.size).toBeGreaterThan(0);
         const lines = others.flatMap((page) =>
-          differences(
-            page === "solid"
-              ? new Map([...read.tailwind!].filter(([name]) => !missingView.test(name)))
-              : read.tailwind!,
-            read[page]!,
-            pageNames[page],
-          ).filter((line) => !known(line) && !(page === "solid" && notInSolid(line))),
+          differences(read.tailwind!, read[page]!, pageNames[page]).filter(
+            (line) => !known(line) && !(page === "solid" && notInSolid(line)),
+          ),
         );
         expect(lines).toEqual([]);
       },

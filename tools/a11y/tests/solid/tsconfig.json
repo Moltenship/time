@@ -20,6 +20,7 @@
     "../kit-twins.ts",
     "../month-fixture.ts",
     "../resource-columns-fixture.ts",
+    "../timeline-fixture.ts",
     "../waits.ts",
     "../year-fixture.ts"
   ]

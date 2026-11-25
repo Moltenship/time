@@ -25,14 +25,26 @@ import type { EventLabeler } from "@registry/stylex-calendar/event-label";
 import type { ResourceStatusOptions } from "@registry/stylex-calendar/resource-status";
 import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import { cellTargets } from "@registry/shared/resource-timeline-view/timeline-focus";
+import {
+  timelineLabels,
+  timelineTimeFormat,
+} from "@registry/shared/resource-timeline-view/timeline-labels";
+import {
+  HEADER_HEIGHT,
+  MIN_SLOT_WIDTH,
+  nowLineBox,
+  openingOffset,
+  rowHeight,
+} from "@registry/shared/resource-timeline-view/timeline-placement";
+import {
+  timelineSlotGroups,
+  timelineSlots,
+} from "@registry/shared/resource-timeline-view/timeline-scale";
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 
-import { LANE_GAP, LANE_HEIGHT, ROW_PADDING } from "./resource-timeline-event";
-import { cellTargets } from "./resource-timeline-focus";
 import { ResourceTimelineHeader } from "./resource-timeline-header";
 import { ResourceTimelineRow } from "./resource-timeline-row";
-import { useTimelineLabels } from "./timeline-labels";
-import { timelineSlotGroups, timelineSlots, type TimelineSlotUnit } from "./timeline-scale";
 import { useTimelineVirtualizer } from "./use-timeline-virtualizer";
 
 const styles = stylex.create({
@@ -110,25 +122,7 @@ export interface ResourceTimelineGridProps<TEvent> {
   readonly snapMinutes: number;
 }
 
-/** The shortest row, and the two-line header's height, in pixels. */
-const MIN_ROW_HEIGHT = 44;
-const HEADER_HEIGHT = 64;
-/** The narrowest a slot gets before the timeline scrolls sideways. */
-const MIN_SLOT_WIDTH: Readonly<Record<TimelineSlotUnit, number>> = { day: 48, hour: 56 };
-const HOURS = 24;
-/** Without the current time in view, an hour timeline opens at 08:00. */
-const DEFAULT_HOUR = 8;
-
 const noCells: readonly CalendarCellFocus[] = [];
-
-/**
- * A row tall enough for its lanes, or its stacks, and never shorter than an empty one. Whole
- * pixels, so the rows below a stack keep their lines on the pixel grid.
- */
-function rowHeight(row: ResourceTimelineProjection<unknown>["rows"][number]): number {
-  const lanes = "height" in row ? row.height : row.laneCount;
-  return Math.max(MIN_ROW_HEIGHT, Math.ceil(2 * ROW_PADDING + lanes * (LANE_HEIGHT + LANE_GAP)));
-}
 
 /**
  * Resources as rows and time as columns in one scrolling viewport. The header and the resource
@@ -156,15 +150,8 @@ export function ResourceTimelineGrid<TEvent>({
   const { columns, rows, today, unit } = projection;
   const slots = useMemo(() => timelineSlots(range, unit), [range, unit]);
   const groups = useMemo(() => timelineSlotGroups(slots, unit), [slots, unit]);
-  const labels = useTimelineLabels(locale, unit);
-  const formatTime = useMemo(() => {
-    const format = new Intl.DateTimeFormat(locale, {
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone,
-    });
-    return (instant: Temporal.Instant) => format.format(instant);
-  }, [locale, timeZone]);
+  const labels = useMemo(() => timelineLabels(locale, unit), [locale, unit]);
+  const formatTime = useMemo(() => timelineTimeFormat(locale, timeZone), [locale, timeZone]);
   const rowKey = useCallback((index: number) => rows[index]!.resource.key, [rows]);
   const rowSize = useCallback((index: number) => rowHeight(rows[index]!), [rows]);
   const slotKey = useCallback((index: number) => slots[index]!.key, [slots]);
@@ -199,10 +186,10 @@ export function ResourceTimelineGrid<TEvent>({
   useLayoutEffect(() => {
     if (opened.current || now === null || unit !== "hour") return;
     opened.current = true;
-    const at = nowAt ?? DEFAULT_HOUR / (HOURS * columns.length);
     const viewport = viewportRef.current;
-    const width = viewport?.clientWidth ?? 0;
-    timeAxis.scrollToOffset(Math.max(0, at * slots.length * slotWidth - width / 3));
+    timeAxis.scrollToOffset(
+      openingOffset(nowAt, columns.length, slots.length, slotWidth, viewport?.clientWidth ?? 0),
+    );
     // The axis re-applies the offset it last saw when it re-attaches, as under StrictMode: let it
     // see this one now.
     viewport?.dispatchEvent(new Event("scroll"));
@@ -275,11 +262,7 @@ export function ResourceTimelineGrid<TEvent>({
               aria-hidden
               data-slot="resource-timeline-now"
               {...stylex.props(styles.now)}
-              style={{
-                height: height - HEADER_HEIGHT,
-                insetInlineStart: columnWidth + nowAt * slots.length * slotWidth,
-                top: HEADER_HEIGHT,
-              }}
+              style={nowLineBox(nowAt, height, columnWidth, slots.length, slotWidth)}
             />
           )}
         </div>

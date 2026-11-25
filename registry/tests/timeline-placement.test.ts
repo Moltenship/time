@@ -1,5 +1,5 @@
 import { plainDateInterval } from "@moltenship/calendar";
-import type { VirtualItem } from "@tanstack/react-virtual";
+import type { VirtualItem } from "@tanstack/virtual-core";
 import { expect, test } from "vite-plus/test";
 
 import {
@@ -7,8 +7,8 @@ import {
   placeBars,
   slotsCovered,
   type TimelineBar,
-} from "../resource-timeline-view/timeline-placement";
-import { timelineSlots } from "../resource-timeline-view/timeline-scale";
+} from "../shared/resource-timeline-view/timeline-placement";
+import { timelineSlots } from "../shared/resource-timeline-view/timeline-scale";
 
 const slots = timelineSlots(
   plainDateInterval(Temporal.PlainDate.from("2026-10-01"), Temporal.PlainDate.from("2026-11-01")),

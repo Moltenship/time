@@ -19,7 +19,7 @@ describe("shadcn registry validation", () => {
     const report = await validateRegistryWorkspace(workspaceRoot, { framework: solidRegistry });
 
     expect(report.issues).toEqual([]);
-    expect(report.manifests).toBe(14);
+    expect(report.manifests).toBe(15);
   });
 
   test("an item lists only its own tree's files and the shared ones", async () => {

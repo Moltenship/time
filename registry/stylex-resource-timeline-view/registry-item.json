@@ -7,7 +7,7 @@
   "dependencies": [
     "@moltenship/calendar",
     "@stylexjs/stylex",
-    "@tanstack/react-virtual",
+    "@tanstack/virtual-core",
     "lucide-react"
   ],
   "registryDependencies": [
@@ -52,19 +52,34 @@
       "target": "@components/calendar-stylex/resource-timeline-view/resource-timeline-focus.tsx"
     },
     {
-      "path": "registry/stylex-resource-timeline-view/timeline-labels.ts",
+      "path": "registry/shared/resource-timeline-view/timeline-labels.ts",
       "type": "registry:lib",
       "target": "@components/calendar-stylex/resource-timeline-view/timeline-labels.ts"
     },
     {
-      "path": "registry/stylex-resource-timeline-view/timeline-placement.ts",
+      "path": "registry/shared/resource-timeline-view/timeline-placement.ts",
       "type": "registry:lib",
       "target": "@components/calendar-stylex/resource-timeline-view/timeline-placement.ts"
     },
     {
-      "path": "registry/stylex-resource-timeline-view/timeline-scale.ts",
+      "path": "registry/shared/resource-timeline-view/timeline-scale.ts",
       "type": "registry:lib",
       "target": "@components/calendar-stylex/resource-timeline-view/timeline-scale.ts"
+    },
+    {
+      "path": "registry/shared/resource-timeline-view/timeline-availability.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/resource-timeline-view/timeline-availability.ts"
+    },
+    {
+      "path": "registry/shared/resource-timeline-view/timeline-focus.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/resource-timeline-view/timeline-focus.ts"
+    },
+    {
+      "path": "registry/shared/resource-timeline-view/timeline-virtualizer.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/resource-timeline-view/timeline-virtualizer.ts"
     },
     {
       "path": "registry/stylex-resource-timeline-view/use-timeline-virtualizer.ts",

@@ -4,7 +4,7 @@ import { demoViewNames } from "@demo/demo-model";
 
 import { readSolidLocation, writeSolidLocation } from "../src/url-state";
 
-/** A page with the paged views, the scrolling month and agenda, and the resource columns. */
+/** A page with the paged views, the scrolling month and agenda, the resource columns and timeline. */
 const views = [
   "week",
   "day",
@@ -15,6 +15,7 @@ const views = [
   "scrolling-month",
   "scrolling-agenda",
   "resources",
+  "timeline-week",
 ];
 type View = string;
 
@@ -37,7 +38,7 @@ describe("the Solid demo's view and date in the URL", () => {
 
   test.each([
     ["resources", "resources"],
-    ["timeline-week", "week"],
+    ["timeline-week", "timeline-week"],
     ["scrolling-week", "week"],
     ["scrolling-day", "day"],
     ["scrolling-3-day", "3-day"],
@@ -102,5 +103,6 @@ describe("the Solid demo's view and date in the URL", () => {
     expect(write("?view=scrolling-day", "day")).toBe("scrolling-day");
     expect(write("?view=scrolling-week", "month")).toBe("month");
     expect(write("?view=year", "agenda")).toBe("agenda");
+    expect(write("?view=timeline-week", "week")).toBe("week");
   });
 });

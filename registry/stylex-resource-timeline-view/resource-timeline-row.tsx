@@ -16,7 +16,7 @@ import {
   type VisibleResource,
 } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
-import type { VirtualItem } from "@tanstack/react-virtual";
+import type { VirtualItem } from "@tanstack/virtual-core";
 import { ChevronRightIcon } from "lucide-react";
 import { memo, useCallback, useMemo, type CSSProperties, type ReactNode } from "react";
 
@@ -39,15 +39,41 @@ import {
 } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 
 import {
+  availabilityNote,
   closedDayExtents,
-  isUnavailableIn,
-  TimelineAvailability,
-} from "./resource-timeline-availability";
+} from "@registry/shared/resource-timeline-view/timeline-availability";
+import {
+  cellTargetLabel,
+  repeatedHoursTitle,
+  resourceRowTitle,
+  resourceToggleLabel,
+  rowHeaderLabel,
+  skippedHoursTitle,
+  timelineCellLabel,
+  timelineTargetLabel,
+  type TimelineLabels,
+} from "@registry/shared/resource-timeline-view/timeline-labels";
+import {
+  anchorSlot,
+  barsIn,
+  cellSlot,
+  cellStretch,
+  cellTargetBox,
+  dateStrip,
+  draftBox,
+  placeBars,
+  rowBars,
+  slotsCovered,
+  stripBand,
+} from "@registry/shared/resource-timeline-view/timeline-placement";
+import type {
+  TimelineSlot,
+  TimelineSlotUnit,
+} from "@registry/shared/resource-timeline-view/timeline-scale";
+
+import { TimelineAvailability } from "./resource-timeline-availability";
 import { ResourceTimelineEvent } from "./resource-timeline-event";
 import { GroupCellTarget, TimelineCellTarget, useRowDraft } from "./resource-timeline-focus";
-import type { TimelineLabels } from "./timeline-labels";
-import { anchorSlot, placeBars, rowBars, slotsCovered } from "./timeline-placement";
-import type { TimelineSlot, TimelineSlotUnit } from "./timeline-scale";
 
 const styles = stylex.create({
   band: {
@@ -213,12 +239,7 @@ export interface ResourceTimelineRowProps<TEvent> {
   readonly weekend: readonly IsoDayOfWeek[];
 }
 
-const HOURS = 24;
 const noColumns: readonly TimeGridColumn[] = [];
-
-function eventCount(count: number): string {
-  return count === 0 ? "no events" : count === 1 ? "1 event" : `${count} events`;
-}
 
 /** A group's toggle; it re-renders only when that group expands or collapses. */
 function ResourceToggle({ id, title }: { readonly id: ResourceId; readonly title: string }) {
@@ -226,7 +247,7 @@ function ResourceToggle({ id, title }: { readonly id: ResourceId; readonly title
   return (
     <Button
       aria-expanded={expanded}
-      aria-label={`${expanded ? "Collapse" : "Expand"} ${title}`}
+      aria-label={resourceToggleLabel(expanded, title)}
       onClick={toggle}
       size="icon-xs"
       // The grid keeps one tab stop; Shift+Enter on the group's cells toggles it.
@@ -265,9 +286,7 @@ function RowHeader({
     <div
       role="rowheader"
       aria-colindex={1}
-      aria-label={[title, localTime === null ? undefined : `local time ${localTime}`, words]
-        .filter((part) => part !== undefined)
-        .join(", ")}
+      aria-label={rowHeaderLabel(title, localTime, words)}
       {...draftStatusAttributes(status)}
       // Cells scroll beneath it, so the pointer layer doesn't look through it to them.
       data-occludes=""
@@ -332,10 +351,6 @@ function HourStrip({
   readonly offset: number;
   readonly width: number;
 }) {
-  const band = ({ height, top }: { readonly height: number; readonly top: number }) => ({
-    insetInlineStart: `${top * 100}%`,
-    width: `${height * 100}%`,
-  });
   return (
     <div
       data-axis="inline"
@@ -347,16 +362,16 @@ function HourStrip({
         <div
           key={`gap:${gap.top}`}
           {...stylex.props(styles.band, styles.gap)}
-          style={band(gap)}
-          title="Skipped: clocks moved forward"
+          style={stripBand(gap)}
+          title={skippedHoursTitle}
         />
       ))}
       {column.folds.map((fold) => (
         <div
           key={`fold:${fold.top}`}
           {...stylex.props(styles.band, styles.fold)}
-          style={band(fold)}
-          title="Repeated: clocks moved back"
+          style={stripBand(fold)}
+          title={repeatedHoursTitle}
         />
       ))}
     </div>
@@ -377,7 +392,7 @@ function CellTarget({
   readonly title: string;
 }) {
   return group === null ? (
-    <TimelineCellTarget {...props} label={`${title}, ${label}`} />
+    <TimelineCellTarget {...props} label={cellTargetLabel(title, label)} />
   ) : (
     <GroupCellTarget {...props} groupId={group} label={label} title={title} />
   );
@@ -406,7 +421,7 @@ function ResourceTimelineRowBase<TEvent>({
   weekend,
 }: ResourceTimelineRowProps<TEvent>) {
   const { resource } = row;
-  const title = resource.resource?.title ?? "Unassigned";
+  const title = resourceRowTitle(resource.resource);
   const bars = useMemo(() => rowBars(row, slots.length, formatTime), [formatTime, row, slots]);
   const placed = useMemo(
     () => placeBars(bars, slots, visibleSlots, slotWidth),
@@ -426,34 +441,17 @@ function ResourceTimelineRowBase<TEvent>({
     () => (unit === "hour" ? closedTime : closedDayExtents(closedDays, range)),
     [closedDays, closedTime, range, unit],
   );
-  const perDay = unit === "hour" ? HOURS : 1;
   const origin = slots[0]?.date;
-  const slotOf = (cell: CalendarCellFocus) =>
-    origin === undefined
-      ? -1
-      : origin.until(cell.date).days * perDay +
-        (unit === "hour" && cell.kind === "slot" ? cell.time.hour : 0);
+  const slotOf = (cell: CalendarCellFocus) => cellSlot(origin, unit, cell);
   const draftSlot =
     draft === null ? undefined : anchorSlot(visibleSlots, ...slotsCovered(...draft));
-  /**
-   * What a name says about working hours over `[from, to)`, in slots: "closed" for a day of a day
-   * row, "outside working hours" for time of an hour row.
-   */
-  const availabilityNote = (date: Temporal.PlainDate, from: number, to: number) => {
-    if (unit === "day") return closedDays.has(date.toString()) ? "closed" : undefined;
-    return isUnavailableIn(closedTime, from / slots.length, to / slots.length)
-      ? "outside working hours"
-      : undefined;
-  };
-  /** A keyboard target's name: its cell, then what working hours say about it. */
-  const targetLabel = (cell: CalendarCellFocus) => {
-    const from =
-      slotOf(cell) + (unit === "hour" && cell.kind === "slot" ? cell.time.minute / 60 : 0);
-    const to =
-      unit === "hour" && cell.kind === "slot" ? from + snapMinutes / 60 : slotOf(cell) + perDay;
-    const note = availabilityNote(cell.date, from, to);
-    return note === undefined ? labels.cellName(cell) : `${labels.cellName(cell)}, ${note}`;
-  };
+  const noteFor = (date: Temporal.PlainDate, from: number, to: number) =>
+    availabilityNote(unit, closedDays, closedTime, slots.length, date, from, to);
+  const targetLabel = (cell: CalendarCellFocus) =>
+    timelineTargetLabel(
+      labels.cellName(cell),
+      noteFor(cell.date, ...cellStretch(slotOf(cell), unit, cell, snapMinutes)),
+    );
 
   return (
     <div
@@ -484,26 +482,19 @@ function ResourceTimelineRowBase<TEvent>({
       />
       {visibleSlots.map((item, position) => {
         const slot = slots[item.index]!;
-        const count = bars.filter(
-          ({ end, start }) => start < item.index + 1 && end > item.index,
-        ).length;
-        // An hour row's date strip sits in the first rendered cell of that date.
-        const dateIndex = Math.floor(item.index / perDay);
-        const dateStart = dateIndex * perDay;
-        const previous = visibleSlots[position - 1];
-        const strip =
-          unit === "hour" && (previous === undefined || previous.index < dateStart)
-            ? columns[dateIndex]
-            : undefined;
-        const note = availabilityNote(slot.date, item.index, item.index + 1);
+        const strip = dateStrip(visibleSlots, position, unit, columns, slotWidth);
+        const note = noteFor(slot.date, item.index, item.index + 1);
         return (
           <div
             key={item.key}
             role="gridcell"
             aria-colindex={item.index + 2}
-            aria-label={[title, labels.slotName(slot), note, eventCount(count)]
-              .filter((part) => part !== undefined)
-              .join(", ")}
+            aria-label={timelineCellLabel(
+              title,
+              labels.slotName(slot),
+              note,
+              barsIn(bars, item.index),
+            )}
             data-closed={unit === "day" && note !== undefined ? "" : undefined}
             data-weekend={
               unit === "day" &&
@@ -521,11 +512,7 @@ function ResourceTimelineRowBase<TEvent>({
               <div data-date={slot.date.toString()} {...stylex.props(styles.cellDay)} />
             )}
             {strip !== undefined && (
-              <HourStrip
-                column={strip}
-                offset={(dateStart - item.index) * slotWidth}
-                width={perDay * slotWidth}
-              />
+              <HourStrip column={strip.column} offset={strip.offset} width={strip.width} />
             )}
             {draft !== null && draftSlot === item.index && (
               <div
@@ -533,10 +520,7 @@ function ResourceTimelineRowBase<TEvent>({
                 data-slot="resource-timeline-draft"
                 {...previewCheckAttributes(draftCheck)}
                 {...stylex.props(styles.draft)}
-                style={{
-                  insetInlineStart: (draft[0] - item.index) * slotWidth,
-                  width: (draft[1] - draft[0]) * slotWidth,
-                }}
+                style={draftBox(draft, item.index, slotWidth)}
               />
             )}
             {placed.get(item.index)?.map((bar) => (
@@ -558,14 +542,7 @@ function ResourceTimelineRowBase<TEvent>({
                   cell={cell}
                   group={resource.hasChildren ? resource.id : null}
                   label={targetLabel(cell)}
-                  style={
-                    unit === "hour" && cell.kind === "slot"
-                      ? {
-                          insetInlineStart: (cell.time.minute / 60) * slotWidth,
-                          width: (snapMinutes / 60) * slotWidth,
-                        }
-                      : { insetInlineStart: 0, width: perDay * slotWidth }
-                  }
+                  style={cellTargetBox(unit, cell, slotWidth, snapMinutes)}
                   title={title}
                 />
               ))}

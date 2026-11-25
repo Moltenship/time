@@ -1,8 +1,8 @@
 import { plainDateInterval } from "@moltenship/calendar";
 import { expect, test } from "vite-plus/test";
 
-import { timelineSlotGroups, timelineSlots } from "../resource-timeline-view/timeline-scale";
-import { timelineColumns } from "../resource-timeline-view/use-timeline-virtualizer";
+import { timelineSlotGroups, timelineSlots } from "../shared/resource-timeline-view/timeline-scale";
+import { timelineColumns } from "../shared/resource-timeline-view/timeline-virtualizer";
 
 const range = (start: string, end: string) =>
   plainDateInterval(Temporal.PlainDate.from(start), Temporal.PlainDate.from(end));

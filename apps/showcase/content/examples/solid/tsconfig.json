@@ -33,6 +33,9 @@
         "../../../../../registry/solid/scrolling-time-grid-view/*"
       ],
       "@/components/calendar/time-grid-view/*": ["../../../../../registry/solid/time-grid-view/*"],
+      "@/components/calendar/resource-timeline-view/*": [
+        "../../../../../registry/solid/resource-timeline-view/*"
+      ],
       "@/components/calendar/year-view/*": ["../../../../../registry/solid/year-view/*"],
       "@/components/calendar/ui/*": ["../../../../../registry/solid/calendar-ui/*"],
       "@/components/calendar/*": ["../../../../../registry/solid/calendar/*"],

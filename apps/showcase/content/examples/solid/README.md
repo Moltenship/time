@@ -28,6 +28,8 @@ The install test leaves them out: they add no registry file the Month page doesn
 `agent-overview.tsx`, `agent-access.tsx`, `agent-delete.tsx` and `agent-log.tsx` are those
 examples: each runs a calendar the guides build on a real bridge, and sends it calls written by
 hand. No model runs.
+`timeline-page.tsx` is the Resource timeline page's calendar, rooms and page, after `shadcn add` of
+the Solid timeline. The install test copies it into the same app too.
 
 `recurrence.tsx` is the calendar of Show and edit recurring events, on
 `@moltenship/calendar-recurrence`. The install test leaves it out, since its clean app doesn't

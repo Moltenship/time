@@ -271,7 +271,7 @@ the same pointer layer; a drop on another resource swaps that resource in the ev
 
 <Solid>
 
-The registry's week, day and month bind the pointer layer, and a view you write binds it with
+The registry's week, day, month, resource columns and resource timeline bind the pointer layer, and a view you write binds it with
 `useCalendarPointer`, as [In your own views](#in-your-own-views) shows. Once `Root` has an
 `onEventChange` handler, people edit events in these views with the mouse, a pen, or touch:
 
@@ -281,7 +281,9 @@ The registry's week, day and month bind the pointer layer, and a view you write 
 | A month grid                | Across days. Timed events keep their time.                           | Drag an element with `data-resize` | Drag across days to make an all-day event       |
 
 In a view with resources, a drop on another resource swaps that resource in the event's
-`resourceIds`.
+`resourceIds`. The [resource columns](/docs/views/resource-columns) move an event onto another
+resource's column, and the [resource timeline](/docs/views/resource-timeline) moves it along its
+row and onto other rows, resizes it by its edges, and creates one across empty time.
 
 </Solid>
 

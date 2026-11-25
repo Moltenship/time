@@ -10,10 +10,10 @@ integration is complete, and SolidJS 2's is a preview.
 
 <Callout type="warn" title="Solid is a preview">
   `@moltenship/calendar-solid` has the parts and hooks React's integration has, keyboard navigation,
-  dragging, drafts and undo included. Of the registry's views it has the week and day, the month,
-  the year and the agenda, the scrolling week, day, month and agenda, and the resource columns, with
-  the toolbar and the mini month, so far. You write the other views, and it has no testing package
-  yet.
+  dragging, drafts and undo included. It has every view in the registry, in Tailwind CSS: the week
+  and day, the month, the year and the agenda, the scrolling week, day, month and agenda, the
+  resource columns and the resource timeline, with the toolbar and the mini month. It has no StyleX
+  views and no testing package yet.
   <PreRelease> Its API can change in any release before 2.0.0.</PreRelease>
 </Callout>
 
@@ -57,21 +57,21 @@ These work the same in both frameworks, because they run below the integration:
 
 ## What differs
 
-|                               | React                                                             | Solid                                                                                                                                                                                  |
-| ----------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Status                        | Complete                                                          | Preview                                                                                                                                                                                |
-| Framework version             | React 19                                                          | SolidJS 2.0                                                                                                                                                                            |
-| Packages you install          | `@moltenship/calendar`, `@ui-sdk/core`, `@ui-sdk/react`           | `@moltenship/calendar-solid`, `@ui-sdk/core`, `@ui-sdk/solid`                                                                                                                          |
-| Parts                         | `Root`, the structural parts, `Event` and `Announcer`             | The same parts                                                                                                                                                                         |
-| Hooks                         | Every hook, returning values                                      | The same hooks: accessors for state, refs from `useCalendarKeyboard` and `useCalendarPointer`                                                                                          |
-| Ready-made views              | The registry's views, in shadcn/ui with Tailwind CSS or in StyleX | The week and day, month, year, agenda, the scrolling week, day, month and agenda, the resource columns, toolbar and mini month, in Tailwind CSS. You write the other views' `Renderer` |
-| Keyboard navigation in a view | Yes                                                               | Yes, in the registry's views and in a view you write                                                                                                                                   |
-| Drag, resize and create       | Yes, with a mouse, a pen or touch                                 | Yes, in the registry's week, day, month and resource columns, and in a view you write                                                                                                  |
-| Undo and redo                 | `useCalendarHistory`, its shortcuts and the registry's toast      | The same, with the registry's toast                                                                                                                                                    |
-| Screen reader announcements   | `Calendar.Announcer`                                              | `Calendar.Announcer`                                                                                                                                                                   |
-| Server rendering              | Yes                                                               | Yes, with `renderToString` and `hydrate`                                                                                                                                               |
-| Testing package               | `@moltenship/calendar-testing`                                    | None. That package has React as a peer dependency                                                                                                                                      |
-| Agent bridge                  | `@ui-sdk/react/agent`                                             | `@ui-sdk/solid/agent`                                                                                                                                                                  |
+|                               | React                                                             | Solid                                                                                                                                                                                               |
+| ----------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Status                        | Complete                                                          | Preview                                                                                                                                                                                             |
+| Framework version             | React 19                                                          | SolidJS 2.0                                                                                                                                                                                         |
+| Packages you install          | `@moltenship/calendar`, `@ui-sdk/core`, `@ui-sdk/react`           | `@moltenship/calendar-solid`, `@ui-sdk/core`, `@ui-sdk/solid`                                                                                                                                       |
+| Parts                         | `Root`, the structural parts, `Event` and `Announcer`             | The same parts                                                                                                                                                                                      |
+| Hooks                         | Every hook, returning values                                      | The same hooks: accessors for state, refs from `useCalendarKeyboard` and `useCalendarPointer`                                                                                                       |
+| Ready-made views              | The registry's views, in shadcn/ui with Tailwind CSS or in StyleX | The week and day, month, year, agenda, the scrolling week, day, month and agenda, the resource columns and timeline, toolbar and mini month, in Tailwind CSS. You write the other views' `Renderer` |
+| Keyboard navigation in a view | Yes                                                               | Yes, in the registry's views and in a view you write                                                                                                                                                |
+| Drag, resize and create       | Yes, with a mouse, a pen or touch                                 | Yes, in the registry's week, day, month, resource columns and resource timeline, and in a view you write                                                                                            |
+| Undo and redo                 | `useCalendarHistory`, its shortcuts and the registry's toast      | The same, with the registry's toast                                                                                                                                                                 |
+| Screen reader announcements   | `Calendar.Announcer`                                              | `Calendar.Announcer`                                                                                                                                                                                |
+| Server rendering              | Yes                                                               | Yes, with `renderToString` and `hydrate`                                                                                                                                                            |
+| Testing package               | `@moltenship/calendar-testing`                                    | None. That package has React as a peer dependency                                                                                                                                                   |
+| Agent bridge                  | `@ui-sdk/react/agent`                                             | `@ui-sdk/solid/agent`                                                                                                                                                                               |
 
 ## What's coming
 
@@ -79,25 +79,25 @@ Solid doesn't have these yet:
 
 | Missing           | In React it's                                                        |
 | ----------------- | -------------------------------------------------------------------- |
-| Ready-made views  | The registry's resource timeline, which is React source              |
 | A testing package | `@moltenship/calendar-testing`, which is React only                  |
 | A dnd-kit adapter | `@moltenship/calendar-dnd-kit`, which has React as a peer dependency |
+| StyleX views      | The registry's views in StyleX, which are React source               |
 
-The views are the next work. The registry gets Solid versions of its items, installed with the
-same `shadcn add` command. The agenda, the toolbar, the mini month, the controls kit, the month view,
+The registry has every view in Solid now, in Tailwind CSS, installed with the same `shadcn add`
+command. The agenda, the toolbar, the mini month, the controls kit, the month view,
 the year view, the recurring-event dialog, the undo toast and the scrolling month and agenda came
-first, then the week and day views, the resource columns and the scrolling week and day. [Issue #279](https://github.com/Moltenship/time/issues/279) tracks each step.
+first, then the week and day views, the resource columns, the scrolling week and day and the resource timeline. [Issue #279](https://github.com/Moltenship/time/issues/279) tracks each step.
 The testing package and the dnd-kit adapter have no Solid plan yet.
 
-Until the registry has a view in Solid, you write its `Renderer` with the package's hooks, as
+For a view the registry doesn't have, you write its `Renderer` with the package's hooks, as
 [Custom views](/docs/solid/views/custom-views) does. The
 [Solid demo](https://moltenship-time-demo.vercel.app/solid/) shows the registry's week, day, month, year and agenda,
-each but the year paged or scrolling, and the resource columns, with keyboard navigation, dragging and undo, in the same app as the React demo. Its source is the repository's
+each but the year paged or scrolling, the resource columns and the resource timeline, with keyboard navigation, dragging and undo, in the same app as the React demo. Its source is the repository's
 [`apps/demo-solid`](https://github.com/Moltenship/time/tree/main/apps/demo-solid).
 
 The Solid docs have no page on something Solid lacks. That is why the only ready-made views they
-have pages on are the week and day, the month, the year, the agenda, the scrolling views and the
-resource columns, beside the toolbar and the controls, and they have none on StyleX, testing or the dnd-kit
+have pages on are the week and day, the month, the year, the agenda, the scrolling views, the
+resource columns and the resource timeline, beside the toolbar and the controls, and they have none on StyleX, testing or the dnd-kit
 adapter.
 
 ## From React to Solid

@@ -11,8 +11,17 @@ import { render, settled, tab, until } from "./render";
 // apps/demo-solid: axe over each view and with each popup open, in both themes, then the keyboard
 // through the chrome, a task dragged in by mouse and by keys, and the sidebar's sheet on a phone.
 
-/** The paged views the Solid demo registers; the timeline comes later. */
-const views = ["week", "day", "3-day", "month", "year", "agenda", "resources"] as const;
+/** The paged views the Solid demo registers. */
+const views = [
+  "week",
+  "day",
+  "3-day",
+  "month",
+  "year",
+  "agenda",
+  "resources",
+  "timeline-week",
+] as const;
 
 /** Opens the demo the way a link does: the view comes from the URL, the events from the seed. */
 async function renderDemo(view: string, { scrolling = false } = {}) {

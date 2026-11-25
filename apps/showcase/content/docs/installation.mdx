@@ -335,7 +335,7 @@ changes you made.
 
 The package renders plain, unstyled elements. The registry has styled Solid views, the
 [week and day](/docs/views/week-and-day), the [month](/docs/views/month), the [year](/docs/views/year) and the [agenda](/docs/views/agenda), the
-[scrolling versions](/docs/views/scrolling) of all but the year, the [resource columns](/docs/views/resource-columns), with the [toolbar and mini month](/docs/views/toolbar), the
+[scrolling versions](/docs/views/scrolling) of all but the year, the [resource columns](/docs/views/resource-columns) and the [resource timeline](/docs/views/resource-timeline), with the [toolbar and mini month](/docs/views/toolbar), the
 [recurring-event dialog](/docs/recurrence/calendar), the [undo toast](/docs/undo-redo#undo-toast)
 and the [controls](/docs/views/controls) they're built from, as source files that you add to your app and
 then own, the way shadcn/ui works. They install with the shadcn CLI from this site's Solid registry,
@@ -353,6 +353,7 @@ covers the rest. [What's coming](/docs/frameworks#whats-coming) has the plan.
 | `scrolling-month-view`     | The [scrolling month](/docs/views/scrolling#the-month), on `month-view`                                                                        |
 | `scrolling-list-view`      | The [scrolling agenda](/docs/views/scrolling#the-agenda), on `list-view`                                                                       |
 | `resource-columns-view`    | The [resource columns](/docs/views/resource-columns), on `time-grid-view`                                                                      |
+| `resource-timeline-view`   | The [resource timeline](/docs/views/resource-timeline), with `@tanstack/virtual-core`                                                          |
 | `recurrence-scope-dialog`  | The [recurring-event dialog](/docs/recurrence/calendar), which asks which events of a series a change applies to                               |
 | `calendar-history-toast`   | The [undo toast](/docs/undo-redo#undo-toast), with the undo and redo keys                                                                      |
 | `calendar`                 | The [toolbar, view switcher and mini month](/docs/views/toolbar), and the event chip, names and keys the views share                           |
@@ -360,7 +361,7 @@ covers the rest. [What's coming](/docs/frameworks#whats-coming) has the plan.
 | `calendar-theme`           | The calendar's color tokens and its event colors, in `event-colors.ts`                                                                         |
 | `base-tokens`              | shadcn/ui's neutral tokens for light and dark, for an app without them                                                                         |
 
-`time-grid-view`, `month-view`, `year-view` and `list-view` bring `calendar`, `calendar-ui` and `calendar-theme` with them, and
+`time-grid-view`, `month-view`, `year-view`, `list-view` and `resource-timeline-view` bring `calendar`, `calendar-ui` and `calendar-theme` with them, and
 `scrolling-time-grid-view`, `scrolling-month-view` and `scrolling-list-view` bring the view they scroll, and `resource-columns-view` the week and day it reuses. An app with its own shadcn/ui-style
 theme, which defines `--background`, `--border`, `--primary` and the rest, skips `base-tokens`.
 

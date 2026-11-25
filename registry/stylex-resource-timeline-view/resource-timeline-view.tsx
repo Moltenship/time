@@ -2,17 +2,13 @@
 
 import {
   defineCalendarView,
-  resourceTimelineSpatialNavigation,
   resourceTimelineStrategy,
-  resourceTimelineTitle,
   useCalendarAnnouncer,
   useCalendarFocus,
   useCalendarDraftReporter,
   useCalendarPointer,
-  type CalendarDayFocus,
   type CalendarResource,
   type CalendarViewRendererProps,
-  type PlainDateInterval,
   type ResourceId,
   type ResourceTimelineLayoutOptions,
   type ResourceTimelineOptions,
@@ -29,6 +25,12 @@ import {
 import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/stylex-calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import {
+  slotDayFocus,
+  timelineEntry,
+  timelineSnap,
+} from "@registry/shared/resource-timeline-view/timeline-focus";
+import { timelineGridLabel } from "@registry/shared/resource-timeline-view/timeline-labels";
 
 import { ResourceTimelineGrid } from "./resource-timeline-grid";
 
@@ -79,22 +81,6 @@ export type ResourceTimelineViewProps<
   ResourceTimelineViewOptions<TEvent, TResource>
 >;
 
-/** The grid's name: the title the toolbar shows for the range, "October 2026" for a month. */
-function gridLabel(range: PlainDateInterval, locale: Intl.Locale | string): string {
-  const days = range.start.until(range.end).days;
-  const month = range.start.day === 1 && range.end.equals(range.start.add({ months: 1 }));
-  return resourceTimelineTitle(
-    range,
-    month ? { kind: "month" } : { count: days, kind: "days" },
-    locale,
-  );
-}
-
-/** Pointer and keyboard both step by these slots in an hour timeline, so they reach the same times. */
-const snap = { increment: 30, smallestUnit: "minute" } as const;
-/** The calendar's default slots, in which it finds where focus enters a view. */
-const entrySnap = { increment: 15, smallestUnit: "minute" } as const;
-
 /**
  * Resources as rows and time as columns, with each resource's events as bars packed into lanes.
  * The header and the resource column stay in view, groups collapse, and only the rows and slots
@@ -129,40 +115,21 @@ export function ResourceTimelineView<
     onPreview: reportDraft,
     onPropose: actions.proposeEventChange,
     preview: options.dragPreview,
-    snap,
+    snap: timelineSnap,
     timeZone: environment.timeZone,
   });
-  const keyboard = useViewKeyboard({ axis: "inline", snap });
+  const keyboard = useViewKeyboard({ axis: "inline", snap: timelineSnap });
   const labelEvent = useEventLabel(environment, options.describeEvent);
 
-  // Where the calendar enters the view: today or the range's first day in the first row, at the
-  // day's first wall time in an hour timeline. The calendar finds it in its default slots, so ask
-  // with those, whatever this view steps by, or the cell rendered for it isn't the tab stop.
-  const entry = useMemo(() => {
-    const found = resourceTimelineSpatialNavigation({
-      command: "home",
-      environment,
-      focus: null,
-      options,
-      projection,
-      range,
-      snap: entrySnap,
-    });
-    return found === null || !("focus" in found) || found.focus.kind === "event"
-      ? null
-      : found.focus;
-  }, [environment, options, projection, range]);
+  const entry = useMemo(
+    () => timelineEntry({ environment, options, projection, range }),
+    [environment, options, projection, range],
+  );
 
   // A time grid's slot is its whole day in a timeline of days, so keys act on the day, as a drag
   // does. One day per slot, so a replayed effect asks for the same focus and changes nothing.
   const slot = useCalendarFocus((focus) => (focus?.kind === "slot" ? focus : null));
-  const slotDay = useMemo<CalendarDayFocus | null>(
-    () =>
-      projection.unit === "day" && slot !== null
-        ? { date: slot.date, kind: "day", resourceId: slot.resourceId }
-        : null,
-    [projection.unit, slot],
-  );
+  const slotDay = useMemo(() => slotDayFocus(projection.unit, slot), [projection.unit, slot]);
   useLayoutEffect(() => {
     if (slotDay !== null) actions.setFocus(slotDay);
   }, [actions, slotDay]);
@@ -175,14 +142,14 @@ export function ResourceTimelineView<
       getEventIcon={options.getEventIcon}
       isReadOnly={isReadOnly}
       keyboard={keyboard}
-      label={gridLabel(range, environment.locale)}
+      label={timelineGridLabel(range, environment.locale)}
       labelEvent={labelEvent}
       projection={projection}
       range={range}
       ref={pointerRef}
       renderUnavailable={options.renderUnavailable}
       resourceStatus={resourceStatusOptions(options.resourceStatus)}
-      snapMinutes={snap.increment}
+      snapMinutes={timelineSnap.increment}
     />
   );
 }

@@ -6,14 +6,14 @@ import type { ReactNode } from "react";
 import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
-import { cn } from "cn";
-
-import type { PlacedBar } from "./timeline-placement";
-
-/** A lane's height, the gap under it, and the space above the first lane, in pixels. */
-export const LANE_HEIGHT = 24;
-export const LANE_GAP = 2;
-export const ROW_PADDING = 6;
+import {
+  timelineEventClass,
+  timelineEventTimeClass,
+  timelineEventTitleClass,
+  timelineResizeEndClass,
+  timelineResizeStartClass,
+} from "@registry/shared/resource-timeline-view/resource-timeline.styles";
+import { barBox, type PlacedBar } from "@registry/shared/resource-timeline-view/timeline-placement";
 
 export interface ResourceTimelineEventProps<TEvent> {
   readonly bar: PlacedBar<TEvent>;
@@ -34,13 +34,14 @@ export interface ResourceTimelineEventProps<TEvent> {
  * hovered, and above that while focused, so its title shows.
  */
 export function ResourceTimelineEvent<TEvent>({
-  bar: { date, days, endsAfter, event, lane, offset, startsBefore, time, top, width },
+  bar,
   color,
   icon,
   isReadOnly = false,
   labelEvent,
   resourceId,
 }: ResourceTimelineEventProps<TEvent>) {
+  const { date, days, endsAfter, event, lane, startsBefore, time, top } = bar;
   const chip = useEventChip(event, { date, days, labelEvent, resourceId });
   const resizable = !isReadOnly && !event.isReadOnly;
 
@@ -49,41 +50,19 @@ export function ResourceTimelineEvent<TEvent>({
       color={color}
       {...chip}
       title={event.title}
-      className={cn(
-        "group absolute z-1 gap-1 rounded-sm px-1.5 py-0 leading-6 hover:z-2 focus-visible:z-3 data-grabbed:z-4",
-        // A stacked bar sits part-way down a lane, over the one before it: a ring sets it apart.
-        top !== lane && "shadow-[0_0_0_1px_var(--calendar-surface,var(--background))]",
-        startsBefore && "rounded-s-none border-s-0",
-        endsAfter && "rounded-e-none",
-      )}
-      style={{
-        height: LANE_HEIGHT,
-        insetInlineStart: offset,
-        top: ROW_PADDING + top * (LANE_HEIGHT + LANE_GAP),
-        width,
-      }}
+      className={timelineEventClass(top !== lane, startsBefore, endsAfter)}
+      style={barBox(bar)}
     >
-      {/* The title keeps the room it needs; the time takes what's left, or none. */}
-      <span data-slot="calendar-event-title" className="max-w-full shrink-0 truncate">
+      <span data-slot="calendar-event-title" className={timelineEventTitleClass}>
         <EventIcon>{icon}</EventIcon>
         {event.title}
       </span>
-      {time !== undefined && (
-        <span className="min-w-0 truncate font-normal opacity-80">{time}</span>
-      )}
+      {time !== undefined && <span className={timelineEventTimeClass}>{time}</span>}
       {resizable && !startsBefore && (
-        <span
-          aria-hidden
-          data-resize="start"
-          className="absolute inset-y-0 start-0 w-1.5 max-w-1/3 cursor-ew-resize"
-        />
+        <span aria-hidden data-resize="start" className={timelineResizeStartClass} />
       )}
       {resizable && !endsAfter && (
-        <span
-          aria-hidden
-          data-resize="end"
-          className="absolute inset-y-0 end-0 w-1.5 max-w-1/3 cursor-ew-resize"
-        />
+        <span aria-hidden data-resize="end" className={timelineResizeEndClass} />
       )}
     </EventChip>
   );
