@@ -12,6 +12,8 @@ import {
   booking,
   dayTarget,
   row,
+  ResizingObserver,
+  resizeViewport,
   rows,
   scrollTo,
   StubResizeObserver,
@@ -339,6 +341,24 @@ test("the now-line crosses today at the current time", async () => {
   expect(container.querySelector('[aria-current="date"]')?.getAttribute("aria-label")).toBe(
     "Thursday, October 8, 2026",
   );
+});
+
+test("a resized viewport resizes the resource column and the slots", async () => {
+  vi.stubGlobal("ResizeObserver", ResizingObserver);
+  const container = await show(<Timeline view="timeline-week" />);
+  const widths = () => ({
+    canvas: (viewport(container).firstElementChild as HTMLElement).style.width,
+    slot: container.querySelector<HTMLElement>('[role="columnheader"]:not([aria-colindex="1"])')!
+      .style.width,
+  });
+
+  // The 1024px estimate: a 208px column and a week of 116px days.
+  expect(widths()).toEqual({ canvas: "1020px", slot: "116px" });
+  await resizeViewport(viewport(container), 1600);
+  expect(widths()).toEqual({ canvas: "1594px", slot: "198px" });
+  // Under 640px, the column narrows to 128px.
+  await resizeViewport(viewport(container), 600);
+  expect(widths()).toEqual({ canvas: "597px", slot: "67px" });
 });
 
 test("RTL mirrors the time axis and keeps the logical time in view when switching", async () => {

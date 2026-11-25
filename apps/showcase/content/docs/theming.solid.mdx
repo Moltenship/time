@@ -40,31 +40,26 @@ The calendar's tokens, and the files of the Solid registry that read each one to
 
 | Variable                      | Used for                                              | Tailwind class                    | Read by                                                                                       |
 | ----------------------------- | ----------------------------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------- |
-| `--calendar-grid`             | Lines between days and hours                          | `border-calendar-grid`            | The month, the agenda, the week and day, the scrolling week and day, the resource columns     |
-| `--calendar-today`            | Today's date marker                                   | `bg-calendar-today`               | The month, the year, the agenda, the week and day, the resource columns, the mini month       |
-| `--calendar-today-foreground` | Text on today's marker                                | `text-calendar-today-foreground`  | The month, the year, the agenda, the week and day, the mini month                             |
-| `--calendar-selection`        | Selected days and ranges, and the dates in view       | `bg-calendar-selection`           | The month, the week and day, the scrolling week and day, the resource columns, the mini month |
-| `--calendar-event`            | Event background                                      | `bg-calendar-event`               | The month, the agenda, the event chip                                                         |
-| `--calendar-event-foreground` | Event text                                            | `text-calendar-event-foreground`  | The month, the agenda, the event chip                                                         |
-| `--calendar-event-border`     | Event accent edge, and an event's color dot           | `border-calendar-event-border`    | The month, the year, the agenda, the event chip                                               |
-| `--calendar-closed`           | Closed days in a month or a year                      | `bg-calendar-closed`              | The month, the year                                                                           |
-| `--calendar-busy`             | A resource status's busy dot                          | `bg-calendar-busy`                | The resource status                                                                           |
-| `--calendar-free`             | A resource status's free dot                          | `bg-calendar-free`                | The resource status                                                                           |
-| `--calendar-invalid`          | A preview the policies would reject                   | `outline-calendar-invalid`        | The event chip, the previews' classes                                                         |
-| `--calendar-warning`          | A preview the policies would flag                     | `outline-calendar-warning`        | The event chip, the previews' classes                                                         |
-| `--calendar-surface`          | Behind sticky headers, between events                 | `bg-calendar-surface`             | The week and day, the scrolling week and day, the resource columns, the scrolling month       |
-| `--calendar-axis`             | Hour and weekday labels                               | `text-calendar-axis`              | The week and day, the scrolling week and day, the resource columns                            |
-| `--calendar-now`              | The current-time line                                 | `bg-calendar-now`                 | The week and day, the resource columns                                                        |
-| `--calendar-weekend`          | Weekend background                                    | `bg-calendar-weekend`             | No file yet                                                                                   |
-| `--calendar-unavailable`      | Closed time in time grids and timelines               | `bg-calendar-unavailable`         | The week and day, the resource columns                                                        |
-| `--calendar-hour-height`      | Height of one hour in time grids (`3rem`)             | `h-(--calendar-hour-height)`      | The week and day, the scrolling week and day, the resource columns                            |
-| `--calendar-event-padding-x`  | Padding at the sides of time-grid events (`0.375rem`) | `px-(--calendar-event-padding-x)` | The week and day, the resource columns                                                        |
-| `--calendar-event-padding-y`  | Padding above and below time-grid events (`0.25rem`)  | `py-(--calendar-event-padding-y)` | The week and day, the resource columns                                                        |
-
-`--calendar-weekend`, which no file reads yet, belongs to a view the registry doesn't have in Solid:
-the resource timeline. The theme defines it all the same, so a
-[view you write](/docs/views/custom-views) uses its class today and matches the registry's view
-when it arrives.
+| `--calendar-grid`             | Lines between days and hours                          | `border-calendar-grid`            | The month, the agenda, the week and day, the scrolling week and day, the resource columns, the timeline |
+| `--calendar-today`            | Today's date marker                                   | `bg-calendar-today`               | The month, the year, the agenda, the week and day, the resource columns, the mini month, the timeline |
+| `--calendar-today-foreground` | Text on today's marker                                | `text-calendar-today-foreground`  | The month, the year, the agenda, the week and day, the mini month, the timeline |
+| `--calendar-selection`        | Selected days and ranges, and the dates in view       | `bg-calendar-selection`           | The month, the week and day, the scrolling week and day, the resource columns, the mini month, the timeline |
+| `--calendar-event`            | Event background                                      | `bg-calendar-event`               | The month, the agenda, the event chip |
+| `--calendar-event-foreground` | Event text                                            | `text-calendar-event-foreground`  | The month, the agenda, the event chip |
+| `--calendar-event-border`     | Event accent edge, and an event's color dot           | `border-calendar-event-border`    | The month, the year, the agenda, the event chip |
+| `--calendar-closed`           | Closed days in a month or a year                      | `bg-calendar-closed`              | The month, the year |
+| `--calendar-busy`             | A resource status's busy dot                          | `bg-calendar-busy`                | The resource status |
+| `--calendar-free`             | A resource status's free dot                          | `bg-calendar-free`                | The resource status |
+| `--calendar-invalid`          | A preview the policies would reject                   | `outline-calendar-invalid`        | The event chip, the previews' classes |
+| `--calendar-warning`          | A preview the policies would flag                     | `outline-calendar-warning`        | The event chip, the previews' classes |
+| `--calendar-surface`          | Behind sticky headers, between events                 | `bg-calendar-surface`             | The week and day, the scrolling week and day, the resource columns, the scrolling month, the timeline |
+| `--calendar-axis`             | Hour and weekday labels                               | `text-calendar-axis`              | The week and day, the scrolling week and day, the resource columns, the timeline |
+| `--calendar-now`              | The current-time line                                 | `bg-calendar-now`                 | The week and day, the resource columns, the timeline |
+| `--calendar-weekend`          | Weekend background                                    | `bg-calendar-weekend`             | The timeline |
+| `--calendar-unavailable`      | Closed time in time grids and timelines               | `bg-calendar-unavailable`         | The week and day, the resource columns, the timeline |
+| `--calendar-hour-height`      | Height of one hour in time grids (`3rem`)             | `h-(--calendar-hour-height)`      | The week and day, the scrolling week and day, the resource columns |
+| `--calendar-event-padding-x`  | Padding at the sides of time-grid events (`0.375rem`) | `px-(--calendar-event-padding-x)` | The week and day, the resource columns |
+| `--calendar-event-padding-y`  | Padding above and below time-grid events (`0.25rem`)  | `py-(--calendar-event-padding-y)` | The week and day, the resource columns |
 
 The color tokens work with any Tailwind color utility, so `text-calendar-today` and
 `ring-calendar-now` are classes too. Most calendar tokens derive from the base tokens:
@@ -125,14 +120,18 @@ The names come from `event-colors.ts` as `calendarEventColors`, with the type `C
 
 ### Choosing a color per event
 
-The month and the agenda each take a `getEventColor` option: a function from your event to a color
-name. Pass it when you create the view:
+The week and day, the month, the year, the agenda, the resource columns and the resource timeline
+each take a
+`getEventColor` option: a function from your event to a color name. Pass it when you create the
+view:
 
 <include meta='title="calendar-page.tsx"'>../examples/solid/calendar-page.tsx#view</include>
 
 Without `getEventColor`, events use the default event tokens. To set it for one calendar, pass it
 in `viewOptions` on `Root`, as [Options](/docs/views/agenda#options) shows for the agenda's other
-options. The month's [options](/docs/views/month#options) work the same way.
+options. The month's [options](/docs/views/month#options), the resource columns'
+[options](/docs/views/resource-columns#options) and the timeline's
+[options](/docs/views/resource-timeline#options) work the same way.
 
 ### Adding a color
 
@@ -169,6 +168,7 @@ each control keeps them in a `.styles.ts` file beside it, apart from its behavio
 | `list-view/agenda.styles.ts`                                | The agenda's days and rows, and the scrolling agenda's empty state                                                                     |
 | `time-grid-view/time-grid.styles.ts`                        | The week and day: the header, the all-day row, the hours, the columns, events, drafts and the now line                                 |
 | `year-view/year.styles.ts`                                  | The year's months, their days and dates, the closed days' shading, the dots, and the day popover's list                                |
+| `resource-timeline-view/resource-timeline.styles.ts`        | The timeline's grid, header, rows and cells, its events, and the keyboard's cursor |
 | `ui/dialog.styles.ts`                                       | The backdrop's, the panel's, and its header's, footer's, title's and description's classes                                             |
 | `ui/toast.styles.ts`                                        | The region's, the toast's and its parts' classes, and `toastRegionDefaults`: one toast at a time, at the bottom                        |
 | `recurrence-scope-dialog/recurrence-scope-dialog.styles.ts` | The recurring-event dialog's list of scopes and each choice                                                                            |
@@ -177,7 +177,7 @@ each control keeps them in a `.styles.ts` file beside it, apart from its behavio
 | `scrolling-month-view/scrolling-month.styles.ts`            | The scrolling month's viewport, its canvas of weeks, and a week that shows every lane                                                  |
 | `scrolling-time-grid-view/scrolling-time-grid.styles.ts`    | The scrolling week and day: the viewport, the sticky header, the rows that follow the days, the days' canvas, and a dragged bar's copy |
 | `resource-columns-view/resource-columns.styles.ts`          | The resource columns' header and its group bands, the dates row, the all-day row, and the columns' tracks                              |
-| `resource-time.styles.ts`                                   | A resource's local time and UTC offset, in its header                                                                                  |
+| `resource-time.styles.ts`                                   | A resource's local time and UTC offset, in the columns' header and beside a timeline row's name                                                                                  |
 
 The paths are from `components/calendar/`. These files are plain TypeScript: strings of classes,
 with no JSX and no import from Solid. To change a look, edit the file, and every view that draws

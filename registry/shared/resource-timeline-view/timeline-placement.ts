@@ -284,3 +284,18 @@ export function placeBars<TEvent>(
   }
   return placed;
 }
+
+/**
+ * A box as CSS writes it: kebab-case properties, and lengths in pixels. For markup whose `style`
+ * takes declarations as they are, such as Solid's.
+ */
+export function boxStyle(
+  box: Readonly<Record<string, number | string>>,
+): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    Object.entries(box).map(([property, value]) => [
+      property.replaceAll(/[A-Z]/gu, (letter) => `-${letter.toLowerCase()}`),
+      typeof value === "number" ? `${value}px` : value,
+    ]),
+  );
+}

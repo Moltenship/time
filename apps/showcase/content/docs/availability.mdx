@@ -156,6 +156,15 @@ const resources = [
 
 </React>
 
+<Solid>
+
+- **One time axis.** The [resource timeline](/docs/views/resource-timeline) keeps a single axis in
+  the display time zone. Only the shading follows each resource's clock, and its row's header shows
+  its local time and UTC offset, such as "7:18 AM GMT-7", while that clock differs from the display
+  time zone's.
+
+</Solid>
+
 ## Customize the shading
 
 Each stretch of closed time is a `div` hidden from screen readers. It carries why it is closed and
@@ -177,13 +186,13 @@ where it meets open time, so CSS can restyle it:
 
 <Solid>
 
-| Attribute or variable                   | Value                                                                                                  |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `data-slot`                             | `time-grid-unavailable` in the week and day, `month-closed` in the month, or `year-closed` in the year |
-| `data-reason`                           | `outside-hours`, `closed-day` (no weekly hours that day) or `exception` (a closed date)                |
-| `data-label`                            | The exception's `label`, such as "Company holiday"                                                     |
-| `data-opens-before`, `data-opens-after` | Present where open time meets the band's start or end in the view                                      |
-| `--band-start`, `--band-end`            | Where the band starts and ends along its column or row, as percentages                                 |
+| Attribute or variable                   | Value                                                                                                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data-slot`                             | `time-grid-unavailable` in the week and day, `resource-timeline-unavailable` in the timeline, `month-closed` in the month, or `year-closed` in the year |
+| `data-reason`                           | `outside-hours`, `closed-day` (no weekly hours that day) or `exception` (a closed date)                                                                 |
+| `data-label`                            | The exception's `label`, such as "Company holiday"                                                                                                      |
+| `data-opens-before`, `data-opens-after` | Present where open time meets the band's start or end in the view                                                                                       |
+| `--band-start`, `--band-end`            | Where the band starts and ends along its column or row, as percentages                                                                                  |
 
 </Solid>
 
@@ -274,7 +283,8 @@ time.
 
 <include meta='title="views.tsx"'>../examples/solid/shading-render.tsx#render</include>
 
-The week, day, month and year take `renderUnavailable`, and so do the scrolling week, day and
+The week, day, month, year and resource timeline take `renderUnavailable`, and so do the scrolling
+week, day and
 month. The agendas don't shade closed time.
 
 </Solid>
@@ -350,14 +360,24 @@ rendering and hydrating, unless the calendar fixes `now`.
 
 </Solid>
 
-<React>
-
 ## Busy badge in resource views
+
+<React>
 
 <CalendarPreview view="resources" availability status />
 
 Set `resourceStatus: true` on the resource columns or timeline view to show a badge on each
 resource:
+
+</React>
+
+<Solid>
+
+Set `resourceStatus: true` on the [resource timeline](/docs/views/resource-timeline) to show a badge
+on each resource, as the [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=timeline-week)
+does:
+
+</Solid>
 
 | State         | Shows                                                      |
 | ------------- | ---------------------------------------------------------- |
@@ -368,8 +388,11 @@ resource:
 
 The words carry the state; the dot before them is colored with `--calendar-busy` or
 `--calendar-free`. Times are on the display clock, with the weekday within the next six days and the date further out. Busy
-wins over the hours, so a late call shows as busy. The badge is the calendar's `Badge`. In
-your own `ResourceHeader`, add `ResourceHeaderStatus` where you want it:
+wins over the hours, so a late call shows as busy. The badge is the calendar's `Badge`.
+
+<React>
+
+In your own `ResourceHeader`, add `ResourceHeaderStatus` where you want it:
 
 ```tsx
 import {
@@ -398,6 +421,16 @@ and state, and `ResourceStatusBadge` draws them; `environment` is the `locale` a
 view gets in its props.
 
 </React>
+
+<Solid>
+
+A group shows no badge, since its own bookings aren't its members'. For a badge anywhere else,
+`useResourceStatusSummary(environment, resourceId)` from `resource-status.tsx` returns an accessor
+of the words and state, and `ResourceStatusBadge` draws them. Both arguments are accessors:
+`environment` of the `locale` and `timeZone` a view gets in its props, and `resourceId` of a
+resource's ID, or `null` for no badge.
+
+</Solid>
 
 ## Scheduling: who's busy?
 

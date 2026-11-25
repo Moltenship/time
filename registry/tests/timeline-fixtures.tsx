@@ -120,6 +120,30 @@ export class StubResizeObserver {
   observe() {}
 }
 
+/** A `ResizeObserver` the test resizes: `resizeViewport` sets a width and calls its callbacks. */
+export class ResizingObserver {
+  static readonly callbacks = new Set<() => void>();
+  readonly #callback: () => void;
+  constructor(callback: () => void) {
+    this.#callback = callback;
+  }
+  disconnect() {
+    ResizingObserver.callbacks.delete(this.#callback);
+  }
+  observe() {
+    ResizingObserver.callbacks.add(this.#callback);
+  }
+  unobserve() {}
+}
+
+/** Gives the viewport a client width, as a layout would, and tells its observers. */
+export async function resizeViewport(element: HTMLElement, width: number) {
+  await act(async () => {
+    Object.defineProperty(element, "clientWidth", { configurable: true, value: width });
+    for (const callback of ResizingObserver.callbacks) callback();
+  });
+}
+
 export const viewport = (container: Element) =>
   container.querySelector<HTMLElement>('[data-slot="resource-timeline-viewport"]')!;
 export const rows = (container: Element) => [

@@ -54,6 +54,7 @@ describe("Solid registry build", () => {
       "month-view",
       "recurrence-scope-dialog",
       "resource-columns-view",
+      "resource-timeline-view",
       "scrolling-list-view",
       "scrolling-month-view",
       "scrolling-time-grid-view",

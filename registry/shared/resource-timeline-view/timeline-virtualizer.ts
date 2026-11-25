@@ -144,13 +144,17 @@ export function createTimelineVirtualizer({
   let rowRange = rangeWith(applied.rows);
   let slotRange = rangeWith(applied.slots);
 
+  // Set while `update` drops the cached sizes: the render that called it reads the new ones.
+  let quiet = false;
   const shared = {
     getScrollElement,
     initialOffset: 0,
     initialRect: INITIAL_VIEWPORT,
     observeElementOffset,
     observeElementRect,
-    onChange: (_axis: TimelineAxis, sync: boolean) => onChange(sync),
+    onChange: (_axis: TimelineAxis, sync: boolean) => {
+      if (!quiet) onChange(sync);
+    },
   };
   const rowOptions = (): VirtualizerOptions<HTMLDivElement, HTMLDivElement> => ({
     ...shared,
@@ -198,6 +202,16 @@ export function createTimelineVirtualizer({
       applied = { rows: next.rows.pinned, slots: next.slots.pinned };
       rowAxis.setOptions(rowOptions());
       timeAxis.setOptions(slotOptions());
+      // Sizes are estimates the axes cache; a new slot width replaces them.
+      const { slotWidth } = columns();
+      if (measuredSlotWidth === slotWidth) return;
+      measuredSlotWidth = slotWidth;
+      quiet = true;
+      try {
+        timeAxis.measure();
+      } finally {
+        quiet = false;
+      }
     },
     /** Starts both axes once the viewport is in the document; returns what stops them. */
     mount(): () => void {
@@ -212,12 +226,6 @@ export function createTimelineVirtualizer({
     afterRender() {
       rowAxis._willUpdate();
       timeAxis._willUpdate();
-      // Sizes are estimates the axes cache; a new slot width replaces them.
-      const { slotWidth } = columns();
-      if (measuredSlotWidth !== slotWidth) {
-        measuredSlotWidth = slotWidth;
-        timeAxis.measure();
-      }
       // Native `scrollLeft` counts from the other edge in RTL. Put the same logical offset, which
       // the time axis read before the switch, back in view, and let the axis read the new
       // convention now.

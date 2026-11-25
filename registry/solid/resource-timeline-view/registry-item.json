@@ -1,0 +1,90 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "resource-timeline-view",
+  "type": "registry:component",
+  "title": "Resource timeline",
+  "description": "Resources as rows and time as columns for a day of hours or a week or month of days: a sticky resource column with collapsible groups, a sticky header, events as bars packed into lanes, a now-line, drag and keyboard moves along time and across rows, and two-axis virtualization that renders only the rows and slots in view. The same timeline as the React registry's, in Solid.",
+  "dependencies": ["@moltenship/calendar-solid", "@tanstack/virtual-core", "cn"],
+  "registryDependencies": [
+    "@moltenship/calendar",
+    "@moltenship/calendar-theme",
+    "@moltenship/calendar-ui"
+  ],
+  "files": [
+    {
+      "path": "registry/solid/resource-timeline-view/resource-timeline-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-view.tsx"
+    },
+    {
+      "path": "registry/solid/resource-timeline-view/resource-timeline-grid.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-grid.tsx"
+    },
+    {
+      "path": "registry/solid/resource-timeline-view/resource-timeline-header.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-header.tsx"
+    },
+    {
+      "path": "registry/solid/resource-timeline-view/resource-timeline-row.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-row.tsx"
+    },
+    {
+      "path": "registry/solid/resource-timeline-view/resource-timeline-availability.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-availability.tsx"
+    },
+    {
+      "path": "registry/solid/resource-timeline-view/resource-timeline-event.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-event.tsx"
+    },
+    {
+      "path": "registry/solid/resource-timeline-view/resource-timeline-focus.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-focus.tsx"
+    },
+    {
+      "path": "registry/shared/resource-timeline-view/timeline-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/resource-timeline-view/timeline-labels.ts"
+    },
+    {
+      "path": "registry/shared/resource-timeline-view/timeline-placement.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/resource-timeline-view/timeline-placement.ts"
+    },
+    {
+      "path": "registry/shared/resource-timeline-view/timeline-scale.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/resource-timeline-view/timeline-scale.ts"
+    },
+    {
+      "path": "registry/shared/resource-timeline-view/timeline-availability.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/resource-timeline-view/timeline-availability.ts"
+    },
+    {
+      "path": "registry/shared/resource-timeline-view/timeline-focus.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/resource-timeline-view/timeline-focus.ts"
+    },
+    {
+      "path": "registry/shared/resource-timeline-view/timeline-virtualizer.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/resource-timeline-view/timeline-virtualizer.ts"
+    },
+    {
+      "path": "registry/shared/resource-timeline-view/resource-timeline.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/resource-timeline-view/resource-timeline.styles.ts"
+    },
+    {
+      "path": "registry/solid/resource-timeline-view/use-timeline-virtualizer.ts",
+      "type": "registry:hook",
+      "target": "@components/calendar/resource-timeline-view/use-timeline-virtualizer.ts"
+    }
+  ]
+}

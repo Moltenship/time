@@ -3,6 +3,7 @@ import { createCalendar } from "@moltenship/calendar-solid";
 import { createAgendaView } from "@registry/list-view/agenda-view";
 import { createMonthView } from "@registry/month-view/month-view";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
+import { createTimelineWeekView } from "@registry/resource-timeline-view/resource-timeline-view";
 import { createScrollingAgendaView } from "@registry/scrolling-list-view/scrolling-agenda-view";
 import { createScrollingMonthView } from "@registry/scrolling-month-view/scrolling-month-view";
 import {
@@ -48,6 +49,7 @@ export const Calendar = createCalendar<DemoOccurrence, DemoResource>()({
     createYearView<DemoOccurrence>(options),
     createAgendaView<DemoOccurrence>(options),
     createResourceColumnsView<DemoOccurrence, DemoResource>({ ...options, resourceStatus: true }),
+    createTimelineWeekView<DemoOccurrence, DemoResource>({ ...options, resourceStatus: true }),
     // The same days, week, month and agenda, scrolling: the "scrolling views" setting switches
     // between them and the paged ones, as in the React demo.
     createScrollingWeekView<DemoOccurrence>({ ...options, dayView: "scrolling-day" }),
