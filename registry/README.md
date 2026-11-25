@@ -54,7 +54,8 @@ that `tools/registry` checks:
 The Tailwind items take every control from `calendar-ui`: buttons, badges, tooltips, selects,
 popovers, dialogs and toasts. So those controls look the same in every app and don't follow the
 app's own `components/ui`, and the items need neither Base UI nor a shadcn style. The stock shadcn
-components the demo uses for its own chrome live in `apps/demo/src/components/ui`.
+components the demo uses for its own chrome live in `apps/demo/src/components/ui`, and the docs
+site keeps its own in `apps/showcase/components/ui`: the release gate builds it without the demo.
 
 ## Building and serving
 

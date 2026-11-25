@@ -19,7 +19,7 @@ import { useRecurrenceScopePrompt } from "@registry/recurrence-scope-dialog/use-
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
 
 import { seriousViolations, setTheme, themes } from "./axe";
-import { removed, render, until } from "./render";
+import { removed, render, tab, until } from "./render";
 
 type Standup = RecurringCalendarEvent<null, string>;
 type Occurrence = RecurrenceOccurrence<Standup, string>;
@@ -160,7 +160,7 @@ async function choose(text: string) {
   // From the first choice, which the dialog focuses in the next animation frame.
   await until(() => expect(dialog()!.querySelector("button")).toBe(document.activeElement));
   for (let tabs = 0; tabs < 4 && document.activeElement?.textContent !== text; tabs += 1) {
-    await userEvent.keyboard("{Tab}");
+    await userEvent.keyboard(tab);
   }
   const question = dialog()!;
   await userEvent.keyboard("{Enter}");
@@ -217,8 +217,12 @@ test("Escape rolls the change back and focus goes back to the occurrence", async
 
   await userEvent.keyboard("{Escape}");
 
-  await until(() => expect(document.activeElement).toBe(occurrence(thursday)));
-  expect(label(document.activeElement)).toBe("Standup, Thursday, October 8, 9:00 – 9:30 AM");
+  // Focus comes back to the moved occurrence first, as the answer waits for it, and follows the
+  // occurrence back to Thursday once the change is rolled back.
+  await until(() => {
+    expect(document.activeElement).toBe(occurrence(thursday));
+    expect(label(document.activeElement)).toBe("Standup, Thursday, October 8, 9:00 – 9:30 AM");
+  });
   // A cancelled question isn't a failed save.
   await until(() => expect(said).toEqual(["Cancelled. Standup is back where it was."]));
 });

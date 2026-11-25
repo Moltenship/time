@@ -9,7 +9,7 @@ import type {
 import { useRecurrenceScopePrompt } from "@registry/recurrence-scope-dialog/use-recurrence-scope-prompt";
 
 import { seriousViolations, setTheme, themes } from "./axe";
-import { render, until } from "./render";
+import { render, shiftTab, tab, until } from "./render";
 
 /** A page with an event that asks, as `onEventChange` would, and shows the answer. */
 function Page({
@@ -90,12 +90,12 @@ test("Tab and Shift+Tab stay in the dialog, and Enter picks a scope", async () =
 
   await focusReaches("This event");
   for (const text of ["This and following events", "All events", "Cancel", "This event"]) {
-    await userEvent.keyboard("{Tab}");
+    await userEvent.keyboard(tab);
     await focusReaches(text);
   }
-  await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+  await userEvent.keyboard(shiftTab);
   await focusReaches("Cancel");
-  await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+  await userEvent.keyboard(shiftTab);
   await focusReaches("All events");
 
   await userEvent.keyboard("{Enter}");
@@ -123,7 +123,7 @@ test("Space on Cancel cancels", async () => {
   await render(<Page />);
   await openFromKeyboard();
   await focusReaches("This event");
-  await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+  await userEvent.keyboard(shiftTab);
   await focusReaches("Cancel");
 
   await userEvent.keyboard(" ");
