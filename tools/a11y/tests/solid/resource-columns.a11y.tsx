@@ -23,6 +23,7 @@ import {
   columnsWeekRules,
   type ColumnsBooking,
   type ColumnsResource,
+  classicScrollbars,
 } from "../resource-columns-fixture";
 import resourceColumnsCollapsed from "../view-twins/resource-columns-collapsed.txt?raw";
 import resourceColumnsDays from "../view-twins/resource-columns-days.txt?raw";
@@ -212,6 +213,12 @@ function watchGrid() {
 
 // The descriptions are Chromium's: another engine serializes some attributes its own way.
 describe.runIf(server.browser === "chromium")("the Solid resource columns render React's", () => {
+  let restore: () => void;
+  beforeAll(() => {
+    restore = classicScrollbars();
+  });
+  afterAll(() => restore());
+
   test("a day, a column per resource, with each one's status and hours", async () => {
     await render(() => <Columns />);
     await opened();

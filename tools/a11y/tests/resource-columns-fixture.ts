@@ -76,3 +76,16 @@ export const columnsBookings: readonly ColumnsBooking[] = [
     title: "Leave",
   },
 ];
+
+/**
+ * Gives every scrollbar on the page 15 px, as on a CI runner. The twins record the body's
+ * scrollbar width, which the columns make room for, and a Mac's overlay scrollbars, the default
+ * while a trackpad is the only pointer, take none. Call it in the twins' `beforeAll`; the returned
+ * function puts the page back.
+ */
+export function classicScrollbars(): () => void {
+  const style = document.createElement("style");
+  style.textContent = "::-webkit-scrollbar { width: 15px; height: 15px }";
+  document.head.append(style);
+  return () => style.remove();
+}

@@ -1,5 +1,5 @@
 import { createCalendar, createCanonicalEventAdapter } from "@moltenship/calendar";
-import { describe, expect, test } from "vite-plus/test";
+import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 import { server } from "vite-plus/test/browser";
 
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
@@ -17,6 +17,7 @@ import {
   columnsWeekRules,
   type ColumnsBooking,
   type ColumnsResource,
+  classicScrollbars,
 } from "./resource-columns-fixture";
 
 // React's resource columns render what `view-twins/` stores, and `solid/resource-columns.a11y.tsx`
@@ -82,6 +83,12 @@ async function opened() {
 
 // The descriptions are Chromium's: another engine serializes some attributes its own way.
 describe.runIf(server.browser === "chromium")("resource columns twins", () => {
+  let restore: () => void;
+  beforeAll(() => {
+    restore = classicScrollbars();
+  });
+  afterAll(() => restore());
+
   test("a day, a column per resource, with each one's status and hours", async () => {
     await render(<Columns days={1} />);
     await opened();
