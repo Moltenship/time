@@ -37,7 +37,8 @@ npx shadcn@latest add \
 
 They bring the theme, the toolbar, view switcher and event chip from the shared `calendar` item,
 the calendar's controls from `calendar-ui`, and the shadcn components they use. The files land in
-`components/calendar/`. The controls are built on ui-sdk, so name its CSS layer before Tailwind in
+`components/calendar/` and are yours to change, as [Customization](/docs/customization) describes.
+The controls are built on ui-sdk, so name its CSS layer before Tailwind in
 your global CSS:
 
 ```css title="globals.css"
@@ -102,7 +103,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
     description="Let people move, resize, create, and delete events."
   />
   <Card title="Views" href="/docs/views" description="Options for each built-in view." />
-  <Card title="Theming" href="/docs/theming" description="Colors, dark mode, and event colors." />
+  <Card
+    title="Customization"
+    href="/docs/customization"
+    description="Set tokens, edit the files you added, swap the controls, or build your own UI."
+  />
   <Card
     title="Agents"
     href="/docs/agents/connect"

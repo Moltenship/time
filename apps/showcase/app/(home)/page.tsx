@@ -223,7 +223,15 @@ export default async function HomePage() {
         </h2>
         <p className="mt-4 max-w-2xl text-fd-muted-foreground">
           The packages that hold events, time and state import no UI framework. The calendar above
-          is that engine with the React views from this site&apos;s registry.
+          is that engine with the React views from this site&apos;s registry. The packages ship no
+          styles, and those views are one UI on top of them. You can{" "}
+          <Link
+            className="underline underline-offset-4 hover:text-fd-foreground"
+            href="/docs/customization"
+          >
+            restyle it, edit its files or build your own
+          </Link>{" "}
+          with MUI or any other library.
         </p>
         <div className="mt-10 grid gap-px overflow-hidden rounded-xl border bg-fd-border sm:grid-cols-2 lg:grid-cols-3">
           {features.map(({ icon: Icon, title, description }) => (

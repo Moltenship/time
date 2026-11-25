@@ -89,7 +89,9 @@ some hooks exist in React only. [React and Solid](/docs/frameworks) has the full
 - **Controlled or uncontrolled state.** The calendar or your app can own the visible date, the
   view, the time zone, the selection and the focus, one value at a time.
 - **Headless parts.** `Root`, the previous, next and today buttons, `Title` and `ActiveView` render
-  plain elements. A [custom view](/docs/views/custom-views) is a strategy and a component.
+  plain elements. A [custom view](/docs/views/custom-views) is a strategy and a component. The
+  registry's React views are one UI built on these parts, and
+  [Customization](/docs/customization) shows how to restyle it, edit it or build your own.
 - **Actions for agents.** A calendar gives an AI agent fourteen actions, and a fifteenth, deleting,
   when you allow it. They describe the calendar, list its events, navigate, switch view, and
   create, rename, move and resize events. An agent sees nothing until your app creates ui-sdk's

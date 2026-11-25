@@ -56,6 +56,9 @@ React app built from the same views. Its source is in [`apps/demo`](./apps/demo)
 - **Views you own.** Week, day, month, year, agenda, resource columns and resource timeline are
   React source files built on shadcn/ui. The shadcn CLI copies them into your app, in Tailwind CSS
   or StyleX.
+- **Headless underneath.** The packages ship no styles, and the registry's views are one UI on top
+  of them. Restyle it with tokens, edit the files, swap its controls, or build your own UI with
+  MUI or any other library. See [Customization](https://time.molten.sh/docs/customization).
 - **Editing.** In React, people drag, resize and create events with a mouse, a pen or touch. Each
   edit arrives as a change for you to save. It shows as pending while it saves and rolls back if
   saving fails.
