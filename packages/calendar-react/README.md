@@ -16,7 +16,7 @@ It's a layer of `@moltenship/calendar`, which re-exports everything in it. Insta
 pnpm add @moltenship/calendar-react@next @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
-Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
+Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - React 19. React is a peer dependency.
 - `@ui-sdk/core` and `@ui-sdk/react` 0.1 beta, peer dependencies since 2.0. `@ui-sdk/react` needs

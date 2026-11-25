@@ -6,7 +6,7 @@
 pnpm add -D @moltenship/calendar-testing@next vitest jsdom
 ```
 
-Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
+Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 Its peers are `react`, `react-dom`, `@ui-sdk/core` and `@ui-sdk/react`, which a 2.0 app already has.
 

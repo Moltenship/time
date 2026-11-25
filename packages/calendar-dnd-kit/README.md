@@ -31,7 +31,7 @@ function TaskCard({ task }: { task: Task }) {
 pnpm add @moltenship/calendar@next @moltenship/calendar-dnd-kit@next @dnd-kit/react @dnd-kit/dom react react-dom
 ```
 
-Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
+Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - dnd-kit's `@dnd-kit/react` and `@dnd-kit/dom` 0.5. They are peer dependencies, and still pre-1.0,
   so this package takes 0.5 only.

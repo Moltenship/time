@@ -4,7 +4,6 @@ import {
   AgentChangesIsland,
   AgentDeleteIsland,
   AgentOverviewIsland,
-  AgentOverviewNearIsland,
   AgentPermissionsIsland,
   AgentSaveIsland,
   AgentServerIsland,
@@ -19,13 +18,18 @@ import {
 function AgentFigure({
   caption,
   children,
+  minHeight = "min-h-[48rem]",
 }: {
   readonly caption: ReactNode;
   readonly children: ReactNode;
+  /** The frame's height before the example loads, as Tailwind classes. */
+  readonly minHeight?: string;
 }) {
   return (
     <figure className="not-prose my-6">
-      <div className="min-h-[48rem] overflow-hidden rounded-xl border bg-fd-background text-left shadow-sm">
+      <div
+        className={`${minHeight} overflow-hidden rounded-xl border bg-fd-background text-left shadow-sm`}
+      >
         {children}
       </div>
       <figcaption className="mt-3 text-center text-sm text-fd-muted-foreground">
@@ -35,15 +39,16 @@ function AgentFigure({
   );
 }
 
-/**
- * A calendar beside what an agent's bridge lists for it, with buttons that run scripted steps.
- * With `whenNear`, the example's code loads once the page scrolls close to it, for a page that
- * shows it far below the first screen.
- */
-export function AgentPreview({ whenNear = false }: { readonly whenNear?: boolean }) {
+/** A calendar beside what an agent's bridge lists for it, with buttons that run scripted steps. */
+export function AgentPreview() {
   return (
-    <AgentFigure caption="Live. The buttons call the bridge as a model's tool calls would, and each result is what the model gets back; no model runs on this page. Drag a meeting and the snapshot follows.">
-      {whenNear ? <AgentOverviewNearIsland /> : <AgentOverviewIsland />}
+    // The loaded example is 1118px tall from 1024px up, and at least 1283px below that, where its
+    // two panels stack and their text wraps.
+    <AgentFigure
+      caption="Live. The buttons call the bridge as a model's tool calls would, and each result is what the model gets back; no model runs on this page. Drag a meeting and the snapshot follows."
+      minHeight="min-h-[80rem] lg:min-h-[69rem]"
+    >
+      <AgentOverviewIsland />
     </AgentFigure>
   );
 }

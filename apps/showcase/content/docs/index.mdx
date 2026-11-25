@@ -95,8 +95,8 @@ some hooks exist in React only. [React and Solid](/docs/frameworks) has the full
   create, rename, move and resize events. An agent sees nothing until your app creates ui-sdk's
   agent bridge. An agent's change goes through your
   policies and your `onEventChange`, marked as an agent's, and the agent gets back how it ended.
-  The actions reach the agent built into a browser through
-  WebMCP, an experimental browser API, or a model you run. See [Agents](/docs/agents).
+  A browser's built-in agent reaches them through WebMCP, an experimental browser API, and a model
+  you run reaches them through `agentTools`. See [Agents in your app](/docs/agents).
 - **Undo and redo.** `createEventHistory` records changes and takes them back. React has a hook
   and keyboard shortcuts for it. Solid has no hook yet, and
   [Outside React](/docs/undo-redo#outside-react) shows the calls to make yourself.

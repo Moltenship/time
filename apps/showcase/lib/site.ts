@@ -4,6 +4,9 @@ export const siteName = "Moltenship Time";
 export const siteHeadline = "The Temporal calendar for React, Solid and AI agents";
 /** The `<title>` of the landing page. Search results cut a title near 60 characters. */
 export const siteTitle = "Moltenship Time: a calendar for React, Solid and AI agents";
+/** The title a shared link shows, and the social image's alt text. It repeats the image's words. */
+export const siteSocialTitle =
+  "Moltenship Time: the Temporal calendar for React, Solid and AI agents";
 export const siteDescription =
   "A calendar engine on the Temporal API with exact time zones and recurrence. React views you copy and own, a SolidJS 2 preview, and actions an AI agent can call.";
 /** The `@id` that structured data on other pages uses to point at the site. */
@@ -40,7 +43,7 @@ export const siteKeywords = [
 export const openGraphBase = {
   siteName,
   locale: "en_US",
-  images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: siteTitle }],
+  images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: siteSocialTitle }],
 };
 
 /** Serializes structured data for a `<script type="application/ld+json">` tag. */

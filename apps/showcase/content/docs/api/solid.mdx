@@ -5,8 +5,8 @@ description: The SolidJS 2 integration, a preview. What it has, how it differs f
 
 `@moltenship/calendar-solid` is the calendar for [SolidJS](https://www.solidjs.com) 2. It renders
 the same [primitive](/docs/api/primitives) as the React integration, so both share one
-implementation of the calendar's state, actions, event changes and
-[the actions an agent can call](/docs/agents).
+implementation of the calendar's state, actions and event changes, [agent actions](/docs/agents)
+included.
 
 <Callout type="warn" title="A preview">
   This package is new in 2.0 and its API can change in any release before 2.0.0. It has the root,
@@ -48,7 +48,7 @@ bun add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js 
 </Tab>
 </Tabs>
 
-Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
+Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - **`@moltenship/calendar-core`** has the event adapter and the functions a view is made of. The
   Solid package doesn't re-export them.
@@ -443,7 +443,7 @@ gives `"saving"`, and the agent reads how it ended with `getChange`: see
   isn't among the calendar's, a step that asks for it fails whatever `allow` returns, and a delete
   an agent causes by pressing a button of yours is refused.
 
-The [Agents](/docs/agents) guides show React. The bridge's API (`createAgent`, `snapshot`, `act`,
+The [Agents in your app](/docs/agents) guides show React. The bridge's API (`createAgent`, `snapshot`, `act`,
 `agentTools`, `registerTools`) and everything about the calendar's actions carry over; only the
 import path changes.
 

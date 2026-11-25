@@ -94,7 +94,7 @@ In a SolidJS 2 app:
 pnpm add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
-Time 2.0 is a pre-release under npm's `next` tag, so both commands name `@next`.
+Time 2.0 is a pre-release on npm's `next` tag, so both commands install `@next`.
 
 Time needs:
 

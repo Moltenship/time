@@ -20,7 +20,7 @@ which the application creates.
 pnpm add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
-Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
+Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - `@moltenship/calendar-core` for the event adapter and the views' projections.
 - Solid 2: `solid-js` and `@solidjs/web` are peer dependencies.

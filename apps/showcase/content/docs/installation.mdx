@@ -24,7 +24,7 @@ Both frameworks need these:
 - **TypeScript 6 or later** with `"lib": ["DOM", "DOM.Iterable", "ESNext"]`. `ESNext` has the
   `Temporal` types.
 
-Then install the packages for your framework.
+You also need one of these frameworks:
 
 - **React 19.** React and React DOM are peer dependencies. The React integration is complete.
 - **SolidJS 2.0.** `solid-js` and `@solidjs/web` are peer dependencies. The Solid integration is a
@@ -65,7 +65,7 @@ bun add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
 </Tab>
 </Tabs>
 
-Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
+Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 `@moltenship/calendar` is the only calendar package most React apps import. It includes the React
 components, the event engine, the Temporal helpers, and the pointer interactions. Recurring events
@@ -111,7 +111,7 @@ bun add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js 
 </Tab>
 </Tabs>
 
-Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
+Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 A Solid app installs `@moltenship/calendar-solid` and `@moltenship/calendar-core`, and not
 `@moltenship/calendar`, which is the React package. The event adapter and the functions a view is

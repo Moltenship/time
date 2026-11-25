@@ -25,7 +25,7 @@ plainDateIntervalContains(october, Temporal.PlainDate.from("2026-11-01")); // fa
 pnpm add @moltenship/calendar-temporal@next
 ```
 
-Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
+Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - A runtime with `Temporal` (Node.js 26 and later include it), or a polyfill that defines
   `globalThis.Temporal`, loaded first.

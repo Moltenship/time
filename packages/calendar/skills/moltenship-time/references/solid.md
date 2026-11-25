@@ -24,7 +24,7 @@ If the user asks for something in the right column, say it isn't in the Solid pr
 pnpm add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
-Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
+Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - The adapter and the view functions come from `@moltenship/calendar-core`. The Solid package doesn't re-export them.
 - Don't install `@moltenship/calendar` in a Solid app. It's the React package.

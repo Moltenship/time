@@ -21,7 +21,7 @@ import {
   siteHeadline,
   siteKeywords,
   siteName,
-  siteTitle,
+  siteSocialTitle,
   siteUrl,
   websiteId,
 } from "@/lib/site";
@@ -33,7 +33,7 @@ import { join } from "node:path";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
-  openGraph: { ...openGraphBase, type: "website", url: "/", title: siteTitle },
+  openGraph: { ...openGraphBase, type: "website", url: "/", title: siteSocialTitle },
 };
 
 const structuredData = {
@@ -151,7 +151,7 @@ const agentDocs = [
   {
     name: "node_modules/@moltenship/calendar/docs",
     href: "/docs/agents/coding-agents#docs-in-the-package",
-    description: "The same pages inside @moltenship/calendar@next, for the version you installed.",
+    description: "The same pages inside the package since 2.0, for the version you installed.",
   },
 ] as const;
 
@@ -206,7 +206,7 @@ export default async function HomePage() {
             />
           </div>
           <p className="mt-3 text-xs text-fd-muted-foreground">
-            Time 2.0 is a pre-release under npm&apos;s <code>next</code> tag, and ui-sdk is a beta.
+            Time 2.0 is a pre-release on npm&apos;s <code>next</code> tag, and ui-sdk is a beta.
           </p>
         </div>
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -254,7 +254,7 @@ export default async function HomePage() {
             the call a model would send.
           </p>
         </div>
-        <AgentPreview whenNear />
+        <AgentPreview />
         <dl className="mt-10 grid gap-px overflow-hidden rounded-xl border bg-fd-border sm:grid-cols-2 lg:grid-cols-4">
           {agentFacts.map(({ title, description }) => (
             <div className="bg-fd-background p-6" key={title}>

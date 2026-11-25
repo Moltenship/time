@@ -1,7 +1,7 @@
-import { siteHeadline, siteTitle } from "@/lib/site";
+import { siteHeadline, siteSocialTitle } from "@/lib/site";
 import { ImageResponse } from "next/og";
 
-export const alt = siteTitle;
+export const alt = siteSocialTitle;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

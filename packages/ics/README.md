@@ -16,7 +16,7 @@ every deviation from the RFC reported as an issue with its line.
 pnpm add @moltenship/ics@next
 ```
 
-Time 2.0 is a pre-release under npm's `next` tag, so the command names `@next`.
+Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 ## Parse a feed
 
