@@ -8,12 +8,17 @@ export interface SwipeSteps {
   readonly from: readonly [number, number];
   /** How far the finger moves along each axis. */
   readonly by: readonly [number, number];
-  /** Moves, one a frame; each must pass the browser's touch slop, so the swipe scrolls at once. */
+  /** Moves, one every two frames; each must pass the touch slop, so the swipe scrolls at once. */
   readonly steps: number;
 }
 
 const sessions = new WeakMap<Page, Promise<Session>>();
-const frameMs = 1000 / 60;
+/**
+ * Two frames a move. On a loaded machine, with a move every frame, a swipe in Chromium's touch
+ * emulation scrolled 10 or 47 px of its 300, whatever the page's listeners were, and a move every
+ * two frames scrolled in full. Why the pace matters there wasn't traced.
+ */
+const moveMs = 1000 / 30;
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -21,7 +26,7 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * sending its own touches sends them late on a loaded machine, when its main thread is busy: the
  * first move could come after the long-press's 450 ms and start a drag, and a burst of late moves
  * read as a flick of any speed. A touch screen samples the finger whatever the page is doing, and
- * so does this, a move a frame, each stamped with the time the finger was there.
+ * so does this, each move stamped with the time the finger was there.
  */
 export const swipe: BrowserCommand<[steps: SwipeSteps]> = async (context, swipe) => {
   if (context.provider.name !== "playwright") throw new Error("swipe needs Playwright");
@@ -46,9 +51,9 @@ export const swipe: BrowserCommand<[steps: SwipeSteps]> = async (context, swipe)
   });
 
   const start = Date.now();
-  /** The time `step` frames in, in seconds since the epoch, once it has come. */
+  /** The time of move `step`, in seconds since the epoch, once it has come. */
   const at = async (step: number) => {
-    const time = start + step * frameMs;
+    const time = start + step * moveMs;
     const early = time - Date.now();
     if (early > 0) await wait(early);
     return time / 1000;

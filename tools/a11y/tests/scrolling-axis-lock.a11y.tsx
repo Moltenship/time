@@ -123,7 +123,7 @@ function onPage([x, y]: readonly [number, number]) {
 }
 
 /**
- * A finger's swipe from `from`, `by` along each axis, a move a frame, from Node, so a loaded page
+ * A finger's swipe from `from`, `by` along each axis, in steps, from Node, so a loaded page
  * can't make it late (`swipe.ts`). Each move is past the browser's touch slop, so the swipe
  * scrolls from its first move and never waits out a long-press.
  */

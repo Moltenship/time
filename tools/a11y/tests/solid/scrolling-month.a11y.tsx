@@ -4,8 +4,9 @@ import {
   type CalendarEvent,
 } from "@moltenship/calendar-solid";
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
-import { cdp, page, server } from "vite-plus/test/browser";
+import { cdp, commands, page, server } from "vite-plus/test/browser";
 
+import type { SwipeSteps } from "../../swipe";
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { createScrollingMonthView } from "@registry/scrolling-month-view/scrolling-month-view";
@@ -21,6 +22,12 @@ import {
 import { describeTree } from "../kit-twins";
 import scrollingMonth from "../view-twins/scrolling-month.txt?raw";
 import { atRest, inWebKit, press, render, settled, until } from "./render";
+
+declare module "vite-plus/test/browser" {
+  interface BrowserCommands {
+    swipe: (steps: SwipeSteps) => Promise<void>;
+  }
+}
 
 // The Solid registry's scrolling month in a real browser, against what React's files check
 // (scrolling-twins, scrolling-views, scrolling-axis-lock, rtl-layout, phone-layout and
@@ -294,39 +301,13 @@ describe.each(["ltr", "rtl"] as const)("the Solid scrolling month, %s", (dir) =>
   });
 });
 
-/** Where a point of the test's frame is on the page, for CDP's input. */
-function onPage([x, y]: readonly [number, number]) {
-  const frame = window.frameElement;
-  if (frame === null) return { x, y };
-  const box = frame.getBoundingClientRect();
-  const scale = box.width / (frame as HTMLElement).offsetWidth;
-  return { x: box.left + x * scale, y: box.top + y * scale };
-}
-
-async function touch(
-  type: "touchEnd" | "touchMove" | "touchStart",
-  at?: readonly [number, number],
-) {
-  await cdp().send("Input.dispatchTouchEvent", {
-    touchPoints: at === undefined ? [] : [{ id: 1, ...onPage(at) }],
-    type,
-  });
-}
-
-/** A finger's swipe from `from`, `by` along each axis, in steps past the browser's touch slop. */
-async function swipe(from: readonly [number, number], by: readonly [number, number]) {
-  const steps = 12;
-  await touch("touchStart", from);
-  try {
-    for (let step = 1; step <= steps; step++) {
-      const t = step / steps;
-      await touch("touchMove", [from[0] + by[0] * t, from[1] + by[1] * t]);
-      await new Promise((resolve) => setTimeout(resolve, 16));
-    }
-  } finally {
-    await touch("touchEnd");
-  }
-}
+/**
+ * A finger's swipe from `from`, `by` along each axis, in steps, from Node, so a loaded page
+ * can't make it late (`swipe.ts`). Each move is past the browser's touch slop, so the swipe
+ * scrolls from its first move and never waits out a long-press.
+ */
+const swipe = (from: readonly [number, number], by: readonly [number, number]) =>
+  commands.swipe({ by, from, steps: 12 });
 
 /** Whether an element scrolls along an axis, by the user or a script. */
 function scrolls(element: Element, direction: "x" | "y") {
