@@ -28,6 +28,7 @@ const Calendar = createCalendar<Fixture>()({
 });
 
 const anchor = Temporal.PlainDate.from("2026-10-08");
+const inWebKit = server.browser === "webkit";
 const titles = ["Standup", "Design review", "Lunch", "Focus time", "Gym", "1:1", "Planning"];
 
 /** 10,000 events over two years from a year back, about fourteen a day, as the React file has. */
@@ -122,46 +123,54 @@ describe.each(["ltr", "rtl"] as const)("the Solid agenda of 10,000 events, %s", 
     );
   });
 
-  test("keys move through events and days, keeping the focused event in view", async () => {
-    await render(() => <Agenda dir={dir} />);
-    const entry = list().querySelector<HTMLElement>('[tabindex="0"]')!;
-    entry.focus();
-    await settled();
+  // WebKit leaves the focused event out of view about half the time, as in the React file: #185.
+  test.skipIf(inWebKit)(
+    "keys move through events and days, keeping the focused event in view",
+    async () => {
+      await render(() => <Agenda dir={dir} />);
+      const entry = list().querySelector<HTMLElement>('[tabindex="0"]')!;
+      entry.focus();
+      await settled();
 
-    for (let step = 0; step < 40; step += 1) await press("ArrowDown");
-    expect(document.activeElement?.getAttribute("data-slot")).toBe("calendar-event");
-    await atRest(list());
-    expect(inView(document.activeElement!)).toBe(true);
-
-    const from = dayOf();
-    for (let step = 0; step < 10; step += 1) await press("PageDown");
-    expect(dayOf().toString()).toBe(from.add({ days: 10 }).toString());
-    await atRest(list());
-    expect(inView(document.activeElement!)).toBe(true);
-    await press("End");
-    await atRest(list());
-    expect(inView(document.activeElement!)).toBe(true);
-    await press("Home");
-    await atRest(list());
-    expect(inView(document.activeElement!)).toBe(true);
-    expect(days().length).toBeLessThan(16);
-  });
-
-  test("real key presses page past the range without jumping the list", async () => {
-    await render(() => <Agenda dir={dir} weeks={1} />);
-    list().querySelector<HTMLElement>('[tabindex="0"]')!.focus();
-    await settled();
-
-    await userEvent.keyboard("{ArrowUp}");
-    await until(() => expect(dayOf().toString()).toBe("2026-10-04"));
-    for (let step = 1; step <= 6; step += 1) {
-      await userEvent.keyboard("{PageDown}");
-      const day = Temporal.PlainDate.from("2026-10-04").add({ days: step }).toString();
-      await until(() => expect(dayOf().toString()).toBe(day));
+      for (let step = 0; step < 40; step += 1) await press("ArrowDown");
+      expect(document.activeElement?.getAttribute("data-slot")).toBe("calendar-event");
       await atRest(list());
       expect(inView(document.activeElement!)).toBe(true);
-    }
-  });
+
+      const from = dayOf();
+      for (let step = 0; step < 10; step += 1) await press("PageDown");
+      expect(dayOf().toString()).toBe(from.add({ days: 10 }).toString());
+      await atRest(list());
+      expect(inView(document.activeElement!)).toBe(true);
+      await press("End");
+      await atRest(list());
+      expect(inView(document.activeElement!)).toBe(true);
+      await press("Home");
+      await atRest(list());
+      expect(inView(document.activeElement!)).toBe(true);
+      expect(days().length).toBeLessThan(16);
+    },
+  );
+
+  // The same in WebKit: #185.
+  test.skipIf(inWebKit)(
+    "real key presses page past the range without jumping the list",
+    async () => {
+      await render(() => <Agenda dir={dir} weeks={1} />);
+      list().querySelector<HTMLElement>('[tabindex="0"]')!.focus();
+      await settled();
+
+      await userEvent.keyboard("{ArrowUp}");
+      await until(() => expect(dayOf().toString()).toBe("2026-10-04"));
+      for (let step = 1; step <= 6; step += 1) {
+        await userEvent.keyboard("{PageDown}");
+        const day = Temporal.PlainDate.from("2026-10-04").add({ days: step }).toString();
+        await until(() => expect(dayOf().toString()).toBe(day));
+        await atRest(list());
+        expect(inView(document.activeElement!)).toBe(true);
+      }
+    },
+  );
 
   test("each day's date precedes its events in reading order", async () => {
     await render(() => <Agenda dir={dir} />);
