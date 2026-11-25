@@ -68,7 +68,8 @@ export async function tarballProblems(path: string): Promise<string[]> {
   // skill, which are packed from generated files the check of the tracked ones never reads.
   const { version } = JSON.parse(archive.readFile(`${root}/package.json`)) as { version: string };
   if (distTag(version) !== "next") {
-    for (const file of files.filter((name) => /\.mdx?$/u.test(name))) {
+    // Sorted: a tarball lists its files in the order it was packed in, which differs by machine.
+    for (const file of files.filter((name) => /\.mdx?$/u.test(name)).toSorted()) {
       // Read as a package's file, so what it says of a pre-release counts as well as its commands.
       const lines = nextTagLines(`packages/${file}`, archive.readFile(`${root}/${file}`));
       if (lines.length > 0) {
