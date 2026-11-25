@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { availableParallelism, tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 import stylex from "@stylexjs/unplugin";
@@ -64,6 +64,10 @@ export default defineConfig({
     include: ["tests/**/*.test.{ts,tsx}"],
     // As the root's tests: a VM context a file, in processes that are reused.
     pool: "vmForks",
+    // As the root's, too: half the cores, since the gate runs this beside a browser run, and 15 s
+    // for the tests a busy machine slows past Vitest's 5 s default.
+    maxWorkers: Math.ceil(availableParallelism() / 2),
+    testTimeout: 15_000,
     setupFiles: [`${registry}../tests/setup/paint-timing.ts`],
     testNamePattern: new RegExp(`^(?!.*(?:${tailwindClassTests.join("|")}))`, "u"),
   },
