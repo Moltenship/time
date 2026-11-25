@@ -38,8 +38,8 @@ vp run release $ARGUMENTS
 ```
 
 Without a version, it takes the one the commits since the last tag suggest and says which. It
-checks the checkout and CI (waiting while CI runs), starts the release workflow on `main`, watches
-it with `gh run watch`, and reports. The workflow takes about 15 minutes: its check, the release
+checks the checkout and CI (waiting while CI runs), starts the release workflow on `main`, waits
+for GitHub to list the run, watches it to its end with `gh run watch`, and reports. The workflow takes about 15 minutes: its check, the release
 gate on a fresh runner, the publish through npm trusted publishing, the push and the GitHub
 release, then an install from npm. Tell the owner the run's link when it prints `Started:`, and
 wait for the command to end.
@@ -53,6 +53,9 @@ wait for the command to end.
   `main` through a PR. Once it's fixed, running `vp run release <version>` again picks up: it
   starts a new run, or, after the publish started, runs the failed jobs of the last one again.
   Don't run git, npm or gh commands to finish a release by hand.
+- **It lost the run** (`GitHub doesn't list run <id>` or `GitHub stopped returning run <id>`): the
+  result is unknown, so don't call the release failed or done. Report the message and the run's
+  link. For a release, run `vp run release <version>` again: it watches a run that is still going.
 
 ## 3. Polished notes
 
