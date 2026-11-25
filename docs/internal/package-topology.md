@@ -61,9 +61,9 @@ packed code carries the `/*!` notice.
 | `ssr-fixture` | Consumer-equivalent SSR/hydration verification | Public facade; its tests also use `calendar-testing` |
 | `benchmark` | Internal core and recurrence benchmark runners, with their fixtures | Core, recurrence and Temporal utilities |
 | `demo` | The Google Calendar-style demo app. Its build also builds `demo-solid` into `dist/solid`, and its dev server serves it at `/solid/` (`apps/demo/vite.config.ts`) | Public facade, `calendar-recurrence` and `calendar-dnd-kit`; `demo-solid` as a dev dependency, which it builds and never imports |
-| `demo-solid` | The Solid integration in a Vite app (2.0, in progress); the one app that compiles Solid JSX (the docs' samples compile theirs in a test) | `calendar-solid`, and the engine packages it needs, through public entries |
+| `demo-solid` | The demo's app in Solid 2.0, feature for feature, on the Solid registry's items; the one app that compiles Solid JSX (the docs' samples compile theirs in a test) | `calendar-solid`, and the engine packages it needs, through public entries; the demo's framework-free modules by path (`@demo/*`, `apps/demo/src`), which reach no React (`apps/demo-solid/tests/shared-modules.test.ts`) |
 | `registry-source` | Registry source, type-checked and tested in place | Public facade only; its tests also use `calendar-testing` |
-| `a11y` | Internal axe and interaction suite (`tools/a11y`) | Public facade, `calendar-recurrence`, the dnd-kit adapter, `calendar-testing`, registry source in place (`@registry/*`), and the demo's `App` by path (`apps/demo/src/app`); not in the manifest check yet |
+| `a11y` | Internal axe and interaction suite (`tools/a11y`) | Public facade, `calendar-recurrence`, the dnd-kit adapter, `calendar-testing`, registry source in place (`@registry/*`), and the demos' `App`s by path (`apps/demo/src/app` and `apps/demo-solid/src/app`); not in the manifest check yet |
 | `registry` | Internal shadcn build, validation and install test (`tools/registry`) | None |
 | `release` | Internal release tooling: size budgets, API reports, export checks, clean-consumer install, dry run, publish | None; it reads built and packed packages from disk |
 
