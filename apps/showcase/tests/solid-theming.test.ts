@@ -7,9 +7,10 @@ import { calendarEventColors } from "@registry/shared/calendar-theme/event-color
 
 import { contentRoot } from "./docs-files";
 
-// Solid's Theming page, checked against the Solid registry's source: the tokens it lists, which
-// files read them, the event palette, the look files and the lines its diffs change. A view that
-// starts to read a token, or brings a look file, fails here until the page says so.
+// Solid's Theming page, checked against the Solid registry's source: the tokens it lists, which of
+// them a file reads, the event palette, the look files and the lines its diffs change. A view that
+// is the first to read a token, or brings a look file, fails here until the page says so. Which
+// views a row names is for the author to check.
 
 const registryRoot = path.join(contentRoot, "../../../../registry");
 const page = readFileSync(path.join(contentRoot, "theming.solid.mdx"), "utf8");

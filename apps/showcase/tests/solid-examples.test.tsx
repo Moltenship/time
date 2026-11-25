@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
@@ -102,10 +104,56 @@ describe("the frame", () => {
 describe("the page the examples run in", () => {
   const page = readFileSync(path.join(liveRoot, "index.html"), "utf8");
 
-  test("takes the docs site's theme, and follows it when the reader switches", () => {
-    expect(page).toContain("window.parent");
-    expect(page).toContain("MutationObserver");
-    expect(page).toContain("prefers-color-scheme");
+  const script = /<script>([\s\S]*?)<\/script>/u.exec(page)?.[1] ?? "";
+  const settled = () => new Promise((resolve) => setTimeout(resolve));
+
+  /** Runs the page's script in a document of its own, under `parent` and the system's theme. */
+  function open(parent: object | undefined, systemDark: boolean) {
+    const frame = document.implementation.createHTMLDocument("example");
+    const changes: (() => void)[] = [];
+    const system = {
+      addEventListener: (_: string, listener: () => void) => changes.push(listener),
+      matches: systemDark,
+    };
+    const frameWindow: { parent?: object } = {};
+    frameWindow.parent = parent ?? frameWindow;
+    // oxlint-disable-next-line typescript/no-implied-eval -- the page's own inline script
+    new Function("window", "document", "matchMedia", script)(frameWindow, frame, () => system);
+    return {
+      root: frame.documentElement,
+      setSystem(dark: boolean) {
+        system.matches = dark;
+        for (const change of changes) change();
+      },
+    };
+  }
+
+  test("takes the docs site's theme, and follows it when the reader switches", async () => {
+    expect(script).not.toBe("");
+    const docs = document.implementation.createHTMLDocument("docs");
+    docs.documentElement.classList.add("dark");
+    const { root } = open({ document: docs }, false);
+    expect(root.classList.contains("dark")).toBe(true);
+    expect(root.style.colorScheme).toBe("dark");
+
+    docs.documentElement.classList.remove("dark");
+    await settled();
+    expect(root.classList.contains("dark")).toBe(false);
+    expect(root.style.colorScheme).toBe("light");
+  });
+
+  test("follows the system's theme on its own, or under a page it can't read", () => {
+    const alone = open(undefined, true);
+    expect(alone.root.classList.contains("dark")).toBe(true);
+    alone.setSystem(false);
+    expect(alone.root.classList.contains("dark")).toBe(false);
+
+    const foreign = {
+      get document(): Document {
+        throw new DOMException("Blocked a frame from accessing a cross-origin frame.");
+      },
+    };
+    expect(open(foreign, true).root.classList.contains("dark")).toBe(true);
   });
 
   test("stays out of search engines: the docs page around it is what a reader should find", () => {

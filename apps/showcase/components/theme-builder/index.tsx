@@ -12,8 +12,8 @@ const themeFile = path.join(
 
 export interface ThemeBuilderProps {
   /**
-   * Whether the builder offers the StyleX theme and the preset that goes with it. Solid's docs
-   * turn it off: the Solid registry has the Tailwind files alone.
+   * Whether the builder offers the theme as StyleX too. Solid's docs turn it off: the Solid
+   * registry has the Tailwind files alone.
    */
   readonly stylex?: boolean;
 }

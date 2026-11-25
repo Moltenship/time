@@ -1,7 +1,7 @@
 // The Theming page's switch for the dark theme.
 
 // #region toggle
-import { createSignal } from "solid-js";
+import { createSignal, onCleanup } from "solid-js";
 
 import { Button } from "@/components/calendar/ui/button";
 
@@ -9,11 +9,11 @@ import { Button } from "@/components/calendar/ui/button";
 export function ThemeToggle() {
   const root = document.documentElement;
   const [dark, setDark] = createSignal(root.classList.contains("dark"));
-  const toggle = () => {
-    const next = !dark();
-    root.classList.toggle("dark", next);
-    setDark(next);
-  };
+  // Other code may change the class too, such as a setting elsewhere in the app, so follow it.
+  const observer = new MutationObserver(() => setDark(root.classList.contains("dark")));
+  observer.observe(root, { attributeFilter: ["class"] });
+  onCleanup(() => observer.disconnect());
+  const toggle = () => root.classList.toggle("dark", !dark());
   return (
     <Button aria-pressed={dark() ? "true" : "false"} onClick={toggle} variant="outline">
       Dark theme

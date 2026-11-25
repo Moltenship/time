@@ -12,11 +12,21 @@ const load = examples[`./${name}.example.tsx`];
 const root = document.getElementById("root")!;
 
 if (load === undefined) {
-  root.textContent = `There is no example named "${name}".`;
+  root.textContent =
+    name === ""
+      ? "Name an example in the address: ?example=agenda."
+      : `There is no example named "${name}".`;
 } else {
-  // Chromium and Firefox ship Temporal. Load the polyfill where it's missing, before the calendar.
-  if (!("Temporal" in globalThis)) await import("temporal-polyfill/global");
-  const { default: Example } = await load();
-  document.title = `${name} · Solid example · Moltenship Time`;
-  render(() => <Example />, root);
+  try {
+    // Chromium and Firefox ship Temporal. Load the polyfill where it's missing, before the
+    // calendar.
+    if (!("Temporal" in globalThis)) await import("temporal-polyfill/global");
+    const { default: Example } = await load();
+    document.title = `${name} · Solid example · Moltenship Time`;
+    render(() => <Example />, root);
+  } catch (error) {
+    // A script that failed to load, after a deploy or offline: say so in the frame.
+    root.textContent = "The example didn't load. Reload the page to try again.";
+    throw error;
+  }
 }

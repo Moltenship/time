@@ -52,7 +52,8 @@ export function frameworkOptions(
     return {
       title: frameworkNames[framework],
       icon: logos[framework],
-      // The selected option leads where the reader is, so choosing it again changes nothing.
+      // The selected option leads where the reader is, hash included, so choosing it again keeps
+      // the address.
       url: samePage ? `${twin}${hash}` : twin,
       props: { "aria-current": selected ? "page" : undefined },
     };

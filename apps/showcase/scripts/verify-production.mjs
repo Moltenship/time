@@ -159,8 +159,9 @@ try {
     );
   }
 
-  // The live examples of Solid's docs: the page each frame loads, and the script it runs. They are
-  // a build of their own (`node --run examples`), so a site built without it would frame a 404.
+  // The live examples of Solid's docs: the page each frame loads, the script it runs, and the
+  // example the frame names in it. They are a build of their own (`node --run examples`), so a site
+  // built without it would frame a 404.
   assert(solidExamples.size > 0, "No page of Solid's docs frames a live example.");
   for (const example of solidExamples) {
     const frame = await fetch(`${origin}${example}`);
@@ -171,6 +172,11 @@ try {
     const code = await fetch(new URL(script, `${origin}${example}`));
     assert.equal(code.status, 200, `${example} asks for ${script}, which is not served.`);
     assert.match(code.headers.get("content-type") ?? "", /javascript/);
+    const name = new URL(example, origin).searchParams.get("example");
+    assert(
+      (await code.text()).includes(`./${name}.example.tsx`),
+      `${example} names an example the build doesn't have.`,
+    );
   }
 
   // A page one framework's docs lack is a missing page there, not a redirect to the other's.

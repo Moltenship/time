@@ -53,5 +53,6 @@ docs' accent on `--calendar-today`, as the React previews do.
 paths. In the release gate the site is copied out of the workspace with `registry` beside it, and
 `registry/solid` has no `node_modules` there, so the config resolves Solid, ui-sdk and the
 calendar package from the docs app (`resolve.dedupe`). A package the Solid registry starts to
-import goes into `apps/showcase/package.json` and that list. Nothing in the folder may import from
+import goes into `apps/showcase/package.json` and that list, unless `registry/package.json`
+declares it, as it does `@tanstack/virtual-core`: the shared files resolve those from `registry`. Nothing in the folder may import from
 outside `apps/showcase` and `registry` (`tools/release/tests/reach.test.ts`).

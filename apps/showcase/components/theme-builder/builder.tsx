@@ -88,13 +88,11 @@ function Presets({
   onApply,
   onReset,
   source,
-  stylex,
   theme,
 }: {
   readonly onApply: (preset: Preset) => void;
   readonly onReset: () => void;
   readonly source: ThemeSource;
-  readonly stylex: boolean;
   readonly theme: Theme;
 }) {
   const id = useId();
@@ -106,7 +104,7 @@ function Presets({
       </span>
       <div aria-labelledby={`${id}-${kind}`} className="flex flex-wrap gap-1.5" role="group">
         {presets
-          .filter((preset) => preset.kind === kind && (stylex || preset.stylex !== true))
+          .filter((preset) => preset.kind === kind)
           .map((preset) => (
             <button
               key={preset.name}
@@ -189,7 +187,7 @@ export default function ThemeBuilder({
   stylex = true,
 }: {
   readonly source: ThemeSource;
-  /** Whether to offer the StyleX theme, and the preset that goes with it. */
+  /** Whether to offer the theme as StyleX too. */
   readonly stylex?: boolean;
 }) {
   const [theme, setTheme] = useState(() => defaultTheme(source));
@@ -319,7 +317,6 @@ export default function ThemeBuilder({
             onApply={(preset) => setTheme((current) => applyPreset(source, current, preset))}
             onReset={() => setTheme(defaultTheme(source))}
             source={source}
-            stylex={stylex}
             theme={theme}
           />
           <Section defaultOpen title={`Calendar colors, ${mode}`}>
