@@ -7,6 +7,13 @@ Annotations show what happened alongside the events: what you listened to, when 
 workout, a focus session. Unlike events they are read-only, and they never take part in overlap
 layout, so they never reorder an event or change its lane.
 
+<SolidExample
+  name="week-annotations"
+  title="The week view with annotations"
+  size="h-[34rem]"
+  caption="Live. The registry's week, with sleep and a listening session beside the events. Hover a mark to see what it is, or click it for the details."
+/>
+
 The calendar doesn't fetch anything. Your app loads the data from its integrations and passes it to
 `Root`, the same way it passes events.
 
@@ -16,8 +23,9 @@ Describe each source once, then turn your data into annotations:
 
 <include meta='title="annotations.tsx"'>../examples/solid/annotations.tsx#data</include>
 
-Pass both to `Root`. `Tracker` is a calendar with the week view that
-[Draw them in a view](#draw-them-in-a-view) writes:
+Pass both to `Root`. `Tracker` here is a calendar with the week view that
+[Draw them in your own view](#draw-them-in-your-own-view) writes. With the registry's week, pass
+them the same way and [the week and day](#the-week-and-day) draw them:
 
 <include meta='title="annotations.tsx"'>../examples/solid/annotations.tsx#root</include>
 
@@ -26,7 +34,138 @@ you list them, and leaving one out of `annotationSources` hides its annotations.
 annotations are half-open, `[start, end)`. Invalid ones are skipped and reported through
 `onDiagnosticsChange`.
 
-## Draw them in a view
+## The week and day
+
+The registry's week and day views draw annotations as soon as `Root` has sources. Without any,
+they draw no rail. Give each source a `color` from the event palette and an `Icon`:
+
+<include meta='title="week-annotations.tsx"'>
+  ../examples/solid/week-annotations.tsx#sources
+</include>
+
+- **A rail beside the events.** The marks draw in a narrow strip at the start of each day column,
+  18px in the week and 30px in the day. An event moves aside for the rail only where a mark is
+  beside it, counting a short mark as tall as the rail's `markWidth`. The events it shares lanes
+  with move with it, so they keep their places beside each other. Every other event, and every
+  event on a day without marks, keeps the column's whole width. With `placement: "overlay"` the
+  parts draw behind events instead and move nothing.
+- **Capsules with the source's icon.** Each annotation draws as a capsule in its source's color,
+  with the icon inside its top. A mark is never shorter than it is wide, so a short session is a
+  circle with the icon.
+- **Merging.** A source's annotations closer than its `mergeGap` draw as one mark, such as tracks
+  into a listening session. Marks whose circles would touch merge too, so song-level history stays
+  readable when zoomed out.
+- **Lanes.** When different sources overlap, such as music during a focus session, they share the
+  rail in up to three narrower lanes. Too narrow for an icon, a mark drops it.
+- **Days.** An annotation across midnight shows on both days. A part that starts the day before
+  fades in at the top and has no icon.
+- **Details.** Hovering a mark shows a tooltip, and clicking it opens a popover listing what it
+  merges. Both are the kit's, in `components/calendar/ui/`, one of each for the whole grid. The
+  popover keeps focus until Escape, an outside click or its close button, then returns it to where
+  it was. Pressing or dragging a mark never starts a new event.
+
+### Customize them
+
+The rail is registry source like the rest of the view, built from small parts you can restyle,
+recompose or edit. From the lightest change to the heaviest:
+
+**CSS.** Each mark has `data-slot="annotation-mark"`, `data-source`, `data-color`, `data-kind`
+(`bar` or `dot`), and `data-starts-before` or `data-ends-after` when it's cut at midnight. This
+gives sleep a night sky:
+
+```css
+[data-slot="annotation-mark"][data-source="sleep"] {
+  background: linear-gradient(to bottom, oklch(0.5 0.19 282), oklch(0.7 0.14 275));
+}
+```
+
+**Your own composition.** Pass a component as the view's `annotations.Annotations`. It gets one
+column's marks, already merged and placed in lanes, and composes the parts:
+
+<include meta='title="annotation-parts.tsx"'>
+  ../examples/solid/annotation-parts.tsx#composition
+</include>
+
+- `AnnotationMark` has the variants `capsule` (default), `bar` (a thin bar that keeps its true
+  length) and `band` (a tint across the column behind events, with `placement: "overlay"`). Its
+  `render` prop takes a function of the mark's props that returns your element in its place, such
+  as a link to the track. Spread the props on it: they place it and wire its tooltip and popover.
+- `AnnotationMarkIcon` draws the source's `Icon`. Children replace it.
+- `useAnnotationMark()` gives any part inside a mark its mark and width.
+
+**Rail size and lanes.** These are numbers rather than CSS, because merging and lane packing use
+them:
+
+<include meta='title="annotation-parts.tsx"'>../examples/solid/annotation-parts.tsx#rail</include>
+
+**The parts themselves.** `time-grid-annotations.tsx` is yours: change the capsule, the tooltip or
+the popover there.
+
+### Anatomy
+
+```txt title="Rendered by TimeGridColumn"
+TimeGridColumn                   time-grid-column.tsx
+└── TimeGridAnnotations          time-grid-annotations.tsx, or yours
+    └── AnnotationRail           data-slot="annotation-rail", aria-hidden
+        └── AnnotationMark       data-slot="annotation-mark", one per mark
+            └── AnnotationMarkIcon   data-slot="annotation-mark-icon"
+```
+
+### Options
+
+<TypeTable
+  type={{
+    "rail.width": {
+      type: "number",
+      description: "The rail's width in px.",
+      default: "18 in a week, 30 in a day",
+    },
+    "rail.markWidth": {
+      type: "number",
+      description:
+        "A mark's width in px. Marks are never shorter than this, so short ones are circles.",
+      default: "12 in a week, 20 in a day",
+    },
+    "rail.side": {
+      type: '"start" | "end"',
+      description: "The column edge the rail sits on.",
+      default: '"start"',
+    },
+    "rail.layout": {
+      type: '"pack" | "per-source"',
+      description:
+        "pack shares the rail between overlapping marks; per-source gives each source its own lane.",
+      default: '"pack"',
+    },
+    placement: {
+      type: '"rail" | "overlay"',
+      description:
+        "rail draws marks in a strip, and the events beside them move aside for it; overlay gives the parts the whole column, behind events.",
+      default: '"rail"',
+    },
+    Annotations: {
+      type: "Component<TimeGridAnnotationsProps>",
+      description: "Your composition of the parts, in place of TimeGridAnnotations.",
+    },
+  }}
+/>
+
+Set them as the week or day view's `annotations` option.
+
+### Keyboard and screen readers
+
+Annotations add no keys and no tab stops: the grid keeps its single tab stop and its
+[key map](/docs/views/week-and-day#keyboard). The rail is `aria-hidden`, and screen readers get the
+same information in words instead:
+
+| Where            | What a screen reader hears                                                                                     |
+| ---------------- | -------------------------------------------------------------------------------------------------------------- |
+| A day's header   | A summary of its annotations: "Annotations: Sleep until 7:05 AM. Music, 3 times, 2 hours, 10 minutes."         |
+| A slot, with ↑ ↓ | The items drawn across it, after its time: "Music: Nightcall, 9:00 AM to 9:04 AM; Genesis, 9:05 AM to 9:09 AM" |
+
+Hover effects respect `prefers-reduced-motion`.
+
+## Draw them in your own view
 
 `useTimeGridAnnotations(columns, geometry)` lays the annotations out beside a time grid's columns
 and returns an accessor of one list of marks per column. This week view draws them in a rail at the
