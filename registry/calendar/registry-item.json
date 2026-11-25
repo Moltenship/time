@@ -121,6 +121,16 @@
       "path": "registry/shared/calendar/preview-state.styles.ts",
       "type": "registry:lib",
       "target": "@components/calendar/preview-state.styles.ts"
+    },
+    {
+      "path": "registry/shared/calendar/unavailable-band.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/unavailable-band.ts"
+    },
+    {
+      "path": "registry/shared/calendar/unavailable-time.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/unavailable-time.styles.ts"
     }
   ]
 }

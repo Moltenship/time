@@ -25,6 +25,21 @@
       "path": "registry/month-view/month-event.tsx",
       "type": "registry:component",
       "target": "@components/calendar/month-view/month-event.tsx"
+    },
+    {
+      "path": "registry/shared/month-view/month-layout.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/month-view/month-layout.ts"
+    },
+    {
+      "path": "registry/shared/month-view/month-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/month-view/month-labels.ts"
+    },
+    {
+      "path": "registry/shared/month-view/month.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/month-view/month.styles.ts"
     }
   ]
 }

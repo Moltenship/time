@@ -5,6 +5,7 @@ import type { CalendarResource, ClosedTime, ResourceId } from "@moltenship/calen
 import * as stylex from "@stylexjs/stylex";
 import type { CSSProperties } from "react";
 
+import { unavailableBand } from "@registry/shared/calendar/unavailable-band";
 import { type XStyle, xprops } from "@registry/stylex-calendar-theme/xprops";
 
 const styles = stylex.create({
@@ -43,7 +44,6 @@ export interface UnavailableTimeProps extends UnavailableTimeState {
   readonly xstyle?: XStyle;
 }
 
-const percent = (fraction: number) => `${fraction * 100}%`;
 /** The state goes to `render`, not into attributes; the band's are set below. */
 const noStateAttributes = { band: () => null, date: () => null, resource: () => null };
 
@@ -65,24 +65,13 @@ export function UnavailableTime({
   style,
   xstyle,
 }: UnavailableTimeProps) {
+  const { attributes, variables } = unavailableBand(band, slot, start, end);
   return useRender({
     defaultTagName: "div",
     props: {
-      "aria-hidden": true,
-      "data-label": band.label,
-      "data-opens-after": band.opensAfter ? "" : undefined,
-      "data-opens-before": band.opensBefore ? "" : undefined,
-      "data-reason": band.reason,
-      "data-slot": slot,
+      ...attributes,
       ...xprops(
-        {
-          className,
-          style: {
-            "--band-end": percent(end),
-            "--band-start": percent(start),
-            ...style,
-          } as CSSProperties,
-        },
+        { className, style: { ...variables, ...style } as CSSProperties },
         styles.band,
         xstyle,
       ),

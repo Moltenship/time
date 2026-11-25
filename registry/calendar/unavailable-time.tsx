@@ -3,6 +3,8 @@
 import type { CalendarResource, ClosedTime, ResourceId } from "@moltenship/calendar";
 import type { CSSProperties, HTMLAttributes, ReactElement } from "react";
 
+import { unavailableBand } from "@registry/shared/calendar/unavailable-band";
+import { unavailableTimeClass } from "@registry/shared/calendar/unavailable-time.styles";
 import { cn } from "cn";
 
 /** What a view's `renderUnavailable` gets about one stretch of closed time. */
@@ -35,8 +37,6 @@ export interface UnavailableTimeProps extends UnavailableTimeState {
   readonly style?: CSSProperties;
 }
 
-const percent = (fraction: number) => `${fraction * 100}%`;
-
 /**
  * One stretch of closed time, behind events. Screen readers hear it in the names of the cells it
  * covers instead, so it is hidden from them. `data-reason`, `data-label`, `data-opens-before`,
@@ -54,19 +54,11 @@ export function UnavailableTime({
   start,
   style,
 }: UnavailableTimeProps) {
+  const { attributes, variables } = unavailableBand(band, slot, start, end);
   const props = {
-    "aria-hidden": true,
-    className: cn("pointer-events-none absolute", className),
-    "data-label": band.label,
-    "data-opens-after": band.opensAfter ? "" : undefined,
-    "data-opens-before": band.opensBefore ? "" : undefined,
-    "data-reason": band.reason,
-    "data-slot": slot,
-    style: {
-      "--band-end": percent(end),
-      "--band-start": percent(start),
-      ...style,
-    } as CSSProperties,
+    ...attributes,
+    className: cn(unavailableTimeClass, className),
+    style: { ...variables, ...style } as CSSProperties,
   };
   return render === undefined ? <div {...props} /> : render(props, { band, date, resource });
 }

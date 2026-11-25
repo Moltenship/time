@@ -5,6 +5,13 @@ import { server, userEvent } from "vite-plus/test/browser";
 import { Badge } from "@registry/calendar-ui/badge";
 import { Button } from "@registry/calendar-ui/button";
 import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@registry/calendar-ui/popover";
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -18,6 +25,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/calendar-ui/t
 
 import { describeTree, kitFixture, opened, popups } from "../kit-twins";
 import buttonBadge from "../kit-twins/button-badge.txt?raw";
+import popoverClosed from "../kit-twins/popover-closed.txt?raw";
+import popoverOpen from "../kit-twins/popover-open.txt?raw";
 import selectClosed from "../kit-twins/select-closed.txt?raw";
 import selectOpen from "../kit-twins/select-open.txt?raw";
 import tooltipClosed from "../kit-twins/tooltip-closed.txt?raw";
@@ -98,5 +107,27 @@ describe.runIf(server.browser === "chromium")("kit twins", () => {
     await until(() => expect(opened(document.querySelector('[role="listbox"]'))).toBe(true));
     await settled();
     expect(describeTree(root(), ...popups(container()))).toBe(selectOpen);
+  });
+
+  test("the popover renders React's, closed and open", async () => {
+    await render(() => (
+      <div data-testid="kit">
+        <Popover>
+          <PopoverTrigger aria-label="3 more events">3 more</PopoverTrigger>
+          <PopoverContent align="start">
+            <PopoverTitle>Thursday</PopoverTitle>
+            <PopoverClose>Close</PopoverClose>
+          </PopoverContent>
+        </Popover>
+      </div>
+    ));
+    expect(describeTree(root())).toBe(popoverClosed);
+
+    await userEvent.click(root().querySelector("button")!);
+    await until(() =>
+      expect(opened(document.querySelector('[data-slot="popover-content"]'))).toBe(true),
+    );
+    await settled();
+    expect(describeTree(root(), ...popups(container()))).toBe(popoverOpen);
   });
 });

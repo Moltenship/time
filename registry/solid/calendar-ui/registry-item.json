@@ -3,7 +3,7 @@
   "name": "calendar-ui",
   "type": "registry:component",
   "title": "Calendar controls",
-  "description": "The calendar's own controls, thin wrappers over ui-sdk's Solid components in the calendar's look: button, badge, tooltip and select, and the icons the kit and the views draw. Each control's classes live in a plain .styles.ts file beside it, the same file the React kit installs. They land under components/calendar/ui, apart from the app's own components/ui.",
+  "description": "The calendar's own controls, thin wrappers over ui-sdk's Solid components in the calendar's look: button, badge, tooltip, select and popover, and the icons the kit and the views draw. Each control's classes live in a plain .styles.ts file beside it, the same file the React kit installs. They land under components/calendar/ui, apart from the app's own components/ui.",
   "dependencies": ["@ui-sdk/core", "@ui-sdk/solid", "class-variance-authority", "cn"],
   "files": [
     {
@@ -45,6 +45,16 @@
       "path": "registry/shared/calendar-ui/select.styles.ts",
       "type": "registry:lib",
       "target": "@components/calendar/ui/select.styles.ts"
+    },
+    {
+      "path": "registry/solid/calendar-ui/popover.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/ui/popover.tsx"
+    },
+    {
+      "path": "registry/shared/calendar-ui/popover.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/ui/popover.styles.ts"
     },
     {
       "path": "registry/solid/calendar-ui/icons.tsx",

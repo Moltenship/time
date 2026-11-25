@@ -7,7 +7,14 @@ import type { CSSProperties, ReactNode } from "react";
 import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
-import { cn } from "cn";
+import {
+  monthEventChevronClass,
+  monthEventClass,
+  monthEventDotClass,
+  monthEventIconClass,
+  monthEventTimeClass,
+  monthEventTitleClass,
+} from "@registry/shared/month-view/month.styles";
 
 export interface MonthEventProps<TEvent> {
   /** A filled bar (all-day and multi-day events) rather than a dot, time, and title. */
@@ -63,47 +70,19 @@ export function MonthEvent<TEvent>({
       {...chip}
       style={style}
       title={event.title}
-      className={cn(
-        "gap-1 rounded-sm px-1.5 py-0 max-sm:px-1 max-sm:text-[0.625rem]",
-        bar
-          ? [startsBefore && "rounded-s-none border-s-0 ps-0.5", endsAfter && "rounded-e-none"]
-          : // Small screens show compact tinted blocks instead of dot, time, and title. A dragged
-            // copy is tinted too, so the grid doesn't show through it.
-            "group/event border-s-0 bg-transparent font-normal text-foreground hover:bg-accent hover:brightness-100 data-calendar-ghost:bg-calendar-event max-sm:bg-calendar-event max-sm:text-calendar-event-foreground",
-        className,
-      )}
+      className={monthEventClass(bar, startsBefore, endsAfter, className)}
     >
       {bar ? (
-        startsBefore && (
-          <ChevronLeftIcon aria-hidden className="size-3 shrink-0 opacity-70 rtl:rotate-180" />
-        )
+        startsBefore && <ChevronLeftIcon aria-hidden className={monthEventChevronClass} />
       ) : (
-        <span
-          aria-hidden
-          className="size-2 shrink-0 rounded-full bg-calendar-event-border max-sm:hidden"
-        />
+        <span aria-hidden className={monthEventDotClass} />
       )}
-      {time !== undefined && (
-        <span
-          className={cn(
-            "shrink-0 max-sm:hidden",
-            // Muted on the hover fill falls short of 4.5:1.
-            bar ? "font-normal" : "text-muted-foreground group-hover/event:text-accent-foreground",
-          )}
-        >
-          {time}
-        </span>
-      )}
-      <span
-        data-slot="calendar-event-title"
-        className={cn("min-w-0 flex-1 truncate max-sm:text-clip", !bar && "font-medium")}
-      >
-        <EventIcon className="max-sm:size-2.5 max-sm:[&_svg]:size-2.5">{icon}</EventIcon>
+      {time !== undefined && <span className={monthEventTimeClass(bar)}>{time}</span>}
+      <span data-slot="calendar-event-title" className={monthEventTitleClass(bar)}>
+        <EventIcon className={monthEventIconClass}>{icon}</EventIcon>
         {event.title}
       </span>
-      {bar && endsAfter && (
-        <ChevronRightIcon aria-hidden className="size-3 shrink-0 opacity-70 rtl:rotate-180" />
-      )}
+      {bar && endsAfter && <ChevronRightIcon aria-hidden className={monthEventChevronClass} />}
     </EventChip>
   );
 }

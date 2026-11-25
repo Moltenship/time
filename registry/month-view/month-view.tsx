@@ -7,12 +7,9 @@ import {
   limitDayGridLanes,
   monthSpatialNavigation,
   navigateMonth,
-  plainDateIntervalContains,
   projectMonth,
-  type CalendarFocus,
   type CalendarViewProjectionInput,
   type CalendarViewRendererProps,
-  type DayGridOverflow,
   type EventId,
   type MonthProjection,
   type ResourceId,
@@ -26,16 +23,23 @@ import { useEventLabel, type EventDescriber } from "@registry/calendar/event-lab
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
-import { cn } from "cn";
-
 import {
-  LaneProbe,
-  laneHeightOf,
-  lanesIn,
-  MonthWeekRow,
-  weekHeight,
-  type MonthFormats,
-} from "./month-week";
+  attachLaneCapacity,
+  INITIAL_LANES,
+  rowSizes,
+  weekHidingFocus,
+} from "@registry/shared/month-view/month-layout";
+import { monthFormats, type MonthFormats } from "@registry/shared/month-view/month-labels";
+import {
+  monthBodyClass,
+  monthColumnHeaderClass,
+  monthHeaderRowClass,
+  monthViewClass,
+} from "@registry/shared/month-view/month.styles";
+
+import { LaneProbe, MonthWeekRow } from "./month-week";
+
+export { weekHidingFocus };
 
 export interface MonthViewOptions<TEvent> {
   /**
@@ -66,11 +70,6 @@ type MonthViewProps<TEvent> = CalendarViewRendererProps<
   MonthViewOptions<TEvent>
 >;
 
-/** Rows never shrink below this; shorter viewports scroll instead. */
-const MIN_ROW_HEIGHT = 80;
-/** Lane count before the first measurement, e.g. while rendering on the server. */
-const INITIAL_LANES = 3;
-
 /**
  * Measures how many event lanes fit in a week row, again only when the grid or the lane height
  * changes: `probe` is a `LaneProbe`.
@@ -85,75 +84,14 @@ function useLaneCapacity(
   useLayoutEffect(() => {
     const element = body.current;
     if (element === null) return;
-    const measure = () => {
-      const rowHeight = Math.max(MIN_ROW_HEIGHT, element.clientHeight / weekCount);
-      setLanes(lanesIn(rowHeight, laneHeightOf(probe.current)));
-    };
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    if (probe.current !== null) observer.observe(probe.current);
-    return () => observer.disconnect();
+    return attachLaneCapacity(element, { onChange: setLanes, probe: probe.current, weekCount });
   }, [body, probe, weekCount]);
 
   return lanes;
 }
 
-/**
- * The week whose lane limit hides the event keyboard focus is on, or -1. That week shows all of
- * its lanes, so arrow keys reach every event without opening "+N more".
- */
-export function weekHidingFocus<TEvent>(
-  focus: CalendarFocus | null,
-  weeks: MonthProjection<TEvent, EventId, ResourceId>["weeks"],
-  overflows: readonly DayGridOverflow<TEvent, EventId, ResourceId>[],
-): number {
-  if (focus?.kind !== "event") return -1;
-  const index = weeks.findIndex(({ range }) => plainDateIntervalContains(range, focus.date));
-  if (index === -1) return -1;
-  const column = weeks[index]!.range.start.until(focus.date).days;
-  const shown = overflows[index]!.segments.some(
-    (segment) =>
-      segment.event.id === focus.eventId &&
-      segment.column <= column &&
-      column < segment.column + segment.span,
-  );
-  return shown ? -1 : index;
-}
-
-/**
- * Rows share the height. An expanded week grows to fit every lane while the others keep their
- * share, so the grid scrolls rather than squeezing events out of their rows.
- */
-function rowSizes(weeks: readonly { readonly laneCount: number }[], expandedWeek: number): string {
-  if (expandedWeek === -1) return `repeat(${weeks.length}, minmax(${MIN_ROW_HEIGHT}px, 1fr))`;
-  const share = `max(${MIN_ROW_HEIGHT}px, ${100 / weeks.length}%)`;
-  return weeks
-    .map(({ laneCount }, index) =>
-      index === expandedWeek ? `max(${share}, ${weekHeight(laneCount)})` : share,
-    )
-    .join(" ");
-}
-
 export function useMonthFormats(locale: Intl.LocalesArgument): MonthFormats {
-  return useMemo(() => {
-    const hour = new Intl.DateTimeFormat(locale, { hour: "numeric" });
-    const hourMinute = new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" });
-    return {
-      date: new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
-      firstDate: new Intl.DateTimeFormat(locale, {
-        day: "numeric",
-        month: "short",
-        weekday: "long",
-        year: "numeric",
-      }),
-      monthDay: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }),
-      time: (time) => (time.minute === 0 ? hour : hourMinute).format(time),
-      weekday: new Intl.DateTimeFormat(locale, { weekday: "short" }),
-      weekdayName: new Intl.DateTimeFormat(locale, { weekday: "long" }),
-    };
-  }, [locale]);
+  return useMemo(() => monthFormats(locale), [locale]);
 }
 
 function MonthView<TEvent>({
@@ -202,20 +140,16 @@ function MonthView<TEvent>({
       aria-label={getMonthTitle(range, environment)}
       {...keyboard}
       data-slot="month-view"
-      className={cn(
-        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] [--calendar-month-lane:22px] pointer-coarse:[--calendar-month-lane:26px] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
-        // A long-press on a touch screen picks events up: it selects no text and opens no callout.
-        !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
-      )}
+      className={monthViewClass(isReadOnly)}
     >
       <LaneProbe ref={laneProbe} />
-      <div role="row" className="grid shrink-0 grid-cols-7 border-b border-calendar-grid">
+      <div role="row" className={monthHeaderRowClass}>
         {projection.weeks[0]?.days.map(({ date }) => (
           <div
             key={date.dayOfWeek}
             role="columnheader"
             aria-label={formats.weekdayName.format(date)}
-            className="py-2 text-center text-[0.6875rem] font-medium text-muted-foreground uppercase"
+            className={monthColumnHeaderClass}
           >
             {formats.weekday.format(date)}
           </div>
@@ -223,7 +157,7 @@ function MonthView<TEvent>({
       </div>
       <div
         ref={body}
-        className="grid min-h-0 flex-1 overflow-y-auto"
+        className={monthBodyClass}
         style={{ gridTemplateRows: rowSizes(projection.weeks, expandedWeek) }}
       >
         {projection.weeks.map((week, index) => (
