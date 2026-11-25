@@ -1,8 +1,11 @@
 # ADR 0001: Hybrid package and source distribution
 
-- Status: Accepted, amended by [ADR 0275](./0275-ui-sdk-primitives.md). The split stands. 2.0 adds
-  a SolidJS integration beside the React one; the registry's source is still React, and how Solid
-  presentation source is distributed isn't decided.
+- Status: Accepted, amended by [ADR 0275](./0275-ui-sdk-primitives.md) and
+  [ADR 0279](./0279-solid-views-in-the-registry.md). The split stands. 2.0 adds a SolidJS
+  integration beside the React one. ADR 0279 decides how Solid presentation source is distributed:
+  a registry of its own, installed by the same `shadcn` CLI, with the controls of both frameworks
+  on ui-sdk instead of stock shadcn components. Until that work lands, the registry's source is
+  React.
 - Date: 2026-08-15
 
 ## Context

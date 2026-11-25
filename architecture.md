@@ -105,7 +105,7 @@ None of 2.0 is released.
 | Docs for agents: agent and WebMCP guides with live examples, `llms.txt`, a skill for coding agents (§20) | Built |
 | Keyboard gestures, roving focus, drafts and the history binding in the primitives | In progress: the stores behind drafts and keyboard grabs and the announcer channel are there; the gestures, roving focus and the history binding are still React's, and Solid binds none of them |
 | A framework-free pointer adapter: `useCalendarPointer` in the React integration (rule 4) | Planned |
-| Registry views on the new parts; Solid views | Planned |
+| Registry views on the new parts; Solid views; the registry's controls on ui-sdk | Planned. [ADR 0279](./docs/adr/0279-solid-views-in-the-registry.md) decides how and in what order |
 
 Until a piece is built, the sections below describe the 1.x implementation and say where 2.0
 differs.
@@ -258,9 +258,14 @@ The registry is not a second package manager. It distributes the source users ar
   and every change proposed through `actions` is rejected as read-only.
 - `shadcn build` builds it, and the docs site serves it at `/r/<item>.json`.
 - No custom CLI is introduced in v1; the maintained shadcn CLI is the installer.
-- The registry is React source. 2.0 doesn't change what it imports (rule 5): it never imports
-  ui-sdk, and its stock shadcn controls stay Base UI. Solid views are planned; where they live and
-  how they are distributed is not decided.
+- The registry is React source today, it never imports ui-sdk (rule 5), and its controls are stock
+  shadcn components on Base UI. [ADR 0279](./docs/adr/0279-solid-views-in-the-registry.md) decides
+  what follows, none of it built yet: Solid views in a registry of their own (`registry/solid`,
+  served at `/r/solid/<item>.json`, installed by the same `shadcn` CLI); files with no framework
+  in them shared by both registries (`registry/shared`); and one kit of controls per framework on
+  ui-sdk (`calendar-ui`), which replaces the stock shadcn components and Base UI in the React
+  items as well. Rules 5, 14 and 15 above describe what is enforced now. They change in the pull
+  requests that add the Solid registry and the kit, as that record's point 10 says.
 
 ## 4. Time and interval model
 
@@ -1852,7 +1857,8 @@ except that the docs for agents need the agent surface.
    creates a bridge or registers a tool.
 4. **Docs for agents (built).** Agent and WebMCP guides with live examples, `llms.txt`, and a
    skill for coding agents, on the docs site.
-5. **Views (planned).** The registry's views on the new parts, and Solid views.
+5. **Views (planned).** The registry's views on the new parts, Solid views, and the controls of
+   both on ui-sdk, in the order ADR 0279 sets.
    Gate: the a11y suite in both frameworks; the performance contract of §14 measured on both.
 
 ## 23. Prototype risks to retire early
