@@ -209,30 +209,29 @@ container with its own background to set in an inline `style`, as on
 ## Use your design system's colors
 
 The base colors, such as `--background`, `--primary` and `--border`, hold the values of the
-Tailwind theme. To have the calendar follow your design system, point them at its variables. With
-[Astryx](https://astryx.atmeta.com), whose root `Theme` puts its variables on `<html>`, that's:
+Tailwind theme. To have the calendar follow your design system, point them at its variables. For
+a design system whose root theme puts its variables on `<html>`, that's:
 
 ```tsx
-const astryxCalendarTheme = stylex.createTheme(calendarVars, {
-  "--radius": "var(--radius-element)",
-  "--background": "var(--color-background-surface)",
-  "--foreground": "var(--color-text-primary)",
-  "--popover": "var(--color-background-popover)",
-  "--primary": "var(--color-accent)",
-  "--muted-foreground": "var(--color-text-secondary)",
-  "--border": "var(--color-border)",
-  "--ring": "var(--focus-outline-color)",
+const appCalendarTheme = stylex.createTheme(calendarVars, {
+  "--radius": "var(--app-radius)",
+  "--background": "var(--app-surface)",
+  "--foreground": "var(--app-text)",
+  "--popover": "var(--app-surface-raised)",
+  "--primary": "var(--app-accent)",
+  "--muted-foreground": "var(--app-text-muted)",
+  "--border": "var(--app-border)",
+  "--ring": "var(--app-focus)",
   // …and the rest of the base colors in the list on Theming, in the same way.
 });
 
 // On `<html>` too, so the tokens that read a base color, such as `--calendar-event-border`, follow.
 document.documentElement.classList.add(
-  ...(stylex.props(astryxCalendarTheme).className ?? "").split(" "),
+  ...(stylex.props(appCalendarTheme).className ?? "").split(" "),
 );
 ```
 
-[Tokens](/docs/theming#tokens) lists the base colors. The demo's
-[StyleX page](https://moltenship-time-demo.vercel.app/stylex/) maps Astryx's this way.
+[Tokens](/docs/theming#tokens) lists the base colors.
 
 ## Override a component's styles
 

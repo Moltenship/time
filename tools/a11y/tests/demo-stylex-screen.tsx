@@ -16,7 +16,7 @@ export async function renderDemo(view: (typeof views)[number], { scrolling = fal
   await render(<StylexApp />);
 }
 
-const main = () => document.querySelector<HTMLElement>('[role="main"]');
+const main = () => document.querySelector<HTMLElement>("main");
 export const events = () => [...(main()?.querySelectorAll<HTMLElement>("[data-event-id]") ?? [])];
 
 export function button(name: string, within: ParentNode = document) {
@@ -63,7 +63,7 @@ export function describeStylexDemo(theme: Theme) {
       await renderDemo("week");
       await click(button("Create", document.querySelector("aside") ?? document));
 
-      expect(document.querySelector("dialog[open]")).not.toBeNull();
+      await until(() => expect(document.querySelector('[role="dialog"]')).not.toBeNull());
       expect(await seriousViolations()).toEqual([]);
     });
 
@@ -91,7 +91,7 @@ export function describeStylexDemo(theme: Theme) {
       await renderDemo("week");
       await click(button("Keyboard shortcuts"));
 
-      expect(document.querySelector("dialog[open]")).not.toBeNull();
+      await until(() => expect(document.querySelector('[role="dialog"]')).not.toBeNull());
       expect(await seriousViolations()).toEqual([]);
     });
   });

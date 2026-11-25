@@ -1,9 +1,12 @@
-import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import * as stylex from "@stylexjs/stylex";
 import { useId } from "react";
 
+import { eventColorStyles } from "@registry/stylex-calendar-theme/event-color-styles";
+
 import { demoCalendars, type DemoCalendarId } from "../../calendars";
-import { listProps, SectionHeading } from "./section";
-import { Swatch } from "./swatch";
+import { Checkbox } from "../ui/checkbox";
+import { Label } from "../ui/field";
+import { sectionStyles } from "./section";
 
 export interface CalendarListProps {
   readonly hidden: ReadonlySet<DemoCalendarId>;
@@ -15,16 +18,22 @@ export function CalendarList({ hidden, onToggle }: CalendarListProps) {
 
   return (
     <section aria-labelledby={headingId}>
-      <SectionHeading id={headingId}>My calendars</SectionHeading>
-      <ul {...listProps}>
+      <h2 id={headingId} {...stylex.props(sectionStyles.heading)}>
+        My calendars
+      </h2>
+      <ul>
         {demoCalendars.map((calendar) => (
           <li key={calendar.id}>
-            <CheckboxInput
-              label={calendar.name}
-              labelIcon={<Swatch color={calendar.color} />}
-              onChange={() => onToggle(calendar.id)}
-              value={!hidden.has(calendar.id)}
-            />
+            <Label xstyle={sectionStyles.row}>
+              <Checkbox
+                checked={!hidden.has(calendar.id)}
+                colored
+                data-color={calendar.color}
+                onCheckedChange={() => onToggle(calendar.id)}
+                xstyle={eventColorStyles[calendar.color]}
+              />
+              {calendar.name}
+            </Label>
           </li>
         ))}
       </ul>

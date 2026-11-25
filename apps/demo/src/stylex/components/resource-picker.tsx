@@ -1,27 +1,27 @@
-import { Badge } from "@astryxdesign/core/Badge";
-import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
-import { Text } from "@astryxdesign/core/Text";
 import type { CalendarEventInterval } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
 import { useId } from "react";
 
-import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
+import { Badge } from "@registry/stylex-calendar-ui/badge";
 
 import { useResourceGroups } from "../../resource-groups";
 import type { DemoResourceId } from "../../resources";
+import { Checkbox } from "../ui/checkbox";
+import { Label } from "../ui/field";
 
 const styles = stylex.create({
-  field: {
+  fieldset: {
     display: "grid",
     gap: "0.5rem",
-    minWidth: 0,
   },
-  group: {
-    display: "grid",
-    gap: "0.25rem",
+  legend: {
+    fontSize: "0.875rem",
+    fontWeight: 500,
+    lineHeight: "calc(1.25 / 0.875)",
+    marginBottom: "0.5rem",
   },
-  groups: {
-    borderColor: calendarVars["--border"],
+  list: {
+    borderColor: "var(--border)",
     borderRadius: "var(--radius)",
     borderStyle: "solid",
     borderWidth: 1,
@@ -31,15 +31,38 @@ const styles = stylex.create({
     overflowY: "auto",
     padding: "0.5rem",
   },
-  legend: {
-    paddingBlockEnd: "0.5rem",
+  group: {
+    display: "grid",
+    gap: "0.25rem",
+  },
+  groupTitle: {
+    color: "var(--muted-foreground)",
+    fontSize: "0.75rem",
+    fontWeight: 500,
+    lineHeight: "calc(1 / 0.75)",
+    paddingInline: "0.25rem",
   },
   resource: {
-    alignItems: "center",
-    display: "flex",
-    gap: "0.5rem",
-    justifyContent: "space-between",
-    minHeight: "1.75rem",
+    backgroundColor: { default: null, ":hover": "var(--muted)" },
+    borderRadius: "calc(var(--radius) * 0.8)",
+    fontWeight: 400,
+    paddingBlock: "0.25rem",
+    paddingInline: "0.25rem",
+  },
+  name: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  // Muted on the hover fill falls short of 4.5:1.
+  seats: {
+    color: {
+      default: "var(--muted-foreground)",
+      [stylex.when.ancestor(":hover")]: "var(--foreground)",
+    },
   },
 });
 
@@ -62,48 +85,46 @@ export function ResourcePicker({ eventId, interval, onChange, value }: ResourceP
   const groups = useResourceGroups(interval, eventId);
 
   return (
-    <fieldset {...stylex.props(styles.field)}>
-      <legend {...stylex.props(styles.legend)}>
-        <Text type="label">Rooms and people</Text>
-      </legend>
-      <div {...stylex.props(styles.groups)}>
+    <fieldset {...stylex.props(styles.fieldset)}>
+      <legend {...stylex.props(styles.legend)}>Rooms and people</legend>
+      <div {...stylex.props(styles.list)}>
         {groups.map((group) => {
           const heading = `${id}-${group.title}`;
           return (
             <div
               key={group.title}
-              role="group"
               aria-labelledby={heading}
+              role="group"
               {...stylex.props(styles.group)}
             >
-              <Text id={heading} type="supporting">
+              <div id={heading} {...stylex.props(styles.groupTitle)}>
                 {group.title}
-              </Text>
+              </div>
               {group.members.map(({ events, outsideHours, resource }) => (
-                <div key={resource.id} {...stylex.props(styles.resource)}>
-                  <CheckboxInput
-                    label={
-                      resource.data.kind === "room"
-                        ? `${resource.title} · ${resource.data.capacity} seats`
-                        : resource.title
-                    }
-                    onChange={(checked) =>
+                <Label key={resource.id} xstyle={[styles.resource, stylex.defaultMarker()]}>
+                  <Checkbox
+                    checked={value.includes(resource.id)}
+                    onCheckedChange={(checked) =>
                       onChange(
-                        checked
+                        checked === true
                           ? [...value, resource.id]
                           : value.filter((other) => other !== resource.id),
                       )
                     }
-                    size="sm"
-                    value={value.includes(resource.id)}
                   />
+                  <span {...stylex.props(styles.name)}>
+                    {resource.title}
+                    {resource.data.kind === "room" && (
+                      <span {...stylex.props(styles.seats)}> · {resource.data.capacity} seats</span>
+                    )}
+                  </span>
                   {events.length > 0 && (
-                    <span title={events.map((event) => event.title).join(", ")}>
-                      <Badge label="Busy" variant="warning" />
-                    </span>
+                    <Badge title={events.map((event) => event.title).join(", ")} variant="outline">
+                      Busy
+                    </Badge>
                   )}
-                  {outsideHours && <Badge label="Outside hours" />}
-                </div>
+                  {outsideHours && <Badge variant="outline">Outside hours</Badge>}
+                </Label>
               ))}
             </div>
           );

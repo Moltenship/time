@@ -1,10 +1,136 @@
-@layer reset, astryx-base, astryx-theme, ui-sdk;
-@import "@astryxdesign/core/reset.css";
-@import "@astryxdesign/core/astryx.css";
-@import "@astryxdesign/theme-neutral/theme.css";
+/* Declared first, so the app's styles win over the reset and the CSS ui-sdk adds to the page. */
+@layer reset, ui-sdk;
 @import "../../../../registry/stylex-calendar-theme/calendar-global.css";
 @import "../annotation-marks.css";
 
+/*
+ * What Tailwind's preflight gives the Tailwind page, so both pages start from the same base. In a
+ * layer, so every StyleX class wins over it.
+ */
+@layer reset {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border: 0 solid;
+    border-color: var(--border);
+    box-sizing: border-box;
+    margin: 0;
+    outline-color: color-mix(in oklch, var(--ring) 50%, transparent);
+    padding: 0;
+  }
+
+  html {
+    font-family:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial,
+      sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    line-height: 1.5;
+    tab-size: 4;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: inherit;
+  }
+
+  kbd {
+    font-size: 1em;
+  }
+
+  ol,
+  ul,
+  menu {
+    list-style: none;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    display: block;
+    vertical-align: middle;
+  }
+
+  button,
+  input,
+  select,
+  optgroup,
+  textarea,
+  ::file-selector-button {
+    background-color: transparent;
+    border-radius: 0;
+    color: inherit;
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    opacity: 1;
+  }
+
+  ::placeholder {
+    color: color-mix(in oklab, currentcolor 50%, transparent);
+    opacity: 1;
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  ::-webkit-date-and-time-value {
+    min-height: 1lh;
+    text-align: inherit;
+  }
+
+  ::-webkit-datetime-edit {
+    display: inline-flex;
+  }
+
+  ::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+  }
+
+  ::-webkit-datetime-edit,
+  ::-webkit-datetime-edit-year-field,
+  ::-webkit-datetime-edit-month-field,
+  ::-webkit-datetime-edit-day-field,
+  ::-webkit-datetime-edit-hour-field,
+  ::-webkit-datetime-edit-minute-field,
+  ::-webkit-datetime-edit-second-field,
+  ::-webkit-datetime-edit-millisecond-field,
+  ::-webkit-datetime-edit-meridiem-field {
+    padding-block: 0;
+  }
+
+  [hidden]:where(:not([hidden="until-found"])) {
+    display: none !important;
+  }
+}
+
+/* The theme hook puts `.dark` on <html>; the calendar's tokens follow `color-scheme`. */
+:root {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+}
+
 body {
-  background-color: var(--color-background-body);
+  background-color: var(--background);
+  color: var(--foreground);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
 }

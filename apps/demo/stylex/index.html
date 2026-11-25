@@ -21,11 +21,9 @@
     <meta property="og:image" content="https://time.molten.sh/opengraph-image" />
     <meta name="twitter:card" content="summary_large_image" />
     <script>
-      // Apply the saved theme before first paint; with none, the stylesheet follows the system.
-      // `.dark` is what the demo's theme hook reads, in both UIs; no style on this page uses it.
+      // Apply the saved theme, or the system one, before first paint.
       try {
         const saved = localStorage.getItem("moltenship-demo:theme");
-        if (saved) document.documentElement.dataset.theme = saved;
         const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
         document.documentElement.classList.toggle("dark", dark);
       } catch {}

@@ -1,20 +1,31 @@
-import { Icon } from "@astryxdesign/core/Icon";
-import { IconButton } from "@astryxdesign/core/IconButton";
 import { MoonIcon, SunIcon } from "lucide-react";
+
+import type { XStyle } from "@registry/stylex-calendar-theme/xprops";
+import { Button } from "@registry/stylex-calendar-ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/stylex-calendar-ui/tooltip";
 
 import { useTheme } from "../../theme";
 
-export function ThemeToggle() {
+export function ThemeToggle({ xstyle }: { readonly xstyle?: XStyle }) {
   const { theme, toggleTheme } = useTheme();
   const label = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
 
   return (
-    <IconButton
-      icon={<Icon icon={theme === "dark" ? SunIcon : MoonIcon} />}
-      label={label}
-      onClick={toggleTheme}
-      tooltip={label}
-      variant="ghost"
-    />
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            aria-label={label}
+            onClick={toggleTheme}
+            size="icon"
+            variant="ghost"
+            xstyle={xstyle}
+          />
+        }
+      >
+        {theme === "dark" ? <SunIcon aria-hidden /> : <MoonIcon aria-hidden />}
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }

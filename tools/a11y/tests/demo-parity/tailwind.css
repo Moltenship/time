@@ -1,0 +1,4 @@
+/* The demo's own stylesheet; Tailwind scans the demo's files from here, outside the demo's root. */
+@import "../../../../apps/demo/src/styles.css";
+
+@source "../../../../apps/demo/src";

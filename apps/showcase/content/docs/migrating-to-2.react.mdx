@@ -296,7 +296,26 @@ their own values.
 
 3. To keep the calendar in your Astryx theme's colors, map them onto the base colors, as
    [Use your design system's colors](/docs/stylex#use-your-design-systems-colors) shows. Without
-   that, the calendar takes the Tailwind theme's neutral colors.
+   that, the calendar takes the Tailwind theme's neutral colors. Astryx's root `Theme` puts its
+   variables on `<html>`, so the theme goes there too:
+
+   ```tsx
+   const astryxCalendarTheme = stylex.createTheme(calendarVars, {
+     "--radius": "var(--radius-element)",
+     "--background": "var(--color-background-surface)",
+     "--foreground": "var(--color-text-primary)",
+     "--popover": "var(--color-background-popover)",
+     "--primary": "var(--color-accent)",
+     "--muted-foreground": "var(--color-text-secondary)",
+     "--border": "var(--color-border)",
+     "--ring": "var(--focus-outline-color)",
+     // …and the rest of the base colors, in the same way.
+   });
+
+   document.documentElement.classList.add(
+     ...(stylex.props(astryxCalendarTheme).className ?? "").split(" "),
+   );
+   ```
 
 4. The items no longer list `@astryxdesign/core` or `@base-ui/react`. Keep them if your app uses
    them itself. The views hide text visually with `visuallyHiddenStyles`, in

@@ -1,24 +1,26 @@
 import * as stylex from "@stylexjs/stylex";
 
-import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
-
-const rise = stylex.keyframes({ from: { opacity: 0, translate: "0 0.5rem" } });
+const large = "@media (min-width: 1024px)";
+const rise = stylex.keyframes({
+  from: { opacity: 0, translate: "0 0.5rem" },
+});
 
 const styles = stylex.create({
   message: {
-    animationDuration: { default: "150ms", "@media (prefers-reduced-motion: reduce)": "0s" },
+    animationDuration: "150ms",
     animationName: rise,
-    backgroundColor: calendarVars["--foreground"],
+    animationTimingFunction: "ease",
+    backgroundColor: "var(--foreground)",
     borderRadius: "var(--radius)",
     boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
-    color: calendarVars["--background"],
+    color: "var(--background)",
     fontSize: "0.875rem",
-    lineHeight: "1.25rem",
+    lineHeight: "calc(1.25 / 0.875)",
     paddingBlock: "0.625rem",
     paddingInline: "1rem",
   },
   region: {
-    bottom: { default: "10rem", "@media (min-width: 1024px)": "5rem" },
+    bottom: { default: "10rem", [large]: "5rem" },
     display: "flex",
     insetInline: 0,
     justifyContent: "center",
@@ -31,8 +33,7 @@ const styles = stylex.create({
 
 /**
  * A polite live region, mounted up front so screen readers announce each message. It sits above
- * the undo toast, so both can show. Astryx's Toast adds its live region with each toast, which
- * screen readers can miss, and sits in a corner of its own.
+ * the undo toast, so both can show.
  */
 export function Notice({ text }: { readonly text: string | null }) {
   return (

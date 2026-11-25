@@ -1,18 +1,26 @@
-import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
-import { Kbd } from "@astryxdesign/core/Kbd";
-import { Layout, LayoutContent } from "@astryxdesign/core/Layout";
-import { Text } from "@astryxdesign/core/Text";
 import * as stylex from "@stylexjs/stylex";
 import { Fragment } from "react";
 
 import { keyLabel, shortcutSections, type KeyListItem } from "../../shortcuts";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+
+const small = "@media (min-width: 640px)";
 
 const styles = stylex.create({
-  keys: {
-    alignItems: "center",
-    display: "flex",
-    gap: "0.25rem",
-    justifyContent: "flex-end",
+  content: {
+    gap: "1.25rem",
+    maxWidth: { default: "calc(100% - 2rem)", [small]: "28rem" },
+  },
+  section: {
+    display: "grid",
+    gap: "0.5rem",
+  },
+  title: {
+    color: "var(--muted-foreground)",
+    fontSize: "0.75rem",
+    fontWeight: 500,
+    lineHeight: "calc(1 / 0.75)",
+    textTransform: "uppercase",
   },
   list: {
     alignItems: "center",
@@ -21,13 +29,27 @@ const styles = stylex.create({
     gridTemplateColumns: "1fr auto",
     rowGap: "0.375rem",
   },
-  section: {
-    display: "grid",
-    gap: "0.5rem",
+  keys: {
+    alignItems: "center",
+    color: "var(--muted-foreground)",
+    display: "flex",
+    fontSize: "0.75rem",
+    gap: "0.25rem",
+    justifyContent: "flex-end",
+    lineHeight: "calc(1 / 0.75)",
   },
-  sections: {
-    display: "grid",
-    gap: "1.25rem",
+  key: {
+    backgroundColor: "var(--muted)",
+    borderColor: "var(--border)",
+    borderRadius: "calc(var(--radius) * 0.8)",
+    borderStyle: "solid",
+    borderWidth: 1,
+    color: "var(--foreground)",
+    fontFamily: "inherit",
+    minWidth: "1.5rem",
+    paddingBlock: "0.125rem",
+    paddingInline: "0.375rem",
+    textAlign: "center",
   },
 });
 
@@ -40,20 +62,16 @@ function KeyList({
 }) {
   return (
     <section {...stylex.props(styles.section)}>
-      <Text as="h3" color="secondary" type="label">
-        {title}
-      </Text>
+      <h3 {...stylex.props(styles.title)}>{title}</h3>
       <dl {...stylex.props(styles.list)}>
         {items.map(({ keys, label }) => (
           <Fragment key={label}>
-            <dt>
-              <Text>{label}</Text>
-            </dt>
+            <dt>{label}</dt>
             <dd {...stylex.props(styles.keys)}>
               {keys.map((key, index) => (
                 <Fragment key={key}>
-                  {index > 0 && <Text type="supporting">or</Text>}
-                  <Kbd keys={keyLabel(key)} />
+                  {index > 0 && <span>or</span>}
+                  <kbd {...stylex.props(styles.key)}>{keyLabel(key)}</kbd>
                 </Fragment>
               ))}
             </dd>
@@ -72,25 +90,15 @@ export function ShortcutsDialog({
   readonly open: boolean;
 }) {
   return (
-    <Dialog isOpen={open} maxHeight="calc(100dvh - 2rem)" onOpenChange={onOpenChange} width={448}>
-      <Layout
-        content={
-          <LayoutContent>
-            {/* Focusable, so the keyboard can scroll the list where it doesn't fit. */}
-            <div
-              aria-label="Shortcuts"
-              role="group"
-              tabIndex={0}
-              {...stylex.props(styles.sections)}
-            >
-              {shortcutSections.map(({ items, title }) => (
-                <KeyList key={title} items={items} title={title} />
-              ))}
-            </div>
-          </LayoutContent>
-        }
-        header={<DialogHeader onOpenChange={onOpenChange} title="Keyboard shortcuts" />}
-      />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent xstyle={styles.content}>
+        <DialogHeader>
+          <DialogTitle>Keyboard shortcuts</DialogTitle>
+        </DialogHeader>
+        {shortcutSections.map(({ items, title }) => (
+          <KeyList key={title} items={items} title={title} />
+        ))}
+      </DialogContent>
     </Dialog>
   );
 }

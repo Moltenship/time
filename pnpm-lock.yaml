@@ -170,12 +170,6 @@ catalogs:
     '@arethetypeswrong/core':
       specifier: 0.18.5
       version: 0.18.5
-    '@astryxdesign/core':
-      specifier: 0.7.5
-      version: 0.7.5
-    '@astryxdesign/theme-neutral':
-      specifier: 0.7.5
-      version: 0.7.5
     '@babel/core':
       specifier: 7.29.7
       version: 7.29.7
@@ -390,12 +384,6 @@ importers:
 
   apps/demo:
     dependencies:
-      '@astryxdesign/core':
-        specifier: 'catalog:'
-        version: 0.7.5(@stylexjs/stylex@0.19.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@astryxdesign/theme-neutral':
-        specifier: 'catalog:'
-        version: 0.7.5(@astryxdesign/core@0.7.5(@stylexjs/stylex@0.19.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@types/react@19.3.0)(react@19.3.1)
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.9.0(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -420,6 +408,12 @@ importers:
       '@tanstack/react-virtual':
         specifier: 'catalog:'
         version: 3.14.24(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@ui-sdk/core':
+        specifier: 'catalog:'
+        version: 0.1.0-beta.16
+      '@ui-sdk/react':
+        specifier: 'catalog:'
+        version: 0.1.0-beta.16(@types/react@19.3.0)(@ui-sdk/core@0.1.0-beta.16)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -1407,19 +1401,6 @@ packages:
     resolution: {integrity: sha512-EgmJ7oEaGQECTn3H3wmnQpEy4hKY66VvM7VQndwPIQob3p877BgbyOUE3EX0LgXQCciF2H8KMdR+RznqjMNOLw==}
     engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
 
-  '@astryxdesign/core@0.7.5':
-    resolution: {integrity: sha512-nqFT7xiPiz5FYr0aUjyPVsf5AJwcKqnHTw1tFjy25uUvbvHvAVpcG3W84euq1w2C2soE2ZZRqRJ/OjbVKPbFBw==}
-    peerDependencies:
-      '@stylexjs/stylex': ^0.19.0
-      react: '>=19.0.0'
-      react-dom: '>=19.0.0'
-
-  '@astryxdesign/theme-neutral@0.7.5':
-    resolution: {integrity: sha512-NrloqwGR4hU9eUoL1cMuY3KUE99jjRM7nJg76jN78JWTMB9Wg2Bft4kemRJwHrRLxdhrJiliTVrNX2FQnP7SUg==}
-    peerDependencies:
-      '@astryxdesign/core': 0.7.5
-      react: '>=19'
-
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
     engines: {node: '>=6.9.0'}
@@ -1858,15 +1839,6 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
-
-  '@formatjs/fast-memoize@3.1.7':
-    resolution: {integrity: sha512-zXfhLpvA6T7+efdt9JLbBwZ00tT7NsBMDVnDu8rpHeNNv8KfRZAMo2gkG0k9lK/Nzc//3kJ9pImsfuJxk3KhUA==}
-
-  '@formatjs/icu-messageformat-parser@3.5.18':
-    resolution: {integrity: sha512-wX1efcL8d7K5QapOTRsP/OLTA/kpwe4LwqWyNxDNg5iRs8i9jJbCyxB5P8jc4KOW5oiLzz2DJr+BRY5xMV9+bA==}
-
-  '@formatjs/icu-skeleton-parser@2.1.11':
-    resolution: {integrity: sha512-j8cUmOJzVgkHuS0QiQ6ga76UIoLOFSAMWhs7aZJztH3aAdCOAE6vpC8KVvFB4cU10ON0y2/5oOVmPJ43s2lTwA==}
 
   '@fuma-translate/react@1.0.2':
     resolution: {integrity: sha512-uOiOtBx3nRXR8Nu1GzBf1tApgF1FErDBTHxRIAQeyQdyOoZbrNRN6H4kDCWObY4qyGeGbHydG0DHzgeUgFDMIw==}
@@ -4379,9 +4351,6 @@ packages:
     resolution: {integrity: sha512-6xwYfHbajpoF0xLW+iwLkhwgvLoZDfjYfoFNu8ftMoXINzwuymNLd9u/KmwtdT2GbR+/Cz66otEGEVVUHX9QLQ==}
     engines: {node: '>=10.13.0'}
 
-  intl-messageformat@11.2.15:
-    resolution: {integrity: sha512-W4VNytsXyWgW5lvVchmsb9xgA5rSKqoflu3/IQ9UCtB0z4R+Bx9MoEkwFT/+30RCl/KzUoH0QGGe9lppF5SuvQ==}
-
   invariant@2.2.4:
     resolution: {integrity: sha512-phJfQVBuaJM5raOpJjSfkiD6BpbCE4Ns//LaXl6wGYtUBY83nWS6Rf9tXm2e8VaK60JEjYldbPif/A2B1C2gNA==}
 
@@ -6085,21 +6054,6 @@ snapshots:
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.5.3
 
-  '@astryxdesign/core@0.7.5(@stylexjs/stylex@0.19.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
-    dependencies:
-      '@stylexjs/stylex': 0.19.1
-      intl-messageformat: 11.2.15
-      react: 19.3.1
-      react-dom: 19.3.1(react@19.3.1)
-
-  '@astryxdesign/theme-neutral@0.7.5(@astryxdesign/core@0.7.5(@stylexjs/stylex@0.19.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@types/react@19.3.0)(react@19.3.1)':
-    dependencies:
-      '@astryxdesign/core': 0.7.5(@stylexjs/stylex@0.19.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      lucide-react: 1.65.0(@types/react@19.3.0)(react@19.3.1)
-      react: 19.3.1
-    transitivePeerDependencies:
-      - '@types/react'
-
   '@babel/code-frame@7.29.7':
     dependencies:
       '@babel/helper-validator-identifier': 7.29.7
@@ -6528,14 +6482,6 @@ snapshots:
       react-dom: 19.3.1(react@19.3.1)
 
   '@floating-ui/utils@0.2.12': {}
-
-  '@formatjs/fast-memoize@3.1.7': {}
-
-  '@formatjs/icu-messageformat-parser@3.5.18':
-    dependencies:
-      '@formatjs/icu-skeleton-parser': 2.1.11
-
-  '@formatjs/icu-skeleton-parser@2.1.11': {}
 
   '@fuma-translate/react@1.0.2(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
@@ -8753,11 +8699,6 @@ snapshots:
   inline-style-parser@0.2.7: {}
 
   interpret@3.1.1: {}
-
-  intl-messageformat@11.2.15:
-    dependencies:
-      '@formatjs/fast-memoize': 3.1.7
-      '@formatjs/icu-messageformat-parser': 3.5.18
 
   invariant@2.2.4:
     dependencies:

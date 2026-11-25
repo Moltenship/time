@@ -71,19 +71,23 @@ describe("the two pages' import graphs", () => {
       importsFrom(resolve(source, entry)).map(({ specifier }) => specifier);
 
     expect(specifiers("stylex/main.tsx")).toContain("./app");
-    expect(specifiers("stylex/main.tsx")).toContain("@astryxdesign/core/AppShell");
+    expect(specifiers("stylex/main.tsx")).toContain("@ui-sdk/react/dialog");
+    expect(specifiers("stylex/main.tsx")).toContain("@registry/stylex-calendar-ui/button");
     expect(specifiers("stylex/main.tsx")).toContain(
       "@registry/stylex-time-grid-view/time-grid-view",
     );
     expect(specifiers("main.tsx")).toContain("@registry/time-grid-view/time-grid-view");
     expect(specifiers("main.tsx")).toContain("tailwindcss");
-    expect(specifiers("stylex/main.tsx")).toContain("@astryxdesign/core/astryx.css");
+    expect(specifiers("stylex/main.tsx")).toContain(
+      "../../../../registry/stylex-calendar-theme/calendar-global.css",
+    );
   });
 
-  test("the StyleX page reaches none of Tailwind's parts", () => {
+  test("the StyleX page reaches none of Tailwind's or Base UI's parts", () => {
     expect(
       breaking("stylex/main.tsx", ({ from, specifier }) => {
         if (specifier === "tailwindcss" || specifier.startsWith("tailwindcss/")) return true;
+        if (specifier.startsWith("@base-ui/")) return true;
         // Shared files hold words, keys and layout for every flavour; the class strings in the
         // Tailwind kit's and views' `.styles.ts` files are Tailwind's.
         if (specifier.startsWith("@registry/shared/")) {
@@ -100,13 +104,12 @@ describe("the two pages' import graphs", () => {
     ).toEqual([]);
   });
 
-  test("the Tailwind page reaches none of StyleX's or Astryx's parts", () => {
+  test("the Tailwind page reaches none of StyleX's parts", () => {
     expect(
       breaking("main.tsx", ({ from, specifier }) => {
         if (
           specifier.startsWith("@registry/stylex-") ||
           specifier.startsWith("@registry/shared/stylex-") ||
-          specifier.startsWith("@astryxdesign/") ||
           specifier.startsWith("@stylexjs/")
         ) {
           return true;

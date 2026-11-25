@@ -36,8 +36,15 @@ const stylexOnly = ["tests/demo-stylex*.a11y.tsx"];
  */
 const solidFiles = ["tests/solid/**/*.a11y.tsx"];
 const tailwindExclude = [...chromiumOnly, ...stylexOnly, ...solidFiles];
-/** The flavours' parity slows animations through Chromium's DevTools protocol, so Chromium alone. */
-const otherBrowsersExclude = [...tailwindExclude, "tests/parity.a11y.tsx"];
+/**
+ * The flavours' parity slows animations through Chromium's DevTools protocol, so Chromium alone,
+ * and the demo's parity with it: both compare two pages in one engine, which one engine shows.
+ */
+const otherBrowsersExclude = [
+  ...tailwindExclude,
+  "tests/parity.a11y.tsx",
+  "tests/demo-parity.a11y.tsx",
+];
 // Absolute: Vitest doesn't resolve the paths of an instance's own setup files.
 const stylexSetup = [fromHere("./tests/setup.ts")];
 const tailwindSetup = [...stylexSetup, fromHere("./tests/setup-tailwind.ts")];
