@@ -1,6 +1,8 @@
 # ADR 0275: Framework-free calendar primitives on ui-sdk
 
-- Status: Accepted
+- Status: Accepted, amended by [ADR 0279](./0279-solid-views-in-the-registry.md), which decides
+  the question this record left open, how Solid views are distributed, and moves the registry's
+  controls onto ui-sdk, so an agent's bridge reads them too.
 - Date: 2026-11-24
 - Issue: [#275](https://github.com/Moltenship/time/issues/275)
 - Amends: [ADR 0001](./0001-hybrid-distribution.md), [ADR 0005](./0005-dependency-law.md) and

@@ -6,11 +6,11 @@ number of the GitHub issue that made the decision. A record a later one replaces
 "superseded by"; one whose decision stands while a later record changes part of it is marked
 "amended by", and its status line says which part.
 
-- [ADR 0001: Hybrid package and source distribution](./0001-hybrid-distribution.md), amended by ADR 0275
+- [ADR 0001: Hybrid package and source distribution](./0001-hybrid-distribution.md), amended by ADRs 0275 and 0279
 - [ADR 0002: Non-empty half-open event intervals](./0002-half-open-intervals.md)
 - [ADR 0003: Application-owned event state](./0003-application-owned-state.md)
 - [ADR 0004: Native Temporal runtime boundary](./0004-native-temporal.md)
-- [ADR 0005: One-way package dependency law](./0005-dependency-law.md), amended by ADR 0275
+- [ADR 0005: One-way package dependency law](./0005-dependency-law.md), amended by ADRs 0275 and 0279
 - [ADR 0016: Provisional interval index and DST wall-time geometry](./0016-interval-index-and-dst-wall-time-geometry.md)
 - [ADR 0018: Controlled React state reads through render-scoped external-store snapshots](./0018-controlled-react-store-spike.md)
 - [ADR 0019: Keep dnd-kit behind a semantic calendar adapter](./0019-semantic-dnd-kit-adapter.md), superseded by ADR 0037
@@ -21,4 +21,5 @@ number of the GitHub issue that made the decision. A record a later one replaces
 - [ADR 0070: `calendar-react` owns its store](./0070-own-react-store.md), amended by ADR 0275
 - [ADR 0151: A standalone, Temporal-native iCalendar package](./0151-standalone-ics-package.md)
 - [ADR 0165: Secondary time zones on the time grid's axis](./0165-secondary-time-zones.md)
-- [ADR 0275: Framework-free calendar primitives on ui-sdk](./0275-ui-sdk-primitives.md)
+- [ADR 0275: Framework-free calendar primitives on ui-sdk](./0275-ui-sdk-primitives.md), amended by ADR 0279
+- [ADR 0279: Solid views in the registry, on one kit of ui-sdk controls](./0279-solid-views-in-the-registry.md)

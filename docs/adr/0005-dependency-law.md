@@ -1,8 +1,11 @@
 # ADR 0005: One-way package dependency law
 
-- Status: Accepted, amended by [ADR 0275](./0275-ui-sdk-primitives.md). The law stands. 2.0 adds a
-  primitives plane between the engine and the framework integrations, and rules for it, for ui-sdk
-  and for Solid (`architecture.md` §2); the engine stays free of every framework and of ui-sdk.
+- Status: Accepted, amended by [ADR 0275](./0275-ui-sdk-primitives.md) and
+  [ADR 0279](./0279-solid-views-in-the-registry.md). The law stands. 2.0 adds a primitives plane
+  between the engine and the framework integrations, and rules for it, for ui-sdk and for Solid
+  (`architecture.md` §2); the engine stays free of every framework and of ui-sdk. ADR 0279 changes
+  what registry source may import (rules 5, 14 and 15), in the pull requests that add the Solid
+  registry and the kit of controls.
 - Date: 2026-08-15
 
 ## Context
