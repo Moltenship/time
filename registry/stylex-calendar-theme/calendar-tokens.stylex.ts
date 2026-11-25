@@ -31,8 +31,7 @@ export const calendarTokenDefaults = {
 
   "--calendar-grid": "var(--border)",
   "--calendar-axis": "var(--muted-foreground)",
-  // Lighter in dark than the Tailwind theme's, to stay readable on a lighter dark surface.
-  "--calendar-today": "light-dark(oklch(0.52 0.215 262.9), oklch(0.73 0.15 254.6))",
+  "--calendar-today": "light-dark(oklch(0.52 0.215 262.9), oklch(0.707 0.165 254.6))",
   "--calendar-today-foreground": "light-dark(oklch(0.985 0 0), oklch(0.145 0 0))",
   "--calendar-now": "light-dark(oklch(0.637 0.237 25.3), oklch(0.704 0.191 22.2))",
   "--calendar-selection":

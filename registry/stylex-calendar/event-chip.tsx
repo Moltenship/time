@@ -22,10 +22,7 @@ const styles = stylex.create({
   chip: {
     alignItems: "center",
     appearance: "none",
-    backgroundColor: {
-      default: calendarVars["--calendar-event"],
-      ":hover": `color-mix(in oklch, ${calendarVars["--calendar-event"]} 95%, light-dark(black, white))`,
-    },
+    backgroundColor: calendarVars["--calendar-event"],
     borderBlockWidth: 0,
     borderInlineEndWidth: 0,
     borderInlineStartColor: calendarVars["--calendar-event-border"],
@@ -41,8 +38,10 @@ const styles = stylex.create({
       "[data-warning]": `0 0 0 2px ${calendarVars["--calendar-warning"]}`,
     },
     color: calendarVars["--calendar-event-foreground"],
-    cursor: "pointer",
     display: "flex",
+    // Tailwind's chip brightens to 110% on hover in dark. `light-dark()` takes only colours, so
+    // StyleX can't switch a filter with the colour scheme, and both schemes dim to 97%.
+    filter: { default: null, ":hover": "brightness(0.97)" },
     fontFamily: "inherit",
     fontSize: "0.75rem",
     fontWeight: 500,
@@ -63,7 +62,8 @@ const styles = stylex.create({
     paddingInline: "0.5rem",
     textAlign: "start",
     transitionDuration: "150ms",
-    transitionProperty: "background-color, box-shadow",
+    transitionProperty: "filter, box-shadow",
+    transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
     zIndex: {
       default: null,
       ":focus-visible": 10,

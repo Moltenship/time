@@ -1,0 +1,33 @@
+/* A StyleX app's global CSS, as the StyleX page of the docs gives it. */
+@layer ui-sdk;
+@import "../../../../registry/stylex-calendar-theme/calendar-global.css";
+
+:root {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+}
+
+/*
+ * The app's own base, set as Tailwind's preflight sets the Tailwind page's: the font, the line
+ * height and the page's colours. The items must bring the rest themselves.
+ */
+html {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

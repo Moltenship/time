@@ -43,7 +43,6 @@ const styles = stylex.create({
     borderWidth: 0,
     boxShadow: { default: null, ":focus-visible": `0 0 0 2px ${calendarVars["--ring"]}` },
     color: "inherit",
-    cursor: "pointer",
     display: "flex",
     fontFamily: "inherit",
     fontSize: "0.75rem",

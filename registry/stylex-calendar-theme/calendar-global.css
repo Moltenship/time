@@ -78,6 +78,18 @@
   padding: 0;
 }
 
+/*
+ * An icon inside a kit button: it takes no pointer events and doesn't shrink, and one without a
+ * size of its own takes the button's, which the button's size sets. Without specificity, so an
+ * icon's own StyleX classes win, as Tailwind's `size-*` classes do.
+ */
+:where([data-slot="button"] svg) {
+  flex-shrink: 0;
+  height: var(--calendar-button-icon-size, 1rem);
+  pointer-events: none;
+  width: var(--calendar-button-icon-size, 1rem);
+}
+
 /* An icon from `getEventIcon`, sized for the chip's text; a view sets the custom property. */
 [data-slot="calendar-event-icon"] svg {
   flex-shrink: 0;

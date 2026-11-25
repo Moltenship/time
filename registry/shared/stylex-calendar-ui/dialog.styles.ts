@@ -6,8 +6,8 @@ const small = "@media (min-width: 640px)";
 export const dialogStyles = stylex.create({
   /** The dimmed page behind a dialog, which fades in and out with it. */
   backdrop: {
-    WebkitBackdropFilter: { default: null, "@supports (backdrop-filter: blur(0))": "blur(4px)" },
-    backdropFilter: { default: null, "@supports (backdrop-filter: blur(0))": "blur(4px)" },
+    WebkitBackdropFilter: "blur(4px)",
+    backdropFilter: "blur(4px)",
     backgroundColor: "rgb(0 0 0 / 0.1)",
     inset: 0,
     opacity: { default: null, "[data-ending-style]": 0, "[data-starting-style]": 0 },

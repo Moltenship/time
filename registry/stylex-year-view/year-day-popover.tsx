@@ -29,7 +29,7 @@ const styles = stylex.create({
     borderInlineStartWidth: 0,
     color: calendarVars["--foreground"],
     fontWeight: 400,
-    transitionProperty: "box-shadow",
+    filter: { default: null, ":hover": "brightness(1)" },
   },
   date: {
     alignItems: "center",
@@ -38,7 +38,6 @@ const styles = stylex.create({
     borderRadius: "9999px",
     borderWidth: 0,
     color: "inherit",
-    cursor: "pointer",
     display: "flex",
     fontFamily: "inherit",
     fontSize: "1.25rem",

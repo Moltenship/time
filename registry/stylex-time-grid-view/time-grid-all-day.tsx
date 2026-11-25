@@ -116,7 +116,6 @@ const styles = stylex.create({
       default: calendarVars["--muted-foreground"],
       ":hover": calendarVars["--accent-foreground"],
     },
-    cursor: "pointer",
     fontFamily: "inherit",
     fontSize: "0.75rem",
     fontWeight: 500,
@@ -144,6 +143,7 @@ const styles = stylex.create({
   },
   rowHeader: {
     alignItems: "flex-start",
+    boxSizing: "border-box",
     display: "flex",
     flexShrink: 0,
     justifyContent: "flex-end",

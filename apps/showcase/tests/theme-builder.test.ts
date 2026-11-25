@@ -507,13 +507,7 @@ describe("StyleX theme", () => {
       expect(source.tokens.map(({ name }) => name)).not.toContain("--calendar-surface");
     });
 
-    test.each(Object.keys(tokensFileDefaults))("%s has the file's value", (name) => {
-      // Lighter in the file's dark, for a lighter dark surface, as the file says.
-      if (name === "--calendar-today") {
-        expect(tokensFileDefaults[name]).toContain("oklch(0.73 0.15 254.6)");
-        return;
-      }
-
+    test.each(Object.keys(tokensFileDefaults))("%s has the Tailwind theme's value", (name) => {
       expect(full[name]).toBe(tokensFileDefaults[name]);
     });
   });
