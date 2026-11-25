@@ -89,9 +89,9 @@ const styles = stylex.create({
 
 export interface MonthViewOptions<TEvent> {
   /**
-   * How a pointer drag's preview follows the pointer: stepping from slot to slot (`"snapped"`, the
-   * default), or with the pointer over where it would land (`"free"`). A prototype; the name may
-   * change.
+   * How a pointer drag's preview moves: from slot to slot (`"snapped"`, the default), or with the
+   * pointer over a marker of where it would land (`"free"`), snapping there on release. Both
+   * propose the same snapped placement.
    */
   readonly dragPreview?: "free" | "snapped";
   /** Extra words for each event's accessible name, such as its calendar. */
