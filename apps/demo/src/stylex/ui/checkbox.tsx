@@ -62,7 +62,8 @@ const styles = stylex.create({
   // A calendar's or an activity's colour, from the event tokens `eventColorStyles` sets.
   colored: {
     backgroundColor: { default: unchecked, "[data-checked]": "var(--calendar-event-border)" },
-    borderColor: "var(--calendar-event-border)",
+    // Keeps the focus ring's border, which a plain value would replace with the whole property.
+    borderColor: { default: "var(--calendar-event-border)", ":focus-visible": "var(--ring)" },
     borderWidth: 2,
     color: { default: null, "[data-checked]": "var(--background)" },
   },

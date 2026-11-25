@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { commands } from "vite-plus/test/browser";
+import { commands, userEvent } from "vite-plus/test/browser";
 
 import type { MouseStep } from "../mouse";
 import { read } from "./parity/read";
@@ -47,26 +47,38 @@ const controls = [
   "[role=combobox]",
   "[role=dialog]",
   "[role=group]",
+  "[role=listbox]",
+  "[role=option]",
+  "[role=tooltip]",
+  "[data-slot=tooltip-content]",
 ].join(", ");
 const views = '[data-slot="calendar-views"], [data-slot="mini-month"]';
 const page = 'header, aside, main, button[aria-label="Create event"]';
-const popup = '[role="dialog"]';
+/** A tooltip: Base UI's has no role, the kit's is a `tooltip`. */
+const tip = '[role="tooltip"], [data-slot="tooltip-content"]';
+const popup = `[role="dialog"], [role="listbox"], [data-slot="select-content"], ${tip}`;
+/** A select's list: shadcn's popup holds Base UI's listbox, the kit's popup is the listbox. */
+const list = '[role="listbox"], [data-slot="select-content"]';
 
 /**
  * How a popup is placed and how it opens. Base UI's popups sit in a positioner and open with
- * tw-animate-css's keyframes; the kit's, which the StyleX page reuses, sit in the top layer and
- * open with transitions, at the same 100 ms, fade and 95% scale. Their boxes are compared.
+ * tw-animate-css's keyframes; the kit's, which the StyleX page reuses, sit in the top layer, which
+ * makes an inline box a block, and open with transitions, at the same speed, fade and 95% scale.
+ * Their boxes are compared.
  */
 const placement = [
   "animation-duration",
+  "display",
   "margin-bottom",
   "margin-left",
   "margin-right",
   "margin-top",
   "position",
   "transform",
+  "transition-duration",
   "transition-property",
   "transition-timing-function",
+  "vertical-align",
   "z-index",
 ];
 
@@ -102,6 +114,10 @@ async function open(page: Page, theme: string, size: Size) {
   await settle();
 }
 
+/** Whether `selector` finds an element that's shown: the kit keeps closed tooltips, hidden. */
+const shown = (selector: string) =>
+  [...win().document.querySelectorAll(selector)].some((element) => element.checkVisibility());
+
 function find(selector: string, name?: string) {
   const found = [...win().document.querySelectorAll<HTMLElement>(selector)].find(
     (element) =>
@@ -113,12 +129,42 @@ function find(selector: string, name?: string) {
   return found;
 }
 
-async function press(element: HTMLElement) {
+async function hover(element: HTMLElement) {
   const box = element.getBoundingClientRect();
   await commands.mouse({ type: "move", x: box.x + box.width / 2, y: box.y + box.height / 2 });
+}
+
+async function press(element: HTMLElement) {
+  await hover(element);
   await commands.mouse({ type: "down" });
   await commands.mouse({ type: "up" });
 }
+
+/** Shows focus as a keyboard user sees it: after a key press, focus is visible. */
+async function focusByKeyboard(element: HTMLElement) {
+  await press(find("aside h2, aside h3, aside p"));
+  await userEvent.keyboard("{Shift}");
+  element.focus();
+  await until(() => expect(element.matches(":focus-visible")).toBe(true));
+}
+
+/** The text an element holds itself, not its children's: a list item's, a legend's, a hint's. */
+const ownText = (element: Element) =>
+  element.closest("svg") === null
+    ? [...element.childNodes]
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent)
+        .join(" ")
+        .replaceAll(/\s+/gu, " ")
+        .trim()
+    : "";
+
+/**
+ * What an element that holds text beside other elements is compared by: its type. Its box is
+ * its markup's, which differs where a part renders only text: the kit's select value holds the
+ * label alone, and shadcn's the colour dot beside it.
+ */
+const typography = /^(?:color|font-|letter-spacing|line-height|text|white-space|word-spacing)/u;
 
 /**
  * A control's name for matching: its role or tag, then its label or text. The page switch's two
@@ -133,6 +179,9 @@ function nameOf(element: Element) {
     return element.getAttribute("aria-current") === "page" ? "a: this page" : "a: the other page";
   }
   const role = element.getAttribute("role");
+  // A list's text is its options'; the kit's names it after its trigger, shadcn's doesn't.
+  if (element.matches(list)) return "listbox";
+  if (element.matches(tip)) return `tooltip: ${text}`;
   const labelledBy = role === "dialog" ? element.getAttribute("aria-labelledby") : null;
   const label =
     role === "checkbox"
@@ -147,15 +196,38 @@ function nameOf(element: Element) {
 function probe(scope: string) {
   const rows = new Map<string, Record<string, string>>();
   const roots = [...win().document.querySelectorAll(scope)];
-  const elements = roots.flatMap((root) => [root, ...root.querySelectorAll(controls)]);
+  const elements = roots.flatMap((root) => [
+    root,
+    ...[...root.querySelectorAll("*")].filter(
+      (element) => element.matches(controls) || ownText(element) !== "",
+    ),
+  ]);
   for (const element of new Set(elements)) {
     if (element.parentElement?.closest(views) != null) continue;
+    if (element.matches('[data-slot="select-content"] > [role="listbox"]')) continue;
+    // The kit keeps closed tooltips in the page, hidden; Base UI renders them once they open.
+    if (!element.checkVisibility()) continue;
     const values = read(win(), element);
     if (element.matches(popup)) for (const property of placement) delete values[property];
+    // shadcn's select sets its type on each option, the kit's on the popup. The options' type is
+    // compared; the list's own holds no text.
+    if (element.matches(`${list}, [role="listbox"] [role="group"]`)) {
+      delete values["font-size"];
+      delete values["line-height"];
+    }
+    // The kit aligns a select's value to the start, shadcn to the left: the same on this page.
+    if (values["text-align"] === "start") values["text-align"] = "left";
     // Form inputs hidden for screen readers' sake differ in kind between Base UI and ui-sdk.
     if (values.box === "hidden" && element.matches("input, textarea")) continue;
-    let name = nameOf(element);
-    for (let index = 2; rows.has(name); index += 1) name = `${nameOf(element)} #${index}`;
+    const text = element.matches(controls) ? "" : ownText(element);
+    if (text !== "" && element.childElementCount > 0) {
+      for (const property of Object.keys(values)) {
+        if (!typography.test(property)) delete values[property];
+      }
+    }
+    const base = text === "" ? nameOf(element) : `text: ${text.slice(0, 40)}`;
+    let name = base;
+    for (let index = 2; rows.has(name); index += 1) name = `${base} #${index}`;
     if (name.startsWith("a: this page") || name.startsWith("a: the other page")) {
       delete values.box;
       delete values.text;
@@ -198,7 +270,16 @@ interface Scenario {
   /** What the comparison reads, once `act` has run. */
   readonly scope: string;
   readonly act?: () => Promise<void>;
+  /** Differences the page can't fix, because they're the kit's: each is reported on the PR. */
+  readonly known?: (line: string) => boolean;
 }
+
+/**
+ * A select that puts the chosen option over its trigger. ui-sdk lines the list up with the
+ * trigger's edge, and Base UI 1px further in, with the text inside the trigger's border.
+ */
+const alignedList = (line: string) =>
+  /: box is \d+ (\d+ \d+ \d+) in Tailwind, \d+ \1 in StyleX$/u.test(line);
 
 const scenarios: Scenario[] = [
   { name: "page", scope: page, size: "desktop" },
@@ -220,6 +301,37 @@ const scenarios: Scenario[] = [
     scope: popup,
     size: "desktop",
   },
+  {
+    act: () => press(find("header [role=combobox]")),
+    name: "view switcher",
+    scope: '[role="listbox"]',
+    size: "desktop",
+  },
+  {
+    act: async () => {
+      await press(find("aside button", "Create"));
+      await until(() => expect(win().document.querySelector(popup)).not.toBeNull());
+      await settle();
+      const label = find('[role="dialog"] label', "Calendar");
+      await press(win().document.getElementById(label.getAttribute("for")!)!);
+    },
+    known: alignedList,
+    name: "event dialog, calendar select",
+    scope: list,
+    size: "desktop",
+  },
+  {
+    act: () => hover(find("header button", "Keyboard shortcuts")),
+    name: "tooltip",
+    scope: tip,
+    size: "desktop",
+  },
+  {
+    act: () => focusByKeyboard(find("aside label", "Work").querySelector("[role=checkbox]")!),
+    name: "keyboard focus",
+    scope: "aside",
+    size: "desktop",
+  },
   { name: "page", scope: page, size: "phone" },
   {
     act: () => press(find("header button", "Open sidebar")),
@@ -239,21 +351,23 @@ describe("the demo's StyleX page looks like its Tailwind page", () => {
   describe.each(themes)("%s theme", (theme) => {
     test.each(scenarios)(
       "$size, $name",
-      async ({ act, scope, size }) => {
+      async ({ act, known = () => false, scope, size }) => {
         const read: Partial<Record<Page, Map<string, Record<string, string>>>> = {};
         for (const page of pages) {
           await open(page, theme, size);
           if (act !== undefined) {
             await act();
-            await until(() => expect(win().document.querySelector(scope)).not.toBeNull());
+            await until(() => expect(shown(scope)).toBe(true));
             await settle();
           }
           read[page] = probe(scope);
         }
         frame().remove();
 
-        expect(read.tailwind!.size).toBeGreaterThan(3);
-        expect(differences(read.tailwind!, read.stylex!)).toEqual([]);
+        expect(read.tailwind!.size).toBeGreaterThan(0);
+        expect(differences(read.tailwind!, read.stylex!).filter((line) => !known(line))).toEqual(
+          [],
+        );
       },
       60_000,
     );

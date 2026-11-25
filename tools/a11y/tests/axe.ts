@@ -21,8 +21,9 @@ const exemptions: ElementFilter = {
   // axe treats the page behind an open aria-modal dialog as inert, so a region there that scrolls,
   // like the demo's sidebar, has no focusable content until the dialog closes.
   "scrollable-region-focusable": (element) =>
-    document.querySelector('[aria-modal="true"]') !== null &&
-    element.closest('[aria-modal="true"]') === null,
+    [...document.querySelectorAll('[aria-modal="true"]')].some((modal) =>
+      modal.checkVisibility(),
+    ) && element.closest('[aria-modal="true"]') === null,
   // Event names carry the title, the full date and time, the calendar and the saving state
   // (#97), while each view's chip shows a shorter subset in its own order ("9:30 AM Standup").
   // Names lead with the title, so speech input still matches it. A day cell's visible text
