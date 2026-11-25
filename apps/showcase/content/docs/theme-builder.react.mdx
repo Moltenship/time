@@ -30,11 +30,12 @@ like those in [Changing tokens](/docs/theming#changing-tokens). Change those tok
 Below the preview, **Tailwind + shadcn** gives the CSS above and **StyleX** gives a theme for the
 [StyleX flavour](/docs/stylex). The preview is the Tailwind-rendered calendar either way: the views
 read the same tokens, so it shows your theme, and compiling StyleX inside these docs isn't worth it.
-The **Astryx neutral** preset approximates the colors the StyleX flavour gets from
-`@astryxdesign/theme-neutral`.
+The **Astryx neutral** preset approximates the colors of `@astryxdesign/theme-neutral`, for an app
+that [maps an Astryx theme](/docs/stylex#use-your-design-systems-colors) onto the calendar's.
 
-Paste the code into a file of your own, then apply the theme on a wrapper around the calendar. To
-reach popovers and tooltips, which open in a portal under `<body>`, put its class on `<body>` instead:
+Paste the code into a file of your own, then apply the theme on a wrapper around the calendar. The
+calendar's popovers, tooltips and toasts open inside it, in the browser's top layer, so the theme
+reaches them too:
 
 ```tsx
 import * as stylex from "@stylexjs/stylex";
@@ -49,8 +50,8 @@ import { calendarTheme } from "./calendar-theme";
 - **Changed tokens** copies what differs from the theme as it ships, in either mode, with one value
   for both through `light-dark()`. It adds the tokens that read one you changed: on a wrapper they'd
   keep the value they got on `:root`. So changing `--primary` also restates `--calendar-event-border`.
-- **All tokens** copies the whole theme. It pins the base colors too, so they stop following your
-  Astryx theme.
+- **All tokens** copies the whole theme. It pins the base colors too, so they stop following a
+  mapping of your design system's colors.
 - A palette color you changed, or any change to what the colors derive, comes as each color's three
   tokens, such as `--calendar-event-blue`, with the hue and chroma filled in.
 - A shading recipe comes last, in a comment: StyleX can't select the closed-time band, so it goes in

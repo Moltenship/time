@@ -66,7 +66,7 @@ const styles = stylex.create({
     lineHeight: "1.25rem",
     paddingBlock: "0.375rem",
     rowGap: "0.125rem",
-    transitionProperty: "box-shadow",
+    filter: { default: null, ":hover": "brightness(1)" },
     width: "100%",
   },
   time: {

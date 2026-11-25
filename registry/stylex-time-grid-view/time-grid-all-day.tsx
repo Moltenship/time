@@ -1,7 +1,5 @@
 "use client";
 
-import { IconButton } from "@astryxdesign/core/IconButton";
-import { VisuallyHidden } from "@astryxdesign/core/VisuallyHidden";
 import {
   limitDayGridLanes,
   plainDateIntervalContains,
@@ -21,11 +19,13 @@ import * as stylex from "@stylexjs/stylex";
 import { ChevronDownIcon } from "lucide-react";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 
+import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
 import { EventChip, EventIcon, useEventChip } from "@registry/stylex-calendar/event-chip";
 import type { EventLabeler } from "@registry/stylex-calendar/event-label";
 import { previewCheckAttributes, useDraftCheck } from "@registry/stylex-calendar/preview-check";
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import { Button } from "@registry/stylex-calendar-ui/button";
 
 import { inResource } from "./time-grid-column";
 
@@ -116,7 +116,6 @@ const styles = stylex.create({
       default: calendarVars["--muted-foreground"],
       ":hover": calendarVars["--accent-foreground"],
     },
-    cursor: "pointer",
     fontFamily: "inherit",
     fontSize: "0.75rem",
     fontWeight: 500,
@@ -144,6 +143,7 @@ const styles = stylex.create({
   },
   rowHeader: {
     alignItems: "flex-start",
+    boxSizing: "border-box",
     display: "flex",
     flexShrink: 0,
     justifyContent: "flex-end",
@@ -399,21 +399,20 @@ export function AllDayRowHeader({ collapse }: { readonly collapse: AllDayCollaps
 
   return (
     <div role="rowheader" {...stylex.props(styles.rowHeader)}>
-      <VisuallyHidden>All day</VisuallyHidden>
+      <span {...stylex.props(visuallyHiddenStyles.hidden)}>All day</span>
       {collapsible && (
-        <IconButton
+        <Button
           aria-expanded={!collapsed}
-          icon={
-            <ChevronDownIcon {...stylex.props(styles.chevron, !collapsed && styles.chevronUp)} />
-          }
-          label={collapsed ? "Show all all-day events" : "Show fewer all-day events"}
+          aria-label={collapsed ? "Show all all-day events" : "Show fewer all-day events"}
           onClick={toggle}
-          size="sm"
+          size="icon-sm"
           // The grid keeps one tab stop; arrow keys reach hidden events and expand the row.
           tabIndex={-1}
           variant="ghost"
           xstyle={styles.round}
-        />
+        >
+          <ChevronDownIcon {...stylex.props(styles.chevron, !collapsed && styles.chevronUp)} />
+        </Button>
       )}
     </div>
   );

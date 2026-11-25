@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { availableParallelism, tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 import stylex from "@stylexjs/unplugin";
@@ -59,16 +59,16 @@ export default defineConfig({
   },
   test: {
     // Tests of the Tailwind theme, of what ties the flavours together, and, below, the few that read
-    // a Tailwind class off an element. The kit's agent test joins when the flavour moves onto its
-    // own kit, `stylex-calendar-ui` (ADR 0279, K3); until then its toolbar has no ui-sdk controls.
-    exclude: [
-      "tests/calendar-ui-agent.test.tsx",
-      "tests/stylex-flavour.test.ts",
-      "tests/theme-contrast.test.ts",
-    ],
+    // a Tailwind class off an element.
+    exclude: ["tests/stylex-flavour.test.ts", "tests/theme-contrast.test.ts"],
     include: ["tests/**/*.test.{ts,tsx}"],
     // As the root's tests: a VM context a file, in processes that are reused.
     pool: "vmForks",
+    // As the root's, too: half the cores, since the gate runs this beside a browser run, and 15 s
+    // for the tests a busy machine slows past Vitest's 5 s default.
+    maxWorkers: Math.ceil(availableParallelism() / 2),
+    testTimeout: 15_000,
+    setupFiles: [`${registry}../tests/setup/paint-timing.ts`],
     testNamePattern: new RegExp(`^(?!.*(?:${tailwindClassTests.join("|")}))`, "u"),
   },
 });

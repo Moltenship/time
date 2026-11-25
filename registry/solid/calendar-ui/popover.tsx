@@ -1,54 +1,26 @@
 import type { JSX } from "@solidjs/web";
 import type { RenderProp } from "@ui-sdk/solid/primitive";
 import {
-  createPopoverController,
   Popover as PopoverRoot,
   PopoverClose as PopoverClosePart,
   PopoverContent as PopoverContentPart,
   PopoverTitle as PopoverTitlePart,
   PopoverTrigger as PopoverTriggerPart,
-  type PopoverController,
 } from "@ui-sdk/solid/popover";
 import { createSignal, omit, untrack } from "solid-js";
 
+import {
+  createPopoverHandle,
+  popoverControllerOf,
+  type PopoverHandle,
+} from "@registry/shared/calendar-ui/popover-handle";
+import { popupSide, type PopupSide } from "@registry/shared/calendar-ui/popup-side";
 import {
   popoverContentClassName,
   popoverDefaults,
   popoverTitleClassName,
 } from "@registry/shared/calendar-ui/popover.styles";
 import { cn } from "cn";
-
-/**
- * One popover that many triggers open, each with its own `payload`, like Base UI's
- * `Popover.createHandle()`: hundreds of triggers share one root.
- */
-export interface PopoverHandle<Payload> {
-  /**
-   * Opens the popover from the trigger with this `id` in the document, as a press on it would. A
-   * popover already open from that trigger stays open.
-   */
-  open(triggerId: string): void;
-  close(): void;
-  /** The `payload` of the trigger that opened it last. */
-  getPayload(): Payload | undefined;
-}
-
-const controllers = new WeakMap<PopoverHandle<unknown>, PopoverController<unknown>>();
-
-function createPopoverHandle<Payload>(): PopoverHandle<Payload> {
-  const controller = createPopoverController<Payload>();
-  const handle: PopoverHandle<Payload> = {
-    close: () => void controller.close(),
-    getPayload: () => controller.getPayload(),
-    open: (triggerId) => {
-      const trigger = document.getElementById(triggerId);
-      // A press toggles: on the trigger the popover is open from, it would close it.
-      if (trigger?.getAttribute("aria-expanded") !== "true") trigger?.click();
-    },
-  };
-  controllers.set(handle, controller as PopoverController<unknown>);
-  return handle;
-}
 
 export interface PopoverProps<Payload> {
   /** The trigger and content, or a function of the payload the open trigger passed. */
@@ -64,9 +36,7 @@ export interface PopoverProps<Payload> {
 }
 
 function Popover<Payload = unknown>(props: PopoverProps<Payload>) {
-  const controller = untrack(() =>
-    props.handle === undefined ? undefined : controllers.get(props.handle),
-  );
+  const controller = untrack(() => popoverControllerOf(props.handle));
   // Boxed, as a payload may be a function, which a signal would call.
   const [shown, setShown] = createSignal(
     { payload: controller?.getPayload() as Payload | undefined },
@@ -119,9 +89,7 @@ export interface PopoverTriggerProps<Payload> {
  * `render` element keeps its own `data-slot`.
  */
 function PopoverTrigger<Payload = unknown>(props: PopoverTriggerProps<Payload>) {
-  const controller = untrack(() =>
-    props.handle === undefined ? undefined : controllers.get(props.handle),
-  );
+  const controller = untrack(() => popoverControllerOf(props.handle));
   const rest = omit(props, "handle", "onMouseDown", "render", "tabIndex");
   return (
     <PopoverTriggerPart
@@ -158,14 +126,12 @@ export interface PopoverContentProps {
   readonly initialFocus?: () => HTMLElement | null | undefined;
   readonly ref?: (element: HTMLDivElement) => void;
   /** `inline-start` and `inline-end` follow the writing direction. */
-  readonly side?: "bottom" | "inline-end" | "inline-start" | "left" | "right" | "top";
+  readonly side?: PopupSide;
   readonly sideOffset?: number;
 }
 
 /** The panel, in the browser's top layer, beside its trigger. */
 function PopoverContent(props: PopoverContentProps) {
-  const side = () =>
-    props.side === "inline-end" ? "end" : props.side === "inline-start" ? "start" : props.side;
   const initialFocus = () => {
     const target = props.initialFocus;
     return target === undefined ? undefined : () => target() ?? null;
@@ -188,7 +154,7 @@ function PopoverContent(props: PopoverContentProps) {
       class={cn(popoverContentClassName, props.class)}
       finalFocus={props.finalFocus === false ? "none" : props.finalFocus}
       initialFocus={initialFocus()}
-      side={side()}
+      side={popupSide(props.side)}
       sideOffset={props.sideOffset ?? popoverDefaults.sideOffset}
       {...rest}
     >
@@ -222,4 +188,5 @@ function PopoverClose(props: PopoverCloseProps) {
   return <PopoverClosePart {...props} />;
 }
 
+export type { PopoverHandle };
 export { createPopoverHandle, Popover, PopoverClose, PopoverContent, PopoverTitle, PopoverTrigger };

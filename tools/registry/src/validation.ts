@@ -7,6 +7,8 @@ import { registryItemSchema } from "shadcn/schema";
 import { importsOf } from "./check";
 import {
   dragAndDropPackages,
+  kitSharedDirectory,
+  kitSharedPackages,
   reactRegistry,
   registryNamespace,
   registrySharedDirectory,
@@ -85,8 +87,9 @@ function packageOf(specifier: string): string {
 /**
  * What a shared file imports that it may not. It may import other shared files, by
  * `@registry/shared/...` or by a relative path that stays in `registry/shared/`, and the
- * framework-free packages in `sharedFilePackages`. Each framework's items import the shared file,
- * so it holds no markup, no framework code and no item's own file.
+ * framework-free packages in `sharedFilePackages`, and the kit's shared files ui-sdk's core too
+ * (`kitSharedPackages`). Each framework's items import the shared file, so it holds no markup, no
+ * framework code and no item's own file.
  */
 export function sharedFileIssues(path: string, source: string): string[] {
   if (!path.endsWith(".ts") || path.endsWith(".d.ts")) {
@@ -104,7 +107,9 @@ export function sharedFileIssues(path: string, source: string): string[] {
         ? []
         : [`${path} is shared, but imports ${specifier}; it may import other shared files only`];
     }
-    return sharedFilePackages.has(packageOf(specifier))
+    const packageName = packageOf(specifier);
+    const kitFile = path.startsWith(`${kitSharedDirectory}/`);
+    return sharedFilePackages.has(packageName) || (kitFile && kitSharedPackages.has(packageName))
       ? []
       : [
           `${path} is shared, but imports ${specifier}, which isn't a framework-free package a shared file may use (sharedFilePackages)`,

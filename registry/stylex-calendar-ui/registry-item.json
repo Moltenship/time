@@ -1,0 +1,101 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stylex-calendar-ui",
+  "type": "registry:component",
+  "title": "Calendar controls (StyleX)",
+  "description": "The calendar's own controls for the StyleX views, thin wrappers over ui-sdk's components styled with StyleX and the theme's variables: button, badge, tooltip, select, popover, dialog and toast. Each control's styles live in a plain .styles.ts file beside it, and what the popover, tooltip and toast keep between renders in plain .ts files shared with the Tailwind kit. They land under components/calendar-stylex/ui.",
+  "dependencies": ["@stylexjs/stylex", "@ui-sdk/core", "@ui-sdk/react", "lucide-react"],
+  "registryDependencies": ["@moltenship/stylex-calendar-theme"],
+  "files": [
+    {
+      "path": "registry/stylex-calendar-ui/button.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/ui/button.tsx"
+    },
+    {
+      "path": "registry/shared/stylex-calendar-ui/button.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/ui/button.styles.ts"
+    },
+    {
+      "path": "registry/stylex-calendar-ui/badge.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/ui/badge.tsx"
+    },
+    {
+      "path": "registry/shared/stylex-calendar-ui/badge.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/ui/badge.styles.ts"
+    },
+    {
+      "path": "registry/stylex-calendar-ui/tooltip.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/ui/tooltip.tsx"
+    },
+    {
+      "path": "registry/shared/stylex-calendar-ui/tooltip.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/ui/tooltip.styles.ts"
+    },
+    {
+      "path": "registry/shared/calendar-ui/tooltip-handle.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/ui/tooltip-handle.ts"
+    },
+    {
+      "path": "registry/stylex-calendar-ui/select.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/ui/select.tsx"
+    },
+    {
+      "path": "registry/shared/stylex-calendar-ui/select.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/ui/select.styles.ts"
+    },
+    {
+      "path": "registry/stylex-calendar-ui/popover.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/ui/popover.tsx"
+    },
+    {
+      "path": "registry/shared/stylex-calendar-ui/popover.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/ui/popover.styles.ts"
+    },
+    {
+      "path": "registry/shared/calendar-ui/popover-handle.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/ui/popover-handle.ts"
+    },
+    {
+      "path": "registry/shared/calendar-ui/popup-side.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/ui/popup-side.ts"
+    },
+    {
+      "path": "registry/stylex-calendar-ui/dialog.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/ui/dialog.tsx"
+    },
+    {
+      "path": "registry/shared/stylex-calendar-ui/dialog.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/ui/dialog.styles.ts"
+    },
+    {
+      "path": "registry/stylex-calendar-ui/toast.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/ui/toast.tsx"
+    },
+    {
+      "path": "registry/shared/stylex-calendar-ui/toast.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/ui/toast.styles.ts"
+    },
+    {
+      "path": "registry/shared/calendar-ui/toast-manager.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/ui/toast-manager.ts"
+    }
+  ]
+}

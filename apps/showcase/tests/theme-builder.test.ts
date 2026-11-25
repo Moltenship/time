@@ -507,16 +507,8 @@ describe("StyleX theme", () => {
       expect(source.tokens.map(({ name }) => name)).not.toContain("--calendar-surface");
     });
 
-    test.each(Object.keys(tokensFileDefaults))("%s has the file's value or fallback", (name) => {
-      // A base colour reads the Astryx theme around it first, then `calendar-theme.css`'s value.
-      const fallback = /^var\(--[\w-]+, (.*)\)$/.exec(tokensFileDefaults[name]!)?.[1];
-      // Lighter in the file's dark, for Astryx's lighter dark surface, as the file says.
-      if (name === "--calendar-today") {
-        expect(tokensFileDefaults[name]).toContain("oklch(0.73 0.15 254.6)");
-        return;
-      }
-
-      expect(full[name]).toBe(fallback ?? tokensFileDefaults[name]);
+    test.each(Object.keys(tokensFileDefaults))("%s has the Tailwind theme's value", (name) => {
+      expect(full[name]).toBe(tokensFileDefaults[name]);
     });
   });
 });
@@ -584,11 +576,10 @@ describe("presets", () => {
     ).toBe(false);
   });
 
-  test("Astryx neutral sets every token that reads the Astryx theme's colours", () => {
+  test("Astryx neutral sets every base colour, as an app maps an Astryx theme", () => {
     const astryx = presets.find(({ name }) => name === "Astryx neutral")!;
-    const mapped = Object.entries(tokensFileDefaults)
-      .filter(([, value]) => /^var\(--(?:color|focus)-/.test(value))
-      .map(([name]) => name)
+    const mapped = Object.keys(tokensFileDefaults)
+      .filter((name) => !name.startsWith("--calendar-") && name !== "--radius")
       .toSorted();
 
     expect(Object.keys(astryx.light!).toSorted()).toEqual(mapped);

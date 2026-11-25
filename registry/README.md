@@ -16,7 +16,7 @@ registry/
   recurrence-scope-dialog/   asks which events of a recurring series a change applies to
   calendar-history-toast/    an Undo toast and keys for a calendar's event history
   calendar-full/    installs every item above but base-tokens, owns no files   registry item "calendar-full"
-  stylex-<item>/    the same items, styled with StyleX and Astryx    registry item "stylex-<item>"
+  stylex-<item>/    the same items, styled with StyleX                registry item "stylex-<item>"
   shared/           framework-free files that items of both frameworks install, such as the kit's classes
   solid/            the Solid registry: calendar-theme, base-tokens, calendar, list-view   served at /r/solid
   tests/            focused tests for the source above
@@ -47,11 +47,16 @@ that `tools/registry` checks:
   `base-tokens`.
 - A file under `shared/` is plain TypeScript (`.ts`) with no framework in it. It imports other
   shared files and only the framework-free packages in `sharedFilePackages`
-  (`tools/registry/src/config.ts`): no React, Solid, Base UI or ui-sdk, and no item's own file. A
-  package joins that list when a shared file needs it and it imports no framework. An item lists the
-  shared files it installs among its own `files`, with their targets. `calendar-ui` installs
-  `shared/calendar-ui/<control>.styles.ts`, the class strings each control's look comes from, so
-  another framework's kit can install the same look.
+  (`tools/registry/src/config.ts`): no React, Solid, Base UI or ui-sdk, and no item's own file.
+  The kit's shared files, in `shared/calendar-ui/`, may also import `@ui-sdk/core`, which has no
+  framework in it. A package joins that list when a shared file needs it and it imports no
+  framework. An item lists the shared files it installs among its own `files`, with their targets.
+  `calendar-ui` installs `shared/calendar-ui/<control>.styles.ts`, the class strings each control's
+  look comes from, so another framework's kit can install the same look, and the handles its
+  popover, tooltip and toast keep (`popover-handle.ts`, `tooltip-handle.ts`, `toast-manager.ts`).
+  `stylex-calendar-ui` installs the same handles, and its look from
+  `shared/stylex-calendar-ui/<control>.styles.ts`. A shared file two items install can land at two
+  targets: the build resolves each import to the target in the importing item's own install.
 
 The Tailwind items take every control from `calendar-ui`: buttons, badges, tooltips, selects,
 popovers, dialogs and toasts. So those controls look the same in every app and don't follow the
@@ -164,15 +169,16 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
 ## The StyleX flavour
 
 Tailwind and shadcn tokens are the baseline. Every `<item>` also has a `stylex-<item>`, for apps
-that style with StyleX and build on [Astryx](https://astryx.atmeta.com) rather than Tailwind:
-`stylex-month-view`, `stylex-calendar-full`, and so on. It is the same component with the same
-behaviour: same file names, exports, `data-slot` and `data-*` attributes, roles and labels, with
-Tailwind classes replaced by `stylex.create` and shadcn components by Astryx ones. Its files land
+that style with StyleX rather than Tailwind: `stylex-month-view`, `stylex-calendar-ui`,
+`stylex-calendar-full`, and so on. It is the same component with the same behaviour: same file
+names, exports, `data-slot` and `data-*` attributes, roles and labels, with Tailwind classes
+replaced by `stylex.create`. Its controls come from `stylex-calendar-ui`, the kit's twin on the
+same ui-sdk parts and handles. Its files land
 under `@components/calendar-stylex/`, so the two flavours never write the same file. A fix to a view
 belongs in both. `vp run registry:stylex` runs every test in `tests/` against this flavour, and
 `tests/stylex-flavour.test.ts` keeps the two in step.
 
-The tokens are the theme's, with the same names: `calendarVars["--calendar-grid"]` from
+The tokens are the theme's, with the same names and values, and read no other design system: `calendarVars["--calendar-grid"]` from
 `@registry/stylex-calendar-theme/calendar-tokens.stylex` is `var(--calendar-grid)`. A key starting
 with `--` stays that custom property through `stylex.defineVars`, so `createTheme` overrides them,
 and inline styles, a plain stylesheet or the Availability recipes can read them.
@@ -204,26 +210,30 @@ and inline styles, a plain stylesheet or the Availability recipes can read them.
   `ring-2` is `box-shadow: 0 0 0 2px <color>`; `opacity-*` and colours such as `bg-primary/10` are
   `color-mix(in oklch, <token> 10%, transparent)`.
 - `truncate` is `overflow: hidden`, `textOverflow: "ellipsis"`, `whiteSpace: "nowrap"`; `sr-only` is
-  the eight properties of `VisuallyHidden`, which you can use from `@astryxdesign/core/VisuallyHidden`.
+  `visuallyHiddenStyles.hidden` from `@registry/shared/stylex-calendar-theme/visually-hidden.styles`.
 - Keep logical properties: `ms-1` is `marginInlineStart`, `start-0` `insetInlineStart`, `border-s`
   `borderInlineStartWidth`. Physical ones stay physical.
-- Don't lean on a reset: `reset.css` from Astryx gives `box-sizing: border-box`, zero margins and
-  zero-width solid borders, as preflight does. A border needs its width and colour set; a `<button>`
-  inherits the font; keep `cursor: pointer` where Tailwind's button has it.
+- Don't lean on a reset: the app may have none. Set `boxSizing: "border-box"`, margins and a
+  border's width, style and colour where the element needs them; a `<button>` needs
+  `fontFamily: "inherit"`; keep `cursor: pointer` where Tailwind's button has it. Tailwind's
+  `outline-hidden` is `outlineStyle: "none"` with a transparent 2px outline under
+  `@media (forced-colors: active)`.
 - Read `--calendar-surface` through `calendarConsts.surface` in the tokens file: it is unset, for a
   container to set.
 - Event colours: wherever the source sets `data-color`, keep it and add
   `color !== undefined && eventColorStyles[color]`.
-- The controls become Astryx: `@astryxdesign/core/Button`, `IconButton`, `Tooltip`, `Popover`,
-  `Dialog`, `AlertDialog`, `Badge`, `Selector`. Read `node_modules/@astryxdesign/core/src/<Name>/<Name>.doc.mjs`
-  for their props. Astryx's own components take `xstyle`. Base UI, unstyled, stays where Astryx has
-  no way to do what the source does, such as an anchor-only popover. `cn` and
-  `class-variance-authority` don't appear in this flavour, and Tailwind classes don't either.
+- The controls come from `@registry/stylex-calendar-ui/<control>`, as the source's come from
+  `@registry/calendar-ui/<control>`, with `xstyle` where the source passes `className`. Only the
+  kit imports ui-sdk. A control's look lives in `shared/stylex-calendar-ui/<control>.styles.ts`,
+  the StyleX translation of `shared/calendar-ui/<control>.styles.ts`; change both together. Shared
+  style files can't import the theme's tokens, so they write `"var(--primary)"`, which is what
+  `calendarVars["--primary"]` compiles to. `cn` and `class-variance-authority` don't appear in this
+  flavour, and Tailwind classes don't either.
 - `.ts` files with no styles (`event-label.ts`, `preview-check.ts`) are copies with their imports
   changed; `tests/stylex-flavour.test.ts` holds them to it.
 - Imports go through `@registry/stylex-<item>/…`, never `@registry/<item>/…`.
 - Manifests: name `stylex-<item>`, targets under `@components/calendar-stylex/`, the source's
-  structure below it, `dependencies` swapped (`@stylexjs/stylex`, `@astryxdesign/core`, no `cn`), and
+  structure below it, `dependencies` swapped (`@stylexjs/stylex`, no `cn`), and
   `registryDependencies` only `@moltenship/stylex-<item>`, with no stock shadcn components.
 
 ## The Solid registry
@@ -283,5 +293,4 @@ export default defineConfig({ resolve: { tsconfigPaths: true } });
 ```
 
 The app also lists the UI dependencies the source uses (`@ui-sdk/core`, `@ui-sdk/react`, `cn`,
-`class-variance-authority`, `lucide-react`, and `shadcn` for its Tailwind variants), and
-`@base-ui/react` while it renders the `stylex-` items.
+`class-variance-authority`, `lucide-react`, and `shadcn` for its Tailwind variants).

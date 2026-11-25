@@ -1,6 +1,5 @@
 "use client";
 
-import { VisuallyHidden } from "@astryxdesign/core/VisuallyHidden";
 import {
   resourceIdAttributes,
   timeGridPosition,
@@ -13,6 +12,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { useMemo, type ReactNode, type RefCallback, type RefObject } from "react";
 
+import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
 import type { EventLabeler } from "@registry/stylex-calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailable-time";
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
@@ -197,7 +197,7 @@ export function ResourceColumnsBody<TEvent>({
   return (
     <div role="row" {...stylex.props(styles.row)}>
       <div role="rowheader" aria-colindex={1} {...stylex.props(styles.rowHeader)}>
-        <VisuallyHidden>Timed events</VisuallyHidden>
+        <span {...stylex.props(visuallyHiddenStyles.hidden)}>Timed events</span>
         <div ref={followY} {...stylex.props(styles.hours)}>
           <TimeGridHours locale={locale} zones={zones} />
         </div>

@@ -1,15 +1,27 @@
 import type { JSX } from "@solidjs/web";
 import type { RenderProp } from "@ui-sdk/solid/primitive";
 import {
-  createTooltipController,
   Tooltip as TooltipRoot,
   TooltipArrow,
   TooltipContent as TooltipContentPart,
   TooltipTrigger as TooltipTriggerPart,
-  type TooltipController,
 } from "@ui-sdk/solid/tooltip";
 import { createContext, createMemo, createSignal, omit, untrack, useContext } from "solid-js";
 
+import { popupSide, type PopupSide } from "@registry/shared/calendar-ui/popup-side";
+import {
+  createTooltipHandle,
+  cursorAnchor,
+  reportTooltipOpen,
+  reportTooltipPayload,
+  tooltipStateOf,
+  trackTooltipPointer,
+  type TooltipHandle,
+  type TooltipHandleState,
+  type TooltipOpenChangeDetails,
+  type TooltipOpenChangeHandler,
+  type TooltipTracking,
+} from "@registry/shared/calendar-ui/tooltip-handle";
 import {
   tooltipArrowClassName,
   tooltipContentClassName,
@@ -17,39 +29,8 @@ import {
 } from "@registry/shared/calendar-ui/tooltip.styles";
 import { cn } from "cn";
 
-/**
- * One tooltip that many triggers show, each with its own `payload`, like Base UI's
- * `Tooltip.createHandle()`: hundreds of triggers share one root.
- */
-export interface TooltipHandle<Payload> {
-  close(): void;
-  /** The `payload` of the trigger that showed it last. */
-  getPayload(): Payload | undefined;
-}
-
-interface HandleState {
-  readonly controller: TooltipController<unknown>;
-  /** The trigger under the pointer and the pointer's height, for `trackCursorAxis`. */
-  readonly pointer: { element: Element | null; y: number };
-}
-
-const handles = new WeakMap<TooltipHandle<unknown>, HandleState>();
-
-function createTooltipHandle<Payload>(): TooltipHandle<Payload> {
-  const controller = createTooltipController<Payload>();
-  const handle: TooltipHandle<Payload> = {
-    close: () => void controller.close(),
-    getPayload: () => controller.getPayload(),
-  };
-  handles.set(handle, {
-    controller: controller as TooltipController<unknown>,
-    pointer: { element: null, y: 0 },
-  });
-  return handle;
-}
-
 interface TooltipContextValue {
-  readonly state: HandleState | undefined;
+  readonly state: TooltipHandleState | undefined;
   readonly trackCursorAxis: "y" | undefined;
 }
 
@@ -57,11 +38,6 @@ const TooltipContext = createContext<TooltipContextValue>({
   state: undefined,
   trackCursorAxis: undefined,
 });
-
-export interface TooltipOpenChangeDetails<Payload> {
-  readonly cancel: () => void;
-  readonly payload: Payload | undefined;
-}
 
 export interface TooltipProps<Payload> {
   /** The trigger and content, or a function of the payload the trigger under the pointer passed. */
@@ -79,7 +55,7 @@ export interface TooltipProps<Payload> {
    * `details.payload` is the payload of the trigger it opens from; `details.cancel()` keeps the
    * tooltip as it is.
    */
-  readonly onOpenChange?: (open: boolean, details: TooltipOpenChangeDetails<Payload>) => void;
+  readonly onOpenChange?: TooltipOpenChangeHandler<Payload>;
   /** Follows the pointer up and down its trigger, rather than centring on it. */
   readonly trackCursorAxis?: "y";
   /**
@@ -94,25 +70,14 @@ export interface TooltipProps<Payload> {
  * description. Tooltips group on their own: once one is open, the next opens at once.
  */
 function Tooltip<Payload = unknown>(props: TooltipProps<Payload>) {
-  const state = untrack(() => (props.handle === undefined ? undefined : handles.get(props.handle)));
+  const state = untrack(() => tooltipStateOf(props.handle));
   // Boxed, as a payload may be a function, which a signal would call.
   const [shown, setShown] = createSignal(
     { payload: state?.controller.getPayload() as Payload | undefined },
     { ownedWrite: true },
   );
   // ui-sdk reports a trigger's payload before it opens, and a takeover by its payload alone.
-  const latest = { open: false, payload: untrack(shown).payload };
-  const change = (open: boolean, next: Payload | undefined, cancel: () => void) => {
-    let cancelled = false;
-    props.onOpenChange?.(open, {
-      cancel: () => {
-        cancelled = true;
-        cancel();
-      },
-      payload: next,
-    });
-    return !cancelled;
-  };
+  const tracking: TooltipTracking<Payload> = { open: false, payload: untrack(shown).payload };
   const context: TooltipContextValue = {
     state,
     get trackCursorAxis() {
@@ -136,13 +101,13 @@ function Tooltip<Payload = unknown>(props: TooltipProps<Payload>) {
         controller={state?.controller}
         delay={props.delay ?? tooltipDefaults.delay}
         disabled={props.disabled}
-        onOpenChange={(open, details) => {
-          if (change(open, latest.payload, details.cancel)) latest.open = open;
-        }}
+        onOpenChange={(open, details) =>
+          reportTooltipOpen(tracking, props.onOpenChange, open, details)
+        }
         onPayloadChange={(next, details) => {
-          if (latest.open && !change(true, next as Payload, details.cancel)) return;
-          latest.payload = next as Payload;
-          setShown({ payload: next as Payload });
+          if (reportTooltipPayload(tracking, props.onOpenChange, next as Payload, details)) {
+            setShown({ payload: next as Payload });
+          }
         }}
         type={props.type ?? "label"}
       >
@@ -178,7 +143,7 @@ function callHandler(handler: PointerHandler | undefined, event: PointerEvent) {
 function TooltipTrigger<Payload = unknown>(props: TooltipTriggerProps<Payload>) {
   const context = useContext(TooltipContext);
   const own = untrack(() => props.handle);
-  const state = own === undefined ? context.state : handles.get(own);
+  const state = own === undefined ? context.state : tooltipStateOf(own);
   // A popover trigger that renders this one hands its own handlers down with the rest.
   const handlers = props as TooltipTriggerProps<Payload> & {
     readonly onPointerEnter?: PointerHandler;
@@ -186,9 +151,7 @@ function TooltipTrigger<Payload = unknown>(props: TooltipTriggerProps<Payload>) 
   };
   const track = (key: "onPointerEnter" | "onPointerMove") => (event: PointerEvent) => {
     callHandler(handlers[key], event);
-    if (state === undefined) return;
-    state.pointer.element = event.currentTarget as Element;
-    state.pointer.y = event.clientY;
+    trackTooltipPointer(state, event.currentTarget as Element, event.clientY);
   };
   const rest = omit(handlers, "handle", "onPointerEnter", "onPointerMove");
   return (
@@ -208,7 +171,7 @@ export interface TooltipContentProps {
   readonly children?: JSX.Element;
   readonly class?: string;
   /** `inline-start` and `inline-end` follow the writing direction. */
-  readonly side?: "bottom" | "inline-end" | "inline-start" | "left" | "right" | "top";
+  readonly side?: PopupSide;
   readonly sideOffset?: number;
 }
 
@@ -217,23 +180,14 @@ function TooltipContent(props: TooltipContentProps) {
   const context = useContext(TooltipContext);
   const anchor = createMemo(() => {
     const { state } = context;
-    if (context.trackCursorAxis !== "y" || state === undefined) return undefined;
-    const { pointer } = state;
-    return {
-      getBoundingClientRect: () => {
-        const box = pointer.element?.getBoundingClientRect();
-        return { height: 0, width: box?.width ?? 0, x: box?.x ?? 0, y: pointer.y };
-      },
-    };
+    return context.trackCursorAxis !== "y" || state === undefined ? undefined : cursorAnchor(state);
   });
-  const side = () =>
-    props.side === "inline-end" ? "end" : props.side === "inline-start" ? "start" : props.side;
   const rest = omit(props, "children", "class", "side", "sideOffset");
   return (
     <TooltipContentPart
       anchor={anchor()}
       class={cn(tooltipContentClassName, props.class)}
-      side={side()}
+      side={popupSide(props.side)}
       sideOffset={props.sideOffset ?? tooltipDefaults.sideOffset}
       {...rest}
     >
@@ -243,4 +197,5 @@ function TooltipContent(props: TooltipContentProps) {
   );
 }
 
+export type { TooltipHandle, TooltipOpenChangeDetails };
 export { createTooltipHandle, Tooltip, TooltipContent, TooltipTrigger };

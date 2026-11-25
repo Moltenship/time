@@ -8,6 +8,7 @@ import { configDefaults, defineConfig } from "vite-plus";
 import { playwright } from "vite-plus/test/browser-playwright";
 
 import { solidRegistrySource } from "../registry/src/solid-source";
+import { animationRate } from "./animation-rate";
 import { mouse } from "./mouse";
 import { Watchdog } from "./watchdog";
 
@@ -35,6 +36,8 @@ const stylexOnly = ["tests/demo-stylex*.a11y.tsx"];
  */
 const solidFiles = ["tests/solid/**/*.a11y.tsx"];
 const tailwindExclude = [...chromiumOnly, ...stylexOnly, ...solidFiles];
+/** The flavours' parity slows animations through Chromium's DevTools protocol, so Chromium alone. */
+const otherBrowsersExclude = [...tailwindExclude, "tests/parity.a11y.tsx"];
 // Absolute: Vitest doesn't resolve the paths of an instance's own setup files.
 const stylexSetup = [fromHere("./tests/setup.ts")];
 const tailwindSetup = [...stylexSetup, fromHere("./tests/setup-tailwind.ts")];
@@ -74,8 +77,9 @@ export default defineConfig(({ mode }) => {
     headless: true,
     provider: playwright(),
     viewport: { height: 800, width: 1280 },
-    // Real mouse input at page points, step by step, for drags a test watches as they go.
-    commands: { mouse },
+    // Real mouse input at page points, step by step, for drags a test watches as they go, and
+    // slowed animations for a test that samples them as they run.
+    commands: { animationRate, mouse },
   };
 
   return {
@@ -118,14 +122,14 @@ export default defineConfig(({ mode }) => {
                       ? [
                           {
                             browser: "firefox" as const,
-                            exclude: tailwindExclude,
+                            exclude: otherBrowsersExclude,
                             setupFiles: tailwindSetup,
                           },
                         ]
                       : []),
                     {
                       browser: "webkit" as const,
-                      exclude: tailwindExclude,
+                      exclude: otherBrowsersExclude,
                       setupFiles: tailwindSetup,
                     },
                     {

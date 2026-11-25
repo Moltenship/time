@@ -28,6 +28,7 @@ import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailabl
 import { useViewKeyboard } from "@registry/stylex-calendar/view-keyboard";
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import { TimeGridEventTooltip } from "@registry/stylex-time-grid-view/time-grid-event";
 import { offsetLabel } from "@registry/stylex-time-grid-view/time-grid-header";
 import {
   gutterColumn,
@@ -204,71 +205,75 @@ export function ResourceColumnsView<
   );
 
   return (
-    // Rows: resource headers, dates over several days, all-day events, and the timed columns; each
-    // starts with a gutter cell.
-    <div
-      ref={pointerRef}
-      role="grid"
-      aria-label={timeGridTitle(range, environment.locale)}
-      aria-colcount={1 + resources.length * columns.length}
-      {...keyboard}
-      data-slot="resource-columns"
-      className={`${gridProps.className} ${timeGridGutterClassName}`}
-      style={gutterStyle(zones)}
-    >
-      <div {...stylex.props(styles.header)}>
-        <ResourceColumnsHeader
-          {...placed}
-          corner={
-            <TimeGridGutterLabels
-              offset={
-                corner === undefined
-                  ? undefined
-                  : offsetLabel(environment.locale, environment.timeZone, corner)
-              }
+    <TimeGridEventTooltip>
+      {/* Rows: resource headers, dates over several days, all-day events, and the timed columns;
+          each starts with a gutter cell. */}
+      <div
+        ref={pointerRef}
+        role="grid"
+        aria-label={timeGridTitle(range, environment.locale)}
+        aria-colcount={1 + resources.length * columns.length}
+        {...keyboard}
+        data-slot="resource-columns"
+        className={`${gridProps.className} ${timeGridGutterClassName}`}
+        style={gutterStyle(zones)}
+      >
+        <div {...stylex.props(styles.header)}>
+          <ResourceColumnsHeader
+            {...placed}
+            corner={
+              <TimeGridGutterLabels
+                offset={
+                  corner === undefined
+                    ? undefined
+                    : offsetLabel(environment.locale, environment.timeZone, corner)
+                }
+                zones={zones}
+              />
+            }
+            days={columns.length}
+            environment={environment}
+            followX={followX}
+            // The projection's resources are untyped; `TResource` is the type the app gave the root.
+            ResourceHeader={
+              options.ResourceHeader as ComponentType<ResourceHeaderProps> | undefined
+            }
+            status={resourceStatusOptions(options.resourceStatus)}
+          />
+          {columns.length > 1 && resources[0] !== undefined && (
+            <ResourceColumnsDates
+              {...placed}
+              days={resources[0].days}
+              followX={followX}
+              locale={environment.locale}
               zones={zones}
             />
-          }
-          days={columns.length}
-          environment={environment}
-          followX={followX}
-          // The projection's resources are untyped; `TResource` is the type the app gave the root.
-          ResourceHeader={options.ResourceHeader as ComponentType<ResourceHeaderProps> | undefined}
-          status={resourceStatusOptions(options.resourceStatus)}
-        />
-        {columns.length > 1 && resources[0] !== undefined && (
-          <ResourceColumnsDates
+          )}
+          <ResourceColumnsAllDay
             {...placed}
-            days={resources[0].days}
             followX={followX}
+            getEventColor={options.getEventColor}
+            getEventIcon={options.getEventIcon}
+            labelEvent={labelEvent}
             locale={environment.locale}
-            zones={zones}
           />
-        )}
-        <ResourceColumnsAllDay
+        </div>
+        <ResourceColumnsBody
           {...placed}
-          followX={followX}
+          environment={environment}
+          followY={followY}
           getEventColor={options.getEventColor}
           getEventIcon={options.getEventIcon}
+          isReadOnly={isReadOnly}
           labelEvent={labelEvent}
-          locale={environment.locale}
+          onScroll={sync}
+          renderUnavailable={options.renderUnavailable}
+          scrollRef={scrollRef}
+          slotMinutes={snap.increment}
+          zones={zones}
         />
       </div>
-      <ResourceColumnsBody
-        {...placed}
-        environment={environment}
-        followY={followY}
-        getEventColor={options.getEventColor}
-        getEventIcon={options.getEventIcon}
-        isReadOnly={isReadOnly}
-        labelEvent={labelEvent}
-        onScroll={sync}
-        renderUnavailable={options.renderUnavailable}
-        scrollRef={scrollRef}
-        slotMinutes={snap.increment}
-        zones={zones}
-      />
-    </div>
+    </TimeGridEventTooltip>
   );
 }
 

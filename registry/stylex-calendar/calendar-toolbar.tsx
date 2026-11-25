@@ -1,12 +1,12 @@
-import { Tooltip } from "@astryxdesign/core/Tooltip";
 import type { CalendarFactory, CalendarTriggerProps } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
 import { CalendarCheckIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
-import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import { type XStyle, xprops } from "@registry/stylex-calendar-theme/xprops";
 import { calendarToolbarLabels } from "@registry/shared/calendar/navigation-labels";
+import { Button } from "@registry/stylex-calendar-ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/stylex-calendar-ui/tooltip";
 
 const styles = stylex.create({
   actions: {
@@ -16,38 +16,12 @@ const styles = stylex.create({
     gap: { default: "0.25rem", "@media (min-width: 640px)": "0.5rem" },
     marginInlineStart: "auto",
   },
-  // The headless triggers render their own `<button>`, so they take the look of the theme's button.
-  button: {
-    alignItems: "center",
-    appearance: "none",
-    backgroundClip: "padding-box",
+  round: {
     borderRadius: "9999px",
-    borderStyle: "solid",
-    borderWidth: 1,
-    boxShadow: {
-      default: null,
-      ":focus-visible": `0 0 0 3px color-mix(in oklch, ${calendarVars["--ring"]} 50%, transparent)`,
-    },
-    color: { default: "inherit", ":hover": calendarVars["--foreground"] },
-    cursor: "pointer",
-    display: "inline-flex",
-    flexShrink: 0,
-    fontFamily: "inherit",
-    fontSize: "0.875rem",
-    fontWeight: 500,
-    height: "2rem",
-    justifyContent: "center",
-    lineHeight: "1.25rem",
-    opacity: { default: null, ":disabled": 0.5 },
-    outlineStyle: "none",
-    pointerEvents: { default: null, ":disabled": "none" },
-    transitionDuration: "150ms",
-    transitionProperty: "all",
-    transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-    translate: { default: null, ":active:not([aria-haspopup])": "0 1px" },
-    WebkitUserSelect: "none",
-    userSelect: "none",
-    whiteSpace: "nowrap",
+  },
+  steps: {
+    alignItems: "center",
+    display: "flex",
   },
   icon: {
     flexShrink: 0,
@@ -57,20 +31,6 @@ const styles = stylex.create({
   },
   iconFlipped: {
     rotate: { default: null, ":dir(rtl)": "180deg" },
-  },
-  step: {
-    backgroundColor: {
-      default: "transparent",
-      ":hover": `light-dark(${calendarVars["--muted"]}, color-mix(in oklch, ${calendarVars["--muted"]} 50%, transparent))`,
-    },
-    borderColor: { default: "transparent", ":focus-visible": calendarVars["--ring"] },
-    paddingBlock: 0,
-    paddingInline: 0,
-    width: "2rem",
-  },
-  steps: {
-    alignItems: "center",
-    display: "flex",
   },
   title: {
     WebkitBoxOrient: { default: null, "@media (max-width: 1023.98px)": "vertical" },
@@ -85,16 +45,6 @@ const styles = stylex.create({
     whiteSpace: { default: null, "@media (min-width: 1024px)": "nowrap" },
   },
   today: {
-    backgroundColor: {
-      default: `light-dark(${calendarVars["--background"]}, color-mix(in oklch, ${calendarVars["--input"]} 30%, transparent))`,
-      ":hover": `light-dark(${calendarVars["--muted"]}, color-mix(in oklch, ${calendarVars["--input"]} 50%, transparent))`,
-    },
-    borderColor: {
-      default: `light-dark(${calendarVars["--border"]}, ${calendarVars["--input"]})`,
-      ":focus-visible": calendarVars["--ring"],
-    },
-    gap: "0.375rem",
-    paddingBlock: 0,
     paddingInline: { default: "1rem", "@media (max-width: 639.98px)": 0 },
     width: { default: null, "@media (max-width: 639.98px)": "2rem" },
   },
@@ -141,10 +91,20 @@ function StepTrigger({
   readonly Trigger: ComponentType<CalendarTriggerProps>;
 }) {
   return (
-    <Tooltip content={label}>
-      <Trigger aria-label={label} {...stylex.props(styles.button, styles.step)}>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            render={<Trigger aria-label={label} />}
+            size="icon"
+            variant="ghost"
+            xstyle={styles.round}
+          />
+        }
+      >
         {children}
-      </Trigger>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   );
 }
@@ -161,15 +121,16 @@ export function CalendarToolbar({
   return (
     <Toolbar {...xprops({ className }, styles.toolbar, xstyle)}>
       {start}
-      <TodayTrigger
-        aria-label={calendarToolbarLabels.today}
-        {...stylex.props(styles.button, styles.today)}
+      <Button
+        render={<TodayTrigger aria-label={calendarToolbarLabels.today} />}
+        variant="outline"
+        xstyle={[styles.round, styles.today]}
       >
         <span {...stylex.props(styles.todayIcon)}>
           <CalendarCheckIcon {...stylex.props(styles.icon)} />
         </span>
         <span {...stylex.props(styles.todayLabel)}>{calendarToolbarLabels.today}</span>
-      </TodayTrigger>
+      </Button>
       <div {...stylex.props(styles.steps)}>
         <StepTrigger label={calendarToolbarLabels.previous} Trigger={PreviousTrigger}>
           <ChevronLeftIcon {...stylex.props(styles.icon, styles.iconFlipped)} />

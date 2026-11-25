@@ -37,6 +37,11 @@
       "target": "@components/calendar/ui/tooltip.styles.ts"
     },
     {
+      "path": "registry/shared/calendar-ui/tooltip-handle.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/ui/tooltip-handle.ts"
+    },
+    {
       "path": "registry/solid/calendar-ui/select.tsx",
       "type": "registry:component",
       "target": "@components/calendar/ui/select.tsx"
@@ -55,6 +60,16 @@
       "path": "registry/shared/calendar-ui/popover.styles.ts",
       "type": "registry:lib",
       "target": "@components/calendar/ui/popover.styles.ts"
+    },
+    {
+      "path": "registry/shared/calendar-ui/popover-handle.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/ui/popover-handle.ts"
+    },
+    {
+      "path": "registry/shared/calendar-ui/popup-side.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/ui/popup-side.ts"
     },
     {
       "path": "registry/solid/calendar-ui/icons.tsx",

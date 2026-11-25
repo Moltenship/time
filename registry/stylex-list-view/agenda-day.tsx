@@ -21,7 +21,6 @@ const styles = stylex.create({
     borderRadius: "9999px",
     borderWidth: 0,
     color: "inherit",
-    cursor: "pointer",
     display: "flex",
     fontFamily: "inherit",
     fontSize: "1.125rem",

@@ -1,7 +1,5 @@
 "use client";
 
-import { Badge } from "@astryxdesign/core/Badge";
-import { VisuallyHidden } from "@astryxdesign/core/VisuallyHidden";
 import {
   useDraftBusy,
   useNow,
@@ -14,6 +12,7 @@ import {
 import * as stylex from "@stylexjs/stylex";
 import { useMemo, type ComponentProps, type ComponentType } from "react";
 
+import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
 import {
   calendarMarker,
   calendarVars,
@@ -28,6 +27,7 @@ import {
   type ResourceStatusLabels,
   type ResourceStatusSummary,
 } from "@registry/shared/calendar/resource-status-summary";
+import { Badge } from "@registry/stylex-calendar-ui/badge";
 
 export {
   draftStatusAttributes,
@@ -42,31 +42,11 @@ export type {
 
 const styles = stylex.create({
   badge: {
-    backgroundColor: "transparent",
-    borderColor: {
-      default: calendarVars["--border"],
-      ":focus-visible": calendarVars["--ring"],
-    },
-    borderStyle: "solid",
-    borderWidth: 1,
-    boxShadow: {
-      default: null,
-      ":focus-visible": `0 0 0 3px color-mix(in oklch, ${calendarVars["--ring"]} 50%, transparent)`,
-    },
-    color: calendarVars["--foreground"],
-    flexShrink: 0,
-    fontSize: "0.75rem",
     fontWeight: 400,
     gap: "0.375rem",
-    height: "1.25rem",
-    lineHeight: "1rem",
-    overflow: "hidden",
-    paddingBlock: "0.125rem",
+    maxWidth: "100%",
+    minWidth: 0,
     paddingInline: "0.375rem",
-    transitionDuration: "150ms",
-    transitionProperty: "all",
-    transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-    width: "fit-content",
   },
   dot: {
     backgroundColor: {
@@ -189,19 +169,18 @@ export function ResourceStatusBadge({
       data-slot="resource-status"
       data-state={summary.state}
       // The whole status on hover, where a narrow column cuts it short.
-      {...{ title: summary.text }}
+      title={summary.text}
+      variant="outline"
       className={className}
-      icon={<span aria-hidden {...stylex.props(styles.dot)} />}
-      label={
-        // Its own direction, so a cut-short English status keeps its first word in RTL.
-        <span dir="auto" {...stylex.props(styles.text)}>
-          {summary.text}
-        </span>
-      }
-      // Astryx types `xstyle` narrower than what `stylex.props` takes.
-      xstyle={[styles.badge, calendarMarker, xstyle] as stylex.StyleXStyles}
+      xstyle={[styles.badge, calendarMarker, xstyle]}
       {...props}
-    />
+    >
+      <span aria-hidden {...stylex.props(styles.dot)} />
+      {/* Its own direction, so a cut-short English status keeps its first word in RTL. */}
+      <span dir="auto" {...stylex.props(styles.text)}>
+        {summary.text}
+      </span>
+    </Badge>
   );
 }
 
@@ -231,7 +210,9 @@ export function ResourceStatusPart({
           xstyle={xstyle}
         />
         {/* Your part draws the status as it likes; screen readers still hear it in words. */}
-        {summary !== null && <VisuallyHidden>{summary.text}</VisuallyHidden>}
+        {summary !== null && (
+          <span {...stylex.props(visuallyHiddenStyles.hidden)}>{summary.text}</span>
+        )}
       </>
     );
   }

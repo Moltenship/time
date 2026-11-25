@@ -1,6 +1,5 @@
 "use client";
 
-import { VisuallyHidden } from "@astryxdesign/core/VisuallyHidden";
 import {
   defineCalendarView,
   eventDateRanges,
@@ -31,6 +30,7 @@ import {
   type Ref,
 } from "react";
 
+import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
 import { useEventLabel } from "@registry/stylex-calendar/event-label";
 import {
   epochDay,
@@ -56,6 +56,7 @@ import {
   TimeGridColumn,
   useTimeGridColumnFormats,
 } from "@registry/stylex-time-grid-view/time-grid-column";
+import { TimeGridEventTooltip } from "@registry/stylex-time-grid-view/time-grid-event";
 import { offsetLabel, TimeGridDayHeaders } from "@registry/stylex-time-grid-view/time-grid-header";
 import type { TimeGridViewOptions } from "@registry/stylex-time-grid-view/time-grid-view";
 import {
@@ -400,7 +401,7 @@ export function ScrollingTimeGridView<TEvent>({
   );
 
   return (
-    <>
+    <TimeGridEventTooltip>
       {/* Rows: day headers, all-day events, and the timed day columns; each starts with a gutter cell. */}
       <div
         ref={pointerRef}
@@ -475,7 +476,7 @@ export function ScrollingTimeGridView<TEvent>({
           </div>
           <div ref={bodyRef} role="row" {...stylex.props(styles.body)}>
             <div role="rowheader" data-occludes="" {...stylex.props(styles.gutter)}>
-              <VisuallyHidden>Timed events</VisuallyHidden>
+              <span {...stylex.props(visuallyHiddenStyles.hidden)}>Timed events</span>
               <TimeGridHours locale={locale} zones={zones} />
             </div>
             {/* The days scroll sideways only, a page at a time; it has no scrollbar to drag. */}
@@ -545,7 +546,7 @@ export function ScrollingTimeGridView<TEvent>({
       {annotations !== undefined && (
         <TimeGridAnnotationOverlays formatTime={formats.time} handles={annotationHandles} />
       )}
-    </>
+    </TimeGridEventTooltip>
   );
 }
 

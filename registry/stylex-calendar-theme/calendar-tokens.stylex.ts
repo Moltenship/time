@@ -4,40 +4,34 @@ import * as stylex from "@stylexjs/stylex";
  * The calendar's tokens as StyleX variables. They keep the names of `calendar-theme.css`, so both
  * flavours share one vocabulary: a key starting with `--` stays that custom property, unhashed.
  *
- * The base colours read the Astryx theme around the calendar, and fall back to the values of
- * `calendar-theme.css` without one. Light and dark share a value through `light-dark()`, which
- * follows `color-scheme`; `<Theme>` from `@astryxdesign/core/theme` sets it on the root.
+ * They hold the values of `calendar-theme.css` and `base-tokens.css`, so the calendar needs no
+ * other theme. Light and dark share a value through `light-dark()`, which follows the page's
+ * `color-scheme`. An app with a theme of its own maps it onto them with `stylex.createTheme`.
  */
 export const calendarTokenDefaults = {
-  "--radius": "var(--radius-element, 0.625rem)",
-  "--background": "var(--color-background-surface, light-dark(oklch(1 0 0), oklch(0.145 0 0)))",
-  "--foreground": "var(--color-text-primary, light-dark(oklch(0.145 0 0), oklch(0.985 0 0)))",
-  "--card": "var(--color-background-card, light-dark(oklch(1 0 0), oklch(0.205 0 0)))",
-  "--card-foreground": "var(--color-text-primary, light-dark(oklch(0.145 0 0), oklch(0.985 0 0)))",
-  "--popover": "var(--color-background-popover, light-dark(oklch(1 0 0), oklch(0.205 0 0)))",
-  "--popover-foreground":
-    "var(--color-text-primary, light-dark(oklch(0.145 0 0), oklch(0.985 0 0)))",
-  "--primary": "var(--color-accent, light-dark(oklch(0.205 0 0), oklch(0.922 0 0)))",
-  "--primary-foreground": "var(--color-on-accent, light-dark(oklch(0.985 0 0), oklch(0.205 0 0)))",
-  "--secondary": "var(--color-background-muted, light-dark(oklch(0.97 0 0), oklch(0.269 0 0)))",
-  "--secondary-foreground":
-    "var(--color-text-primary, light-dark(oklch(0.205 0 0), oklch(0.985 0 0)))",
-  "--muted": "var(--color-background-muted, light-dark(oklch(0.97 0 0), oklch(0.269 0 0)))",
-  "--muted-foreground":
-    "var(--color-text-secondary, light-dark(oklch(0.556 0 0), oklch(0.708 0 0)))",
-  "--accent": "var(--color-background-muted, light-dark(oklch(0.97 0 0), oklch(0.269 0 0)))",
-  "--accent-foreground":
-    "var(--color-text-primary, light-dark(oklch(0.205 0 0), oklch(0.985 0 0)))",
-  "--destructive":
-    "var(--color-error, light-dark(oklch(0.577 0.245 27.325), oklch(0.704 0.191 22.216)))",
-  "--border": "var(--color-border, light-dark(oklch(0.922 0 0), oklch(1 0 0 / 10%)))",
-  "--input": "var(--color-border-emphasized, light-dark(oklch(0.922 0 0), oklch(1 0 0 / 15%)))",
-  "--ring": "var(--focus-outline-color, light-dark(oklch(0.25 0 0), oklch(0.8 0 0)))",
+  "--radius": "0.625rem",
+  "--background": "light-dark(oklch(1 0 0), oklch(0.145 0 0))",
+  "--foreground": "light-dark(oklch(0.145 0 0), oklch(0.985 0 0))",
+  "--card": "light-dark(oklch(1 0 0), oklch(0.205 0 0))",
+  "--card-foreground": "light-dark(oklch(0.145 0 0), oklch(0.985 0 0))",
+  "--popover": "light-dark(oklch(1 0 0), oklch(0.205 0 0))",
+  "--popover-foreground": "light-dark(oklch(0.145 0 0), oklch(0.985 0 0))",
+  "--primary": "light-dark(oklch(0.205 0 0), oklch(0.922 0 0))",
+  "--primary-foreground": "light-dark(oklch(0.985 0 0), oklch(0.205 0 0))",
+  "--secondary": "light-dark(oklch(0.97 0 0), oklch(0.269 0 0))",
+  "--secondary-foreground": "light-dark(oklch(0.205 0 0), oklch(0.985 0 0))",
+  "--muted": "light-dark(oklch(0.97 0 0), oklch(0.269 0 0))",
+  "--muted-foreground": "light-dark(oklch(0.556 0 0), oklch(0.708 0 0))",
+  "--accent": "light-dark(oklch(0.97 0 0), oklch(0.269 0 0))",
+  "--accent-foreground": "light-dark(oklch(0.205 0 0), oklch(0.985 0 0))",
+  "--destructive": "light-dark(oklch(0.577 0.245 27.325), oklch(0.704 0.191 22.216))",
+  "--border": "light-dark(oklch(0.922 0 0), oklch(1 0 0 / 10%))",
+  "--input": "light-dark(oklch(0.922 0 0), oklch(1 0 0 / 15%))",
+  "--ring": "light-dark(oklch(0.25 0 0), oklch(0.8 0 0))",
 
   "--calendar-grid": "var(--border)",
   "--calendar-axis": "var(--muted-foreground)",
-  // Lighter in dark than the Tailwind theme's, to stay readable on Astryx's lighter dark surface.
-  "--calendar-today": "light-dark(oklch(0.52 0.215 262.9), oklch(0.73 0.15 254.6))",
+  "--calendar-today": "light-dark(oklch(0.52 0.215 262.9), oklch(0.707 0.165 254.6))",
   "--calendar-today-foreground": "light-dark(oklch(0.985 0 0), oklch(0.145 0 0))",
   "--calendar-now": "light-dark(oklch(0.637 0.237 25.3), oklch(0.704 0.191 22.2))",
   "--calendar-selection":
@@ -117,8 +111,8 @@ export const calendarTokenDefaults = {
 export const calendarVars = stylex.defineVars(calendarTokenDefaults);
 
 /**
- * Marks what a part's `stylex.when.ancestor()` looks at. Not `stylex.defaultMarker()`: Astryx's
- * Layout carries that one, so hovering a layout around the calendar would count for every part in it.
+ * Marks what a part's `stylex.when.ancestor()` looks at. Not `stylex.defaultMarker()`: an app's
+ * own layout may carry that one, and hovering it would then count for every part in it.
  */
 export const calendarMarker = stylex.defineMarker();
 

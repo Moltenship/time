@@ -4,8 +4,12 @@
   "type": "registry:component",
   "title": "Year view (StyleX)",
   "description": "A year at a glance: twelve month grids with today circled and a dot for each event colour on a day, a popover listing a day's events, and links into the day and month views.",
-  "dependencies": ["@base-ui/react", "@moltenship/calendar", "@stylexjs/stylex"],
-  "registryDependencies": ["@moltenship/stylex-calendar", "@moltenship/stylex-calendar-theme"],
+  "dependencies": ["@moltenship/calendar", "@stylexjs/stylex"],
+  "registryDependencies": [
+    "@moltenship/stylex-calendar",
+    "@moltenship/stylex-calendar-theme",
+    "@moltenship/stylex-calendar-ui"
+  ],
   "files": [
     {
       "path": "registry/stylex-year-view/year-view.tsx",

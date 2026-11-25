@@ -1,6 +1,5 @@
 "use client";
 
-import { IconButton } from "@astryxdesign/core/IconButton";
 import {
   resourceIdAttributes,
   useClosedDates,
@@ -33,6 +32,7 @@ import { ResourceTime, useResourceTime } from "@registry/stylex-calendar/resourc
 import { previewCheckAttributes, useDraftCheck } from "@registry/stylex-calendar/preview-check";
 import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import { Button } from "@registry/stylex-calendar-ui/button";
 import {
   calendarConsts,
   calendarVars,
@@ -162,11 +162,6 @@ const styles = stylex.create({
   titleOverStatus: {
     maxWidth: "100%",
   },
-  toggle: {
-    borderRadius: "min(calc(var(--radius) * 0.8), 10px)",
-    height: "1.5rem",
-    width: "1.5rem",
-  },
   toggleIcon: {
     height: "0.75rem",
     transitionDuration: "150ms",
@@ -229,24 +224,22 @@ function eventCount(count: number): string {
 function ResourceToggle({ id, title }: { readonly id: ResourceId; readonly title: string }) {
   const { expanded, toggle } = useResourceExpansion(id);
   return (
-    <IconButton
+    <Button
       aria-expanded={expanded}
-      icon={
-        <ChevronRightIcon
-          {...stylex.props(
-            styles.toggleIcon,
-            expanded ? styles.toggleIconExpanded : styles.toggleIconCollapsed,
-          )}
-        />
-      }
-      label={`${expanded ? "Collapse" : "Expand"} ${title}`}
+      aria-label={`${expanded ? "Collapse" : "Expand"} ${title}`}
       onClick={toggle}
-      size="sm"
+      size="icon-xs"
       // The grid keeps one tab stop; Shift+Enter on the group's cells toggles it.
       tabIndex={-1}
       variant="ghost"
-      xstyle={styles.toggle}
-    />
+    >
+      <ChevronRightIcon
+        {...stylex.props(
+          styles.toggleIcon,
+          expanded ? styles.toggleIconExpanded : styles.toggleIconCollapsed,
+        )}
+      />
+    </Button>
   );
 }
 

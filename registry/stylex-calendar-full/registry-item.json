@@ -3,9 +3,10 @@
   "name": "stylex-calendar-full",
   "type": "registry:item",
   "title": "Calendar, every part (StyleX)",
-  "description": "Every calendar item, styled with StyleX and Astryx: the tokens, the shared parts, the month, week and day, agenda and year views, their scrolling versions, the resource columns and timeline views, the recurrence scope dialog and the undo toast. It owns no files; it installs the other items.",
+  "description": "Every calendar item at once, styled with StyleX: the tokens, the controls, the shared parts, the month, week and day, agenda and year views, their scrolling versions, the resource columns and timeline views, the recurrence scope dialog and the undo toast. It owns no files; it installs the other items.",
   "registryDependencies": [
     "@moltenship/stylex-calendar-theme",
+    "@moltenship/stylex-calendar-ui",
     "@moltenship/stylex-calendar",
     "@moltenship/stylex-month-view",
     "@moltenship/stylex-time-grid-view",

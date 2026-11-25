@@ -1,9 +1,5 @@
 "use client";
 
-import { IconButton } from "@astryxdesign/core/IconButton";
-import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
-import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
-import { useRender } from "@base-ui/react/use-render";
 import {
   useCalendarAnnotations,
   useTimeGridAnnotations,
@@ -15,6 +11,7 @@ import {
 import * as stylex from "@stylexjs/stylex";
 import { XIcon } from "lucide-react";
 import {
+  cloneElement,
   createContext,
   use,
   useMemo,
@@ -24,9 +21,11 @@ import {
   type ComponentType,
   type CSSProperties,
   type MouseEvent,
+  type ReactElement,
   type ReactNode,
 } from "react";
 
+import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import { eventColorStyles } from "@registry/stylex-calendar-theme/event-color-styles";
 import {
@@ -34,24 +33,23 @@ import {
   type CalendarEventColor,
 } from "@registry/stylex-calendar-theme/event-colors";
 import { type XStyle, xprops } from "@registry/stylex-calendar-theme/xprops";
+import { Button } from "@registry/stylex-calendar-ui/button";
+import {
+  createPopoverHandle,
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@registry/stylex-calendar-ui/popover";
+import {
+  createTooltipHandle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@registry/stylex-calendar-ui/tooltip";
 
 import { annotationRange, type AnnotationFormats } from "./annotation-label";
-
-const slideFromBottom = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(0, 0.5rem, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const slideFromLeft = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(-0.5rem, 0, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const slideFromRight = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(0.5rem, 0, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const slideFromTop = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(0, -0.5rem, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const zoomOut = stylex.keyframes({
-  to: { opacity: 0, transform: "scale3d(0.95, 0.95, 0.95)" },
-});
 
 const styles = stylex.create({
   close: {
@@ -104,10 +102,7 @@ const styles = stylex.create({
     minWidth: 0,
   },
   detailsTitle: {
-    fontSize: "0.875rem",
-    fontWeight: 500,
     lineHeight: 1.25,
-    marginBlock: 0,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -208,50 +203,18 @@ const styles = stylex.create({
     insetInlineStart: "var(--mark-offset)",
     width: "var(--mark-width)",
   },
+  // Never under the pointer to swallow a click on the mark.
   markTooltip: {
     alignItems: "flex-start",
     flexDirection: "column",
     gap: "0.125rem",
+    pointerEvents: "none",
   },
   markTooltipDetail: {
     opacity: 0.7,
   },
   markTooltipTitle: {
     fontWeight: 500,
-  },
-  popover: {
-    animationDuration: { default: "100ms", "@media (prefers-reduced-motion: reduce)": "0s" },
-    animationName: {
-      default: null,
-      "[data-closed]": zoomOut,
-      "[data-open]": {
-        default: null,
-        '[data-side="bottom"]': slideFromTop,
-        '[data-side="inline-end"]': slideFromLeft,
-        '[data-side="inline-start"]': slideFromRight,
-        '[data-side="left"]': slideFromRight,
-        '[data-side="right"]': slideFromLeft,
-        '[data-side="top"]': slideFromBottom,
-      },
-    },
-    backgroundColor: calendarVars["--popover"],
-    borderRadius: "var(--radius)",
-    boxShadow: `0 0 0 1px color-mix(in oklch, ${calendarVars["--foreground"]} 10%, transparent), 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)`,
-    color: calendarVars["--popover-foreground"],
-    display: "flex",
-    flexDirection: "column",
-    fontSize: "0.875rem",
-    gap: "0.625rem",
-    lineHeight: "calc(1.25 / 0.875)",
-    outlineStyle: "none",
-    padding: "0.625rem",
-    transformOrigin: "var(--transform-origin)",
-    width: "18rem",
-    zIndex: 50,
-  },
-  positioner: {
-    isolation: "isolate",
-    zIndex: 50,
   },
   rail: {
     insetBlock: 0,
@@ -267,71 +230,6 @@ const styles = stylex.create({
     insetInlineStart: { default: null, '[data-side="start"]': 0 },
     width: "var(--calendar-annotation-rail-width)",
     zIndex: 5,
-  },
-  tooltip: {
-    alignItems: "center",
-    animationDuration: { default: "150ms", "@media (prefers-reduced-motion: reduce)": "0s" },
-    animationName: {
-      default: null,
-      "[data-closed]": zoomOut,
-      "[data-open]": {
-        default: null,
-        '[data-side="bottom"]': slideFromTop,
-        '[data-side="inline-end"]': slideFromLeft,
-        '[data-side="inline-start"]': slideFromRight,
-        '[data-side="left"]': slideFromRight,
-        '[data-side="right"]': slideFromLeft,
-        '[data-side="top"]': slideFromBottom,
-      },
-    },
-    backgroundColor: calendarVars["--foreground"],
-    borderRadius: "calc(var(--radius) * 0.8)",
-    color: calendarVars["--background"],
-    display: "inline-flex",
-    fontSize: "0.75rem",
-    gap: "0.375rem",
-    lineHeight: "1rem",
-    maxWidth: "20rem",
-    paddingBlock: "0.375rem",
-    paddingInline: "0.75rem",
-    transformOrigin: "var(--transform-origin)",
-    width: "fit-content",
-    zIndex: 50,
-  },
-  tooltipArrow: {
-    backgroundColor: calendarVars["--foreground"],
-    borderRadius: "2px",
-    bottom: { default: null, '[data-side="top"]': "-0.625rem" },
-    fill: calendarVars["--foreground"],
-    height: "0.625rem",
-    left: {
-      default: null,
-      '[data-side="inline-end"]': "-0.25rem",
-      '[data-side="right"]': "-0.25rem",
-    },
-    right: {
-      default: null,
-      '[data-side="inline-start"]': "-0.25rem",
-      '[data-side="left"]': "-0.25rem",
-    },
-    rotate: "45deg",
-    top: {
-      default: null,
-      '[data-side="bottom"]': "0.25rem",
-      '[data-side="inline-end"]': "50% !important",
-      '[data-side="inline-start"]': "50% !important",
-      '[data-side="left"]': "50% !important",
-      '[data-side="right"]': "50% !important",
-    },
-    translate: {
-      default: "0 calc(-50% - 2px)",
-      '[data-side="inline-end"]': "0 -50%",
-      '[data-side="inline-start"]': "0 -50%",
-      '[data-side="left"]': "0 -50%",
-      '[data-side="right"]': "0 -50%",
-    },
-    width: "0.625rem",
-    zIndex: 50,
   },
 });
 
@@ -537,8 +435,8 @@ export function eventsBesideMarks(
 
 export function useAnnotationHandles() {
   const [handles] = useState(() => ({
-    popover: PopoverPrimitive.createHandle<TimeGridAnnotationMarkData>(),
-    tooltip: TooltipPrimitive.createHandle<TimeGridAnnotationMarkData>(),
+    popover: createPopoverHandle<TimeGridAnnotationMarkData>(),
+    tooltip: createTooltipHandle<TimeGridAnnotationMarkData>(),
   }));
   return handles;
 }
@@ -645,17 +543,18 @@ const markVariantStyles = {
   capsule: [markPill, styles.markCapsule],
 };
 
-export interface AnnotationMarkProps
-  extends useRender.ComponentProps<"div">, AnnotationMarkVariants {
+export interface AnnotationMarkProps extends ComponentProps<"div">, AnnotationMarkVariants {
   readonly mark: TimeGridAnnotationMarkData;
   /** Opens the details popover on click. */
   readonly details?: boolean;
+  /** Your own element in place of the `div`; the mark's props merge into it. */
+  readonly render?: ReactElement<ComponentProps<"div">>;
   readonly xstyle?: XStyle;
 }
 
 /**
  * One mark, wired to the grid's tooltip and details popover. Children read it through
- * `useAnnotationMark`; `render` swaps the element, as everywhere in Base UI.
+ * `useAnnotationMark`; `render` swaps the element.
  */
 export function AnnotationMark({
   className,
@@ -677,25 +576,26 @@ export function AnnotationMark({
   const offset = RAIL_PADDING + mark.lane * laneWidth + (laneWidth - width) / 2;
   const context = useMemo(() => ({ mark, width }), [mark, width]);
   const { color } = annotationSourceStyle(mark.source);
-  const element = useRender({
-    defaultTagName: "div",
-    props: {
-      ...props,
-      "data-annotation-id": String(mark.annotations[0]!.id),
+  const element = (
+    <div
+      {...props}
+      data-annotation-id={String(mark.annotations[0]!.id)}
       // Pressing a mark never starts a drag in the grid.
-      "data-calendar-pointer": "none",
-      "data-color": color,
-      "data-ends-after": mark.endsAfterDay ? "" : undefined,
-      "data-kind": mark.kind,
-      "data-slot": "annotation-mark",
-      "data-source": mark.source.id,
-      "data-starts-before": mark.startsBeforeDay ? "" : undefined,
+      data-calendar-pointer="none"
+      data-color={color}
+      data-ends-after={mark.endsAfterDay ? "" : undefined}
+      data-kind={mark.kind}
+      data-slot="annotation-mark"
+      data-source={mark.source.id}
+      data-starts-before={mark.startsBeforeDay ? "" : undefined}
       // A click opens the details without focusing the mark, which sits in the aria-hidden rail.
-      onMouseDown: (event: MouseEvent<HTMLDivElement>) => {
+      onMouseDown={(event: MouseEvent<HTMLDivElement>) => {
         onMouseDown?.(event);
         event.preventDefault();
-      },
-      ...xprops(
+      }}
+      // Out of the tab order: the rail is aria-hidden.
+      tabIndex={-1}
+      {...xprops(
         {
           className,
           style: {
@@ -711,36 +611,60 @@ export function AnnotationMark({
         details && styles.markDetails,
         color !== undefined && eventColorStyles[color],
         xstyle,
-      ),
-    },
-    render,
-  });
+      )}
+    />
+  );
   const tooltip = (
-    <TooltipPrimitive.Trigger
-      delay={0}
+    <TooltipTrigger
       handle={handles.tooltip}
       payload={mark}
-      // Out of the tab order: the rail is aria-hidden.
-      tabIndex={-1}
-      render={element}
+      render={render === undefined ? element : cloneWith(render, element)}
     />
   );
 
   return (
     <AnnotationMarkContext value={context}>
       {details ? (
-        <PopoverPrimitive.Trigger
-          handle={handles.popover}
-          nativeButton={false}
-          payload={mark}
-          tabIndex={-1}
-          render={tooltip}
-        />
+        <PopoverTrigger handle={handles.popover} payload={mark} render={tooltip} />
       ) : (
         tooltip
       )}
     </AnnotationMarkContext>
   );
+}
+
+/**
+ * `render` with the mark's props merged in: its own props win, the classes and styles add up, and
+ * where both handle an event, its own handler runs first and then the mark's.
+ */
+function cloneWith(
+  render: ReactElement<ComponentProps<"div">>,
+  element: ReactElement<ComponentProps<"div">>,
+): ReactElement {
+  const own = render.props as Record<string, unknown>;
+  const mark = element.props as Record<string, unknown>;
+  const handlers: Record<string, unknown> = {};
+  for (const [key, handler] of Object.entries(own)) {
+    const markHandler = mark[key];
+    if (
+      !/^on[A-Z]/u.test(key) ||
+      typeof handler !== "function" ||
+      typeof markHandler !== "function"
+    )
+      continue;
+    handlers[key] = (...args: unknown[]) => {
+      handler(...args);
+      markHandler(...args);
+    };
+  }
+  const classNames = [element.props.className, render.props.className].filter(Boolean);
+  return cloneElement(render, {
+    ...element.props,
+    ...render.props,
+    ...handlers,
+    className: classNames.length === 0 ? undefined : classNames.join(" "),
+    style: { ...element.props.style, ...render.props.style },
+  });
 }
 
 /**
@@ -784,64 +708,8 @@ export function TimeGridAnnotations({ marks }: TimeGridAnnotationsProps) {
   );
 }
 
-function TooltipContent({
-  children,
-  side,
-  sideOffset,
-  xstyle,
-}: Pick<TooltipPrimitive.Positioner.Props, "side" | "sideOffset"> & {
-  readonly children: ReactNode;
-  readonly xstyle?: XStyle;
-}) {
-  return (
-    <TooltipPrimitive.Portal>
-      <TooltipPrimitive.Positioner
-        align="center"
-        alignOffset={0}
-        side={side}
-        sideOffset={sideOffset}
-        {...stylex.props(styles.positioner)}
-      >
-        <TooltipPrimitive.Popup
-          data-slot="tooltip-content"
-          {...stylex.props(styles.tooltip, xstyle)}
-        >
-          {children}
-          <TooltipPrimitive.Arrow {...stylex.props(styles.tooltipArrow)} />
-        </TooltipPrimitive.Popup>
-      </TooltipPrimitive.Positioner>
-    </TooltipPrimitive.Portal>
-  );
-}
-
-function PopoverContent({
-  align,
-  side,
-  sideOffset,
-  ...props
-}: PopoverPrimitive.Popup.Props &
-  Pick<PopoverPrimitive.Positioner.Props, "align" | "side" | "sideOffset">) {
-  return (
-    <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Positioner
-        align={align}
-        alignOffset={0}
-        side={side}
-        sideOffset={sideOffset}
-        {...stylex.props(styles.positioner)}
-      >
-        <PopoverPrimitive.Popup
-          data-slot="popover-content"
-          {...stylex.props(styles.popover)}
-          {...props}
-        />
-      </PopoverPrimitive.Positioner>
-    </PopoverPrimitive.Portal>
-  );
-}
-
 /**
- * One tooltip and one popover for every mark in the grid, through Base UI's detached triggers, so
+ * One tooltip and one popover for every mark in the grid, through handles shared by every mark, so
  * hundreds of marks never mount hundreds of roots. The tooltip follows the pointer vertically. The
  * popover keeps focus until it closes, then hands it back to what had it, never to the hidden mark,
  * unless a click outside focused something else.
@@ -854,15 +722,14 @@ export function TimeGridAnnotationOverlays({
   readonly handles: TimeGridAnnotationHandles;
 }) {
   const popup = useRef<HTMLDivElement>(null);
-  const returnFocus = useRef<Element | null>(null);
+  const [returnFocus, setReturnFocus] = useState<HTMLElement>();
   const range = (mark: TimeGridAnnotationMarkData) => {
     const { end, start } = annotationRange(mark);
     return `${formatTime(start)} – ${formatTime(end)}`;
   };
   return (
     <>
-      {/* Not hoverable: its hover bridge would sit under the pointer and swallow clicks. */}
-      <TooltipPrimitive.Root disableHoverablePopup handle={handles.tooltip} trackCursorAxis="y">
+      <Tooltip delay={0} handle={handles.tooltip} trackCursorAxis="y">
         {({ payload }) =>
           payload === undefined ? null : (
             <TooltipContent side="inline-end" sideOffset={8} xstyle={styles.markTooltip}>
@@ -879,15 +746,18 @@ export function TimeGridAnnotationOverlays({
             </TooltipContent>
           )
         }
-      </TooltipPrimitive.Root>
-      <PopoverPrimitive.Root
+      </Tooltip>
+      <Popover
         handle={handles.popover}
-        // With a close button this also keeps Base UI's focus guards out of the hidden rail.
+        // Keeps Tab inside, rather than moving on into the hidden rail.
         modal="trap-focus"
         onOpenChange={(open) => {
           // Clicking another mark while open keeps focus in the popup: keep the first target.
           const active = document.activeElement;
-          if (open && !popup.current?.contains(active)) returnFocus.current = active;
+          if (!open || popup.current?.contains(active)) return;
+          setReturnFocus(
+            active instanceof HTMLElement && active !== document.body ? active : undefined,
+          );
         }}
       >
         {({ payload }) => {
@@ -901,23 +771,9 @@ export function TimeGridAnnotationOverlays({
               ref={popup}
               // Marks open from a pointer, so the popup takes focus rather than its close button.
               initialFocus={popup}
-              finalFocus={() => {
-                // An outside click that focused something else keeps that focus.
-                const active = document.activeElement;
-                if (
-                  active !== null &&
-                  active !== document.body &&
-                  !popup.current?.contains(active)
-                ) {
-                  return false;
-                }
-                const previous = returnFocus.current;
-                return previous instanceof HTMLElement &&
-                  previous.isConnected &&
-                  previous !== document.body
-                  ? previous
-                  : false;
-              }}
+              // Back where focus was before a mark opened it, never into the hidden rail. ui-sdk
+              // leaves focus alone after a click outside.
+              finalFocus={returnFocus === undefined ? false : () => returnFocus}
             >
               <div
                 data-color={color}
@@ -929,24 +785,19 @@ export function TimeGridAnnotationOverlays({
                   </span>
                 )}
                 <div {...stylex.props(styles.detailsText)}>
-                  <PopoverPrimitive.Title {...stylex.props(styles.detailsTitle)}>
+                  <PopoverTitle xstyle={styles.detailsTitle}>
                     {payload.annotations.length === 1
                       ? payload.annotations[0]!.title
                       : payload.source.label}
-                  </PopoverPrimitive.Title>
+                  </PopoverTitle>
                   <p {...stylex.props(styles.detailsRange)}>{range(payload)}</p>
                 </div>
-                <PopoverPrimitive.Close
-                  render={
-                    <IconButton
-                      icon={<XIcon {...stylex.props(styles.closeGlyph)} />}
-                      label="Close"
-                      size="sm"
-                      variant="ghost"
-                      xstyle={styles.close}
-                    />
-                  }
-                />
+                <PopoverClose
+                  render={<Button size="icon-sm" variant="ghost" xstyle={styles.close} />}
+                >
+                  <XIcon {...stylex.props(styles.closeGlyph)} />
+                  <span {...stylex.props(visuallyHiddenStyles.hidden)}>Close</span>
+                </PopoverClose>
               </div>
               {payload.annotations.length > 1 && (
                 <ul {...stylex.props(styles.items)}>
@@ -967,7 +818,7 @@ export function TimeGridAnnotationOverlays({
             </PopoverContent>
           );
         }}
-      </PopoverPrimitive.Root>
+      </Popover>
     </>
   );
 }

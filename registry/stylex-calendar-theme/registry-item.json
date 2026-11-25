@@ -3,7 +3,7 @@
   "name": "stylex-calendar-theme",
   "type": "registry:component",
   "title": "Calendar theme (StyleX)",
-  "description": "The calendar's tokens as StyleX variables, reading the Astryx theme around them, with the event colours and the few global rules for drag previews.",
+  "description": "The calendar's tokens as StyleX variables with their own values, for an app to map onto its theme with stylex.createTheme. Also the event colours, the visually hidden styles, and global rules for drag previews and the toast list.",
   "dependencies": ["@stylexjs/stylex"],
   "files": [
     {
@@ -30,6 +30,11 @@
       "path": "registry/stylex-calendar-theme/xprops.ts",
       "type": "registry:component",
       "target": "@components/calendar-stylex/xprops.ts"
+    },
+    {
+      "path": "registry/shared/stylex-calendar-theme/visually-hidden.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/visually-hidden.styles.ts"
     }
   ]
 }

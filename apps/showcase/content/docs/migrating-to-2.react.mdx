@@ -29,6 +29,7 @@ names the types 2.0 widened.
 | The store and state types moved to `@moltenship/calendar-primitives`                    | Nothing: [the old imports still work](#new-packages)                               | Nobody                                                                          |
 | `useCalendarPointer` moved to `@moltenship/calendar-react`                              | [Import it from there](#the-pointer-hook-moved)                                    | Code that imports it from `@moltenship/calendar-dnd`                            |
 | The registry's controls and popups come from a new item, `calendar-ui`, without Base UI | [Add the registry's items again](#add-the-registrys-items-again)                   | Apps with the Tailwind items from the registry                                  |
+| The StyleX items' controls come from `stylex-calendar-ui`, without Astryx or Base UI    | [Add the StyleX items again](#add-the-stylex-items-again)                          | Apps with the StyleX items from the registry                                    |
 
 What didn't change: the engine, what the registry's views do, the `data-calendar-part` attributes
 and the other attributes your CSS and tests target, the keyboard model, and every hook's name and return
@@ -255,9 +256,9 @@ An [agent bridge](/docs/agents/connect) now lists the toolbar's buttons and the 
 beside the calendar, as `button` and `select` entries, and your `allow` hears the steps an agent
 takes on them. The calendar's tooltips no longer need a `TooltipProvider`, and they don't follow
 its `delay`: the toolbar's open after 400 ms, which `tooltipDefaults` in
-`components/calendar/ui/tooltip.styles.ts` sets. The `stylex-` items don't change.
+`components/calendar/ui/tooltip.styles.ts` sets.
 
-If you edited the views, a few of their own props changed with the move:
+If you edited the views, in either flavour, a few of their own props changed with the move:
 
 - `renderUnavailable` is a function of the band's props and its state, `(props, state) =>
 element`. An element alone no longer works: wrap it in a function that spreads `props` on it.
@@ -268,10 +269,40 @@ element`. An element alone no longer works: wrap it in a function that spreads `
   press F6 and choose Undo.", since the title is read first. A screen reader now reads every toast
   as it shows, after the announcement of the gesture that caused it.
 - A popover trigger has `aria-expanded` while its popover is open, in place of Base UI's
-  `data-popup-open`. Style it with `aria-expanded:`.
+  `data-popup-open`. Style it with `aria-expanded:`, or `"[aria-expanded=true]"` in StyleX.
 - The time grid's event tooltips share one tooltip per view. A composition that renders
   `TimeGridEvent` outside the registry's views wraps them in `TimeGridEventTooltip` to do the
   same; without it, each event brings its own.
+
+## Add the StyleX items again
+
+In 1.x the `stylex-` items took their buttons, badges, tooltips and the view select from Astryx,
+and their popovers, dialog and toast from Base UI. Their base colors, such as `--background` and
+`--primary`, read the Astryx theme around them. In 2.0 they use `stylex-calendar-ui`, the StyleX
+twin of `calendar-ui`, on ui-sdk, with the same look as the Tailwind items, and their tokens hold
+their own values.
+
+1. Add the items you use again, or all of them:
+
+   ```bash
+   npx shadcn@latest add https://time.molten.sh/r/stylex-calendar-full.json
+   ```
+
+   This installs `stylex-calendar-ui` in `components/calendar-stylex/ui/`, with each control's
+   styles in a `*.styles.ts` file beside it, and adds `@ui-sdk/core` and `@ui-sdk/react`.
+
+2. Name ui-sdk's layer at the top of your global CSS, as [Add the global CSS](/docs/stylex#add-the-global-css)
+   shows. If Astryx's `Theme` set your root's `color-scheme`, and you drop it, set it yourself.
+
+3. To keep the calendar in your Astryx theme's colors, map them onto the base colors, as
+   [Use your design system's colors](/docs/stylex#use-your-design-systems-colors) shows. Without
+   that, the calendar takes the Tailwind theme's neutral colors.
+
+4. The items no longer list `@astryxdesign/core` or `@base-ui/react`. Keep them if your app uses
+   them itself. The views hide text visually with `visuallyHiddenStyles`, in
+   `components/calendar-stylex/visually-hidden.styles.ts`, in place of Astryx's `VisuallyHidden`.
+
+The props that changed for the Tailwind views, listed above, changed in the StyleX views too.
 
 ## Name the calendar
 

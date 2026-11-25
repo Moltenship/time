@@ -1076,12 +1076,6 @@ importers:
 
   registry:
     dependencies:
-      '@astryxdesign/core':
-        specifier: 'catalog:'
-        version: 0.7.5(@stylexjs/stylex@0.19.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@base-ui/react':
-        specifier: 'catalog:'
-        version: 1.9.0(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@moltenship/calendar':
         specifier: workspace:*
         version: link:../packages/calendar

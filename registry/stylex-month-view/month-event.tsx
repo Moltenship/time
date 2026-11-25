@@ -66,7 +66,7 @@ const styles = stylex.create({
       "@media (max-width: 639.98px)": calendarVars["--calendar-event-foreground"],
     },
     fontWeight: 400,
-    transitionProperty: "box-shadow",
+    filter: { default: null, ":hover": "brightness(1)" },
   },
   startsBefore: {
     borderEndStartRadius: 0,

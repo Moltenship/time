@@ -84,6 +84,16 @@ describe("registry build", () => {
     );
   });
 
+  test("a shared file both kits ship resolves to each kit's own copy", async () => {
+    const imports = async (item: string) =>
+      (await readItem(item)).files!.find(({ target }) => target.endsWith("/popover.tsx"))!.content;
+
+    expect(await imports("calendar-ui")).toContain('from "@/components/calendar/ui/popup-side"');
+    expect(await imports("stylex-calendar-ui")).toContain(
+      'from "@/components/calendar-stylex/ui/popup-side"',
+    );
+  });
+
   test("components keep their client boundary in the built JSON", async () => {
     const monthView = await readItem("month-view");
     const view = monthView.files!.find(({ target }) => target.endsWith("/month-view.tsx"));

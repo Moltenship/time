@@ -42,7 +42,8 @@ describe.each(solidItems.filter((name) => existsSync(join(registry, name, "regis
 
     test("lists every shared file its React twin lists, at the same target", () => {
       // The kit's dialog and toast come with the views that use them (ADR 0279, S6).
-      const pending = name === "calendar-ui" ? /\/(?:dialog|toast)\.styles\.ts$/u : null;
+      const pending =
+        name === "calendar-ui" ? /\/(?:(?:dialog|toast)\.styles|toast-manager)\.ts$/u : null;
       expect(shared(own)).toEqual(
         shared(react).filter(({ path }) => pending === null || !pending.test(path)),
       );
