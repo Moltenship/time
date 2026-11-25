@@ -363,7 +363,14 @@ const scenarios: Scenario[] = [
     size: "desktop",
   },
   {
-    act: () => press(find("header button", "Keyboard shortcuts")),
+    // Rests on the button until its tooltip shows, so the press closes an open tooltip in every
+    // run: before, it was open only when the press came late, and the Solid demo's stayed open.
+    act: async () => {
+      const button = find("header button", "Keyboard shortcuts");
+      await hover(button);
+      await until(() => expect(shown(tip)).toBe(true));
+      await press(button);
+    },
     name: "shortcuts dialog",
     scope: popup,
     size: "desktop",

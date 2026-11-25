@@ -3,6 +3,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/calendar-ui/t
 import { Show } from "solid-js";
 
 import { MoonIcon, SunIcon } from "../icons";
+import { withPartClick } from "../part-click";
 import { useTheme } from "../persisted";
 
 export function ThemeToggle(props: { readonly class?: string }) {
@@ -16,7 +17,7 @@ export function ThemeToggle(props: { readonly class?: string }) {
             {...trigger}
             aria-label={label()}
             class={props.class}
-            onClick={toggleTheme}
+            onClick={withPartClick(trigger, toggleTheme)}
             size="icon"
             variant="ghost"
           />
