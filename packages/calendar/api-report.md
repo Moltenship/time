@@ -82,6 +82,7 @@ import {
   useCalendarHistoryShortcuts,
   useCalendarInteraction,
   useCalendarKeyboard,
+  useCalendarPointer,
   useCalendarSelection,
   useClosedDates,
   useDraftBusy,
@@ -114,7 +115,6 @@ import {
   resourceIdAttributes,
   resourceIdOf,
   startCalendarDrop,
-  useCalendarPointer,
 } from "@moltenship/calendar-dnd";
 
 export * from "@moltenship/calendar-core";

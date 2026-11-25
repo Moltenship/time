@@ -34,6 +34,8 @@ const demoSolidFixture = "tests/fixtures/dependency-boundaries/apps/demo/src/sol
 const solidDemoFixture = "tests/fixtures/dependency-boundaries/apps/demo-solid/src/main.ts";
 const testingUiSdkFixture =
   "tests/fixtures/dependency-boundaries/packages/calendar-testing/src/ui-sdk-import.ts";
+const pointerFrameworkFixture =
+  "tests/fixtures/dependency-boundaries/packages/calendar-dnd/src/framework-import.ts";
 const testingAgentTestFixture =
   "tests/fixtures/dependency-boundaries/packages/calendar-testing/tests/agent-import.ts";
 // Rules 12 to 14 as architecture.md states them: the primitives import nothing else, the packages'
@@ -64,6 +66,7 @@ const expectedWorkspaceDependencies = {
   "@moltenship/calendar-primitives": ["@moltenship/calendar-core", "@moltenship/calendar-temporal"],
   "@moltenship/calendar-react": [
     "@moltenship/calendar-core",
+    "@moltenship/calendar-dnd",
     "@moltenship/calendar-primitives",
     "@moltenship/calendar-temporal",
   ],
@@ -210,6 +213,18 @@ describe("workspace boundaries", { concurrent: false }, () => {
       ]);
     });
 
+    test("the pointer adapter imports no framework, no ui-sdk and nothing of ours past the engine", async () => {
+      expect(await violations(pointerFrameworkFixture)).toEqual([
+        "only-calendar-solid-imports-solid solid-js",
+        "only-primitives-and-integrations-import-ui-sdk @ui-sdk/core",
+        "pointer-adapter-builds-on-the-engine @moltenship/calendar-primitives",
+        "pointer-adapter-builds-on-the-engine @moltenship/calendar-react",
+        "pointer-adapter-imports-no-framework @ui-sdk/core",
+        "pointer-adapter-imports-no-framework react",
+        "pointer-adapter-imports-no-framework solid-js",
+      ]);
+    });
+
     test("the Solid integration imports no React, React integration, facade or ui-sdk internals", async () => {
       expect(await violations(solidReactFixture)).toEqual([
         "no-react-in-primitives-or-solid react",
@@ -273,7 +288,6 @@ describe("workspace boundaries", { concurrent: false }, () => {
       expect(await violations(solidTestsFixture)).toEqual([
         "no-react-in-primitives-or-solid @ui-sdk/react/agent",
         "solid-integration-builds-on-the-primitives @moltenship/calendar",
-        "solid-integration-builds-on-the-primitives @moltenship/calendar-dnd",
         "solid-integration-builds-on-the-primitives @moltenship/calendar-dnd-kit",
         "solid-integration-builds-on-the-primitives @moltenship/calendar-react",
         "solid-integration-builds-on-the-primitives @moltenship/calendar-testing",

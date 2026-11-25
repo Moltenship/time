@@ -1,24 +1,10 @@
-import type { CalendarInteractionRuntime } from "@moltenship/calendar-primitives";
-import type { WallTimeSnapOptions } from "@moltenship/calendar-temporal";
+import type {
+  CalendarInteractionRuntime,
+  CalendarViewRuntime,
+} from "@moltenship/calendar-primitives";
 import { createContext, useContext, type Context } from "react";
 
-import type { RovingFocusStore } from "./roving-focus";
-import type { AnyCalendarView, CalendarActiveView } from "./views";
-
-export type { CalendarInteractionRuntime };
-
-/** The active view's focus plumbing, provided by `ActiveView`. */
-export interface CalendarViewRuntime {
-  /** The latest active view, read when a key is handled; `null` once none is registered. */
-  readonly getView: () => CalendarActiveView<AnyCalendarView> | null;
-  readonly roving: RovingFocusStore;
-}
-
-/** Time-grid slots when a view does not choose its own, as in the pointer layer. */
-export const DEFAULT_SNAP: WallTimeSnapOptions = Object.freeze({
-  increment: 15,
-  smallestUnit: "minute",
-});
+export type { CalendarInteractionRuntime, CalendarViewRuntime };
 
 export const CalendarInteractionContext: Context<CalendarInteractionRuntime | null> =
   createContext<CalendarInteractionRuntime | null>(null);

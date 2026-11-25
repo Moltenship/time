@@ -13,8 +13,11 @@ export {
   visibleEventsOf,
 } from "./agent";
 export type { CalendarAgentEvent, CalendarAgentItem, CalendarAgentPlacement } from "./agent";
-export { createAnnouncerChannel } from "./announcer-channel";
-export type { AnnouncerChannel } from "./announcer-channel";
+export { subscribeAnchorDateRequests } from "./anchor-requests";
+export { createAnnouncerChannel, createAnnouncerLiveText } from "./announcer-channel";
+export type { AnnouncerChannel, AnnouncerLiveText } from "./announcer-channel";
+export { createBusyResourcesQuery, createDraftBusyQuery } from "./busy";
+export type { CalendarBusyResources, CalendarBusyResourcesQuery, CalendarDraftBusy } from "./busy";
 export { createCalendarPartIds } from "./calendar-types";
 export type {
   CalendarDiagnostic,
@@ -36,7 +39,32 @@ export {
   sameWeekRules,
   shallowEqual,
 } from "./equality";
-export type { AnyPendingChanges, CalendarInteractionRuntime } from "./interaction";
+export { bindCalendarHistory } from "./history";
+export type {
+  CalendarHistory,
+  CalendarHistoryAnnouncementBuilder,
+  CalendarHistoryAnnouncementContext,
+  CalendarHistoryBindingOptions,
+  CalendarHistoryCommandOptions,
+  CalendarHistoryMessages,
+  CalendarHistoryOptions,
+} from "./history";
+export { attachCalendarHistoryShortcuts } from "./history-shortcuts";
+export type {
+  CalendarHistoryShortcutsConfig,
+  CalendarHistoryShortcutsTarget,
+} from "./history-shortcuts";
+export type {
+  AnyPendingChanges,
+  CalendarInteractionRuntime,
+  CalendarViewRuntime,
+} from "./interaction";
+export { createCalendarKeyboard } from "./keyboard";
+export type {
+  CalendarKeyboardController,
+  CalendarKeyboardOptions,
+  CalendarKeyEventWrapper,
+} from "./keyboard";
 export { createKeyboardSessionStore } from "./keyboard-store";
 export type { KeyboardGrab, KeyboardSessionStore } from "./keyboard-store";
 export { createMemoCell, createStableCell } from "./memo";
@@ -60,6 +88,17 @@ export type {
   CalendarSlotName,
 } from "./primitive";
 export { reportCallbackError } from "./report-error";
+export { createResourceExpansionCommands } from "./resource-expansion";
+export type { CalendarResourceExpansionCommands } from "./resource-expansion";
+export { createResourceStatusClock } from "./resource-status";
+export type { CalendarResourceStatus } from "./resource-status";
+export {
+  calendarFocusKey,
+  calendarViewEntry,
+  createCalendarViewRuntime,
+  focusRovingTarget,
+} from "./roving-focus";
+export type { CalendarRovingEntry, RovingFocusStore } from "./roving-focus";
 export { createCalendarRuntime, resolveCalendarStoreDefaults } from "./runtime";
 export type {
   CalendarAnnotations,

@@ -5,16 +5,22 @@ import { problemAffectsResolutionKind } from "@arethetypeswrong/core/problems";
 import { publint } from "publint";
 import { formatMessage } from "publint/utils";
 
-import { facadeAgentFiles, facadePackage, optionalAdapters } from "./config";
+import {
+  facadeAgentFiles,
+  facadePackage,
+  optionalAdapters,
+  pointerAdapterBindings,
+  pointerAdapterPackage,
+} from "./config";
 import { withPackedPackages, type PackedTarball } from "./pack";
 import { parseArguments, runMain } from "./workspace";
 
 /** The packages are ESM-only, so only the ESM resolutions count, like attw's `esm-only` profile. */
 const esmResolutionKinds = ["node16-esm", "bundler"] as const;
 
-const adapterSpecifier = new RegExp(
-  `["'\`](${optionalAdapters.map((name) => name.replace(/[/.]/g, "\\$&")).join("|")})`,
-);
+/** A specifier of one of `adapters`, quoted as an import writes it. */
+const adapterSpecifier = (adapters: readonly string[]) =>
+  new RegExp(`["'\`](${adapters.map((name) => name.replace(/[/.]/g, "\\$&")).join("|")})`);
 
 /**
  * Problems with one packed tarball: publint, are-the-types-wrong, LICENSE, adapter imports, and the
@@ -57,8 +63,11 @@ export async function tarballProblems(path: string): Promise<string[]> {
   }
 
   // Base packages must work without the optional adapters. The facade re-exports the pointer
-  // adapter; the clean-consumer check proves it tree-shakes away.
+  // adapter and the integrations bind it; the clean-consumer check proves it tree-shakes away.
   const isAdapter = optionalAdapters.some((name) => archive.packageName.startsWith(name));
+  const adapters = pointerAdapterBindings.includes(archive.packageName)
+    ? optionalAdapters.filter((name) => name !== pointerAdapterPackage)
+    : optionalAdapters;
   if (!isAdapter && archive.packageName !== facadePackage) {
     const manifest = JSON.parse(archive.readFile(`${root}/package.json`)) as {
       readonly dependencies?: Record<string, string>;
@@ -68,12 +77,12 @@ export async function tarballProblems(path: string): Promise<string[]> {
       ...manifest.dependencies,
       ...manifest.peerDependencies,
     })) {
-      if (optionalAdapters.some((name) => dependency.startsWith(name))) {
+      if (adapters.some((name) => dependency.startsWith(name))) {
         problems.push(`depends on the optional adapter ${dependency}`);
       }
     }
     for (const file of files.filter((name) => /\.(c|m)?js$|\.d\.(c|m)?ts$/.test(name))) {
-      const match = adapterSpecifier.exec(archive.readFile(`${root}/${file}`));
+      const match = adapterSpecifier(adapters).exec(archive.readFile(`${root}/${file}`));
       if (match) problems.push(`${file} imports the optional adapter ${match[1]}`);
     }
   }

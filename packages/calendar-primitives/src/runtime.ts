@@ -51,7 +51,7 @@ import type {
   CalendarVisibleRange,
 } from "./calendar-types";
 import { systemClock } from "./clock";
-import { createDraftStore, type DraftStore } from "./draft-store";
+import { createDraftSource, createDraftStore, type DraftStore } from "./draft-store";
 import {
   sameAvailability,
   sameElements,
@@ -778,6 +778,7 @@ export function createCalendarRuntime<
   const transactions = createEventTransactions<TEvent, TEventId, TResourceId>();
   const keyboard = createKeyboardSessionStore();
   const pointerDraft = createDraftStore();
+  const draft = createDraftSource(keyboard, pointerDraft);
   // The server and hydration read the empty map, also when part of the tree hydrates after a
   // change started.
   const noChanges = transactions.getPendingChanges();
@@ -1106,6 +1107,7 @@ export function createCalendarRuntime<
         actions,
         announcements,
         changes: pendingChanges as CalendarStateSource<AnyPendingChanges>,
+        draft,
         isReadOnly,
         keyboard,
         pointerDraft,

@@ -431,6 +431,10 @@ to the nearest `Root`, with `undo`, `redo`, `canUndo` and `canRedo`, and
 `useCalendarHistoryShortcuts(history, { scope, undo?, redo?, disabled? })` adds its keys; see
 [Undo and redo](/docs/undo-redo).
 
+`useCalendarPointer(options)` is exported on its own too. It returns the ref that turns drags in
+a custom view into proposals; see the [pointer layer](/docs/api/changes#pointer-layer). It's in
+`@moltenship/calendar-react` from 2.0 on, and was in `@moltenship/calendar-dnd` in 1.x.
+
 `Announcer`'s messages, and the keyboard hooks for your own views (`useCalendarKeyboard`,
 `useRovingFocus`, `useCalendarInteraction`, `useCalendarAnnouncer`), are covered in
 [Accessibility](/docs/accessibility#announcements).

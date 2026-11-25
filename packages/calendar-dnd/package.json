@@ -7,7 +7,6 @@
     "drag-and-drop",
     "event-calendar",
     "pointer-events",
-    "react",
     "resize",
     "scheduler",
     "temporal",
@@ -53,16 +52,9 @@
     "@moltenship/calendar-temporal": "workspace:*"
   },
   "devDependencies": {
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
     "jsdom": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
-  },
-  "peerDependencies": {
-    "react": "^19.0.0"
   }
 }

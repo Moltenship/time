@@ -144,8 +144,9 @@ the changes `useCalendarPendingChanges` reads.
 
 `useCalendarPointer(options)` returns a ref for the element that contains a view's days, and turns
 drags inside it into proposals. `attachCalendarPointer(element, getOptions)` does the same without
-React and returns a cleanup function. Both come from `@moltenship/calendar-dnd`, which
-`@moltenship/calendar` re-exports.
+React and returns a cleanup function. `@moltenship/calendar` exports both: the hook comes from
+`@moltenship/calendar-react`, and the function from `@moltenship/calendar-dnd`, which imports no
+framework.
 
 <TypeTable
   type={{

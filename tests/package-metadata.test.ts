@@ -173,6 +173,37 @@ describe("published package metadata", () => {
     expect(uiSdkPeers, "packages with ui-sdk peers").toBeGreaterThan(0);
   });
 
+  // The engine, the primitives and the pointer adapter run under any framework: none of them
+  // declares one, as a dependency, a peer or for its own tests (architecture.md §2, rules 1, 2, 4
+  // and 12).
+  test.each([
+    "calendar-core",
+    "calendar-dnd",
+    "calendar-primitives",
+    "calendar-recurrence",
+    "calendar-temporal",
+    "ics",
+  ])("%s declares no UI framework", async (directory) => {
+    const manifest = (await readManifest(directory)) as PackageManifest & {
+      readonly dependencies?: Readonly<Record<string, string>>;
+      readonly devDependencies?: Readonly<Record<string, string>>;
+      readonly peerDependencies?: Readonly<Record<string, string>>;
+    };
+    const declared = Object.keys({
+      ...manifest.dependencies,
+      ...manifest.devDependencies,
+      ...manifest.peerDependencies,
+    });
+
+    expect(
+      declared.filter((name) =>
+        /^(?:react|react-dom|@types\/react|@types\/react-dom|solid-js|@solidjs\/.+|preact|vue|svelte|@ui-sdk\/(?!core$).+)$/u.test(
+          name,
+        ),
+      ),
+    ).toEqual([]);
+  });
+
   test.each(Object.entries(bundledData))(
     "%s's notices and its generated source carry the same license text",
     async (directory, { license, source }) => {

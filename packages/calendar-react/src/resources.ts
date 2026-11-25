@@ -5,6 +5,7 @@ import {
   type ResourceVisibilityOptions,
   type VisibleResource,
 } from "@moltenship/calendar-core";
+import { createResourceExpansionCommands } from "@moltenship/calendar-primitives";
 import { createContext, useContext, useMemo, type Context, type SyntheticEvent } from "react";
 
 import type { AnyCalendarState } from "./context";
@@ -39,18 +40,14 @@ export interface CalendarResourceExpansion {
   readonly toggle: CalendarResourceExpansionCommand;
 }
 
-/** A command's options from what a toggle got: the click a person made, or a caller's options. */
-function commandOf(cause: unknown): CalendarCommandOptions {
-  if (typeof cause !== "object" || cause === null) return { reason: "resource-toggle" };
-  if ("nativeEvent" in cause && cause.nativeEvent instanceof Event) {
-    return { event: cause.nativeEvent, reason: "resource-toggle" };
-  }
-  const { event, reason, source } = cause as CalendarCommandOptions;
-  return {
-    reason: typeof reason === "string" ? reason : "resource-toggle",
-    ...(event instanceof Event ? { event } : {}),
-    ...(typeof source === "string" ? { source } : {}),
-  };
+/** What a toggle got, with a React event in place of the DOM event it wraps. */
+function causeOf(cause: unknown): unknown {
+  return typeof cause === "object" &&
+    cause !== null &&
+    "nativeEvent" in cause &&
+    cause.nativeEvent instanceof Event
+    ? cause.nativeEvent
+    : cause;
 }
 
 const selectExpanded = (state: AnyCalendarState) => state.expandedResourceIds;
@@ -84,21 +81,18 @@ export function useResourceExpansion(resourceId: ResourceId): CalendarResourceEx
   const expanded = useStateSelector(source, (state) =>
     state.expandedResourceIds.includes(resourceId),
   );
-  return useMemo(() => {
-    // Reads the latest requested state, so consecutive commands in one handler compose.
-    const set = (next: boolean, cause: unknown) => {
-      const current = read().expandedResourceIds;
-      if (current.includes(resourceId) === next) return;
-      actions.setExpandedResourceIds(
-        next ? [...current, resourceId] : current.filter((id) => id !== resourceId),
-        commandOf(cause),
-      );
-    };
-    return Object.freeze({
-      collapse: (cause?: unknown) => set(false, cause),
-      expand: (cause?: unknown) => set(true, cause),
-      expanded,
-      toggle: (cause?: unknown) => set(!read().expandedResourceIds.includes(resourceId), cause),
-    });
-  }, [actions, expanded, read, resourceId]);
+  const commands = useMemo(
+    () => createResourceExpansionCommands({ actions, read }, resourceId),
+    [actions, read, resourceId],
+  );
+  return useMemo(
+    () =>
+      Object.freeze({
+        collapse: (cause?: unknown) => commands.collapse(causeOf(cause)),
+        expand: (cause?: unknown) => commands.expand(causeOf(cause)),
+        expanded,
+        toggle: (cause?: unknown) => commands.toggle(causeOf(cause)),
+      }),
+    [commands, expanded],
+  );
 }

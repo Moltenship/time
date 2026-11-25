@@ -20,9 +20,6 @@ import {
   TimeGridColumn,
 } from "@moltenship/calendar-core";
 import {
-  RefCallback,
-} from "react";
-import {
   WallTimeSnapOptions,
 } from "@moltenship/calendar-temporal";
 
@@ -106,7 +103,6 @@ export declare function resourceIdAttributes(id: ResourceId | null): {
 };
 export declare function resourceIdOf(element: Element): ResourceId | null | undefined;
 export declare function startCalendarDrop<TEvent = unknown, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId>(source: CalendarDropSource<TEvent, TEventId>, { input }?: CalendarDropOptions): CalendarDropSession<TEvent, TEventId, TResourceId>;
-export declare function useCalendarPointer<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(options: CalendarPointerOptions<TEvent, TEventId, TResourceId>): RefCallback<HTMLElement>;
 
 export {
   type CalendarDragFollower,

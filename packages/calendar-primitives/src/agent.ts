@@ -22,7 +22,7 @@ import type { AnyCalendarViewDefinition, CalendarActiveView } from "./views";
  */
 
 type AnyEvent = NormalizedCalendarEvent<unknown, EventId, ResourceId>;
-type AnyEvents = EventSnapshot<unknown, EventId, ResourceId>;
+export type AnyEvents = EventSnapshot<unknown, EventId, ResourceId>;
 
 /** One visible event, as an agent's `query` lists it: its ID as a string, its title and time. */
 export interface CalendarAgentItem {

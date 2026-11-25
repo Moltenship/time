@@ -169,3 +169,16 @@ The fallback is the second alternative: our own minimal primitive kernel behind 
 package's API. The runtime, the store and the interaction logic carry over as they are; the parts'
 attributes, the renderers and the agent surface are what would be rewritten. The 1.x line, on the
 store of ADR 0070 alone, stays maintainable until 2.0 is released.
+
+## Progress
+
+`architecture.md` §2 ("Version 2.0 status") is the record; in short:
+
+- **Done:** the kernel and the agent surface (#276). The framework-free halves of interaction of
+  point 2: the keyboard controller, roving focus, the draft source and its busy queries, the
+  history binding and its shortcuts, and the announcer's live text, which `calendar-react` binds.
+  The pointer adapter of point 4 is framework-free, and `useCalendarPointer` is the React
+  integration's.
+- **Not done:** the Solid integration binds none of the interaction or the pointer adapter yet;
+  registry views on the new parts, Solid views and the registry's controls on ui-sdk, whose way
+  and order [ADR 0279](./0279-solid-views-in-the-registry.md) decides.

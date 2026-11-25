@@ -1,4 +1,5 @@
 import type { EventId, ResourceId } from "@moltenship/calendar-core";
+import { createCalendarViewRuntime } from "@moltenship/calendar-primitives";
 import { usePart, type PartProps } from "@ui-sdk/react/primitive";
 import {
   createElement,
@@ -30,7 +31,7 @@ import {
   type CalendarContexts,
 } from "./context";
 import { CalendarViewRuntimeContext, useInteractionRuntime } from "./interaction";
-import { createRovingFocusStore, RovingFocusSync, viewEntry } from "./roving-focus";
+import { RovingFocusSync } from "./roving-focus";
 import { useStateSelector } from "./state-binding";
 import type { AnyCalendarView, CalendarActiveView } from "./views";
 
@@ -229,11 +230,7 @@ export function createCalendarParts(contexts: CalendarContexts) {
       latest.current = activeView;
     });
     // Starting from the view's entry gives server markup its tab stop.
-    const [roving] = useState(() => createRovingFocusStore(viewEntry(activeView)));
-    const runtime = useMemo(
-      () => Object.freeze({ getView: () => latest.current, roving }),
-      [roving],
-    );
+    const [runtime] = useState(() => createCalendarViewRuntime(() => latest.current));
     if (activeView === null) return fallback;
 
     const { definition, environment, events, loadRange, options, projection, range } = activeView;
@@ -250,7 +247,7 @@ export function createCalendarParts(contexts: CalendarContexts) {
         projection,
         range,
       }),
-      createElement(RovingFocusSync, { roving, source, view: activeView }),
+      createElement(RovingFocusSync, { roving: runtime.roving, source, view: activeView }),
     );
   }
 

@@ -1,7 +1,7 @@
 import type { EventId, ResourceId } from "@moltenship/calendar-core";
 import { useCallback, useInsertionEffect, useRef, type RefCallback } from "react";
 
-import { attachCalendarPointer, type CalendarPointerOptions } from "./attach-calendar-pointer";
+import { attachCalendarPointer, type CalendarPointerOptions } from "@moltenship/calendar-dnd";
 
 /**
  * Pointer move, resize, and create for a view region; see `attachCalendarPointer` for the data
