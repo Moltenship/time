@@ -7,7 +7,7 @@
   "dependencies": [
     "@moltenship/calendar",
     "@stylexjs/stylex",
-    "@tanstack/react-virtual",
+    "@tanstack/virtual-core",
     "lucide-react"
   ],
   "registryDependencies": [
@@ -47,19 +47,44 @@
       "target": "@components/calendar-stylex/resource-columns-view/resource-columns-body.tsx"
     },
     {
-      "path": "registry/stylex-resource-columns-view/column-virtualizer.ts",
+      "path": "registry/shared/resource-columns-view/resource-columns-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/resource-columns-view/resource-columns-labels.ts"
+    },
+    {
+      "path": "registry/shared/resource-columns-view/resource-columns-layout.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/resource-columns-view/resource-columns-layout.ts"
+    },
+    {
+      "path": "registry/shared/resource-columns-view/column-virtualizer.ts",
       "type": "registry:lib",
       "target": "@components/calendar-stylex/resource-columns-view/column-virtualizer.ts"
     },
     {
-      "path": "registry/stylex-resource-columns-view/axis-sync.ts",
+      "path": "registry/shared/resource-columns-view/axis-sync.ts",
       "type": "registry:lib",
       "target": "@components/calendar-stylex/resource-columns-view/axis-sync.ts"
     },
     {
-      "path": "registry/stylex-resource-columns-view/focused-column.ts",
+      "path": "registry/shared/resource-columns-view/focused-column.ts",
       "type": "registry:lib",
       "target": "@components/calendar-stylex/resource-columns-view/focused-column.ts"
+    },
+    {
+      "path": "registry/stylex-resource-columns-view/use-column-virtualizer.ts",
+      "type": "registry:hook",
+      "target": "@components/calendar-stylex/resource-columns-view/use-column-virtualizer.ts"
+    },
+    {
+      "path": "registry/stylex-resource-columns-view/use-axis-sync.ts",
+      "type": "registry:hook",
+      "target": "@components/calendar-stylex/resource-columns-view/use-axis-sync.ts"
+    },
+    {
+      "path": "registry/stylex-resource-columns-view/use-focused-column.ts",
+      "type": "registry:hook",
+      "target": "@components/calendar-stylex/resource-columns-view/use-focused-column.ts"
     }
   ]
 }

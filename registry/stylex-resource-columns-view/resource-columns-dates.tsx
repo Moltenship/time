@@ -2,10 +2,14 @@
 
 import type { TimeGridDay } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
-import type { VirtualItem } from "@tanstack/react-virtual";
+import type { VirtualItem } from "@tanstack/virtual-core";
 import { useMemo, type RefCallback } from "react";
 
+import { datesLabel } from "@registry/shared/resource-columns-view/resource-columns-labels";
+import { resourceColIndex } from "@registry/shared/resource-columns-view/resource-columns-layout";
 import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
+import { dayColumns } from "@registry/shared/time-grid-view/time-grid-geometry";
+import { dayHeaderFormats } from "@registry/shared/time-grid-view/time-grid-labels";
 import {
   TimeGridZoneNotes,
   zoneNotesByDate,
@@ -92,18 +96,12 @@ export function ResourceColumnsDates({
   zones = noZones,
 }: ResourceColumnsDatesProps) {
   const notes = useMemo(() => zoneNotesByDate(zones), [zones]);
-  const formats = useMemo(
-    () => ({
-      full: new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
-      weekday: new Intl.DateTimeFormat(locale, { weekday: "short" }),
-    }),
-    [locale],
-  );
+  const formats = useMemo(() => dayHeaderFormats(locale), [locale]);
 
   return (
     <div role="row" {...stylex.props(styles.row)}>
       <div role="columnheader" aria-colindex={1} {...stylex.props(styles.gutter)}>
-        <span {...stylex.props(visuallyHiddenStyles.hidden)}>Date</span>
+        <span {...stylex.props(visuallyHiddenStyles.hidden)}>{datesLabel}</span>
       </div>
       <div {...stylex.props(styles.clip)} style={{ marginInlineEnd: scrollbarWidth }}>
         <div ref={followX} {...stylex.props(styles.track)} style={{ width: totalSize }}>
@@ -112,7 +110,7 @@ export function ResourceColumnsDates({
               key={key}
               {...stylex.props(styles.placed)}
               style={{
-                gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+                gridTemplateColumns: dayColumns(days.length),
                 insetInlineStart: start,
                 width: size,
               }}
@@ -121,7 +119,7 @@ export function ResourceColumnsDates({
                 <div
                   key={dayKey}
                   role="columnheader"
-                  aria-colindex={2 + index * days.length + day}
+                  aria-colindex={resourceColIndex(index, days.length) + day}
                   aria-current={isToday ? "date" : undefined}
                   aria-label={formats.full.format(date)}
                   {...stylex.props(styles.day)}

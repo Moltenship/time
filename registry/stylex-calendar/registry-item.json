@@ -103,6 +103,11 @@
       "target": "@components/calendar-stylex/resource-status-summary.ts"
     },
     {
+      "path": "registry/shared/calendar/resource-clock.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/resource-clock.ts"
+    },
+    {
       "path": "registry/shared/calendar/unavailable-band.ts",
       "type": "registry:lib",
       "target": "@components/calendar-stylex/unavailable-band.ts"

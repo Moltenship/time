@@ -2,9 +2,15 @@
 
 import { resourceIdAttributes, type ResourceColumn } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
-import type { VirtualItem } from "@tanstack/react-virtual";
+import type { VirtualItem } from "@tanstack/virtual-core";
 import { useMemo, type ReactNode, type RefCallback } from "react";
 
+import {
+  resourceDateLabel,
+  resourceTitle,
+} from "@registry/shared/resource-columns-view/resource-columns-labels";
+import { resourceColIndex } from "@registry/shared/resource-columns-view/resource-columns-layout";
+import { fullDateFormat } from "@registry/shared/time-grid-view/time-grid-labels";
 import type { EventLabeler } from "@registry/stylex-calendar/event-label";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
 import {
@@ -12,8 +18,6 @@ import {
   TimeGridAllDayCells,
   useAllDayCollapse,
 } from "@registry/stylex-time-grid-view/time-grid-all-day";
-
-import { resourceTitle } from "./resource-columns-header";
 
 const styles = stylex.create({
   clip: {
@@ -71,7 +75,7 @@ export function ResourceColumnsAllDay<TEvent>({
     [resources],
   );
   const collapse = useAllDayCollapse(days, rows);
-  const format = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "full" }), [locale]);
+  const formatDate = useMemo(() => fullDateFormat(locale), [locale]);
 
   return (
     <div role="row" {...stylex.props(styles.row)} style={{ height: collapse.height }}>
@@ -89,9 +93,9 @@ export function ResourceColumnsAllDay<TEvent>({
                 style={{ insetInlineStart: start, width: size }}
               >
                 <TimeGridAllDayCells
-                  colIndex={2 + index * days.length}
+                  colIndex={resourceColIndex(index, days.length)}
                   days={days}
-                  formatDate={(date) => `${title}, ${format.format(date)}`}
+                  formatDate={(date) => resourceDateLabel(title, formatDate(date))}
                   getEventColor={getEventColor}
                   getEventIcon={getEventIcon}
                   labelEvent={(event) => labelEvent(event, title)}

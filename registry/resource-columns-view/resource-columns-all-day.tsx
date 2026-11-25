@@ -1,18 +1,28 @@
 "use client";
 
 import { resourceIdAttributes, type ResourceColumn } from "@moltenship/calendar";
-import type { VirtualItem } from "@tanstack/react-virtual";
+import type { VirtualItem } from "@tanstack/virtual-core";
 import { useMemo, type ReactNode, type RefCallback } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import {
+  resourceDateLabel,
+  resourceTitle,
+} from "@registry/shared/resource-columns-view/resource-columns-labels";
+import { resourceColIndex } from "@registry/shared/resource-columns-view/resource-columns-layout";
+import {
+  resourceAllDayColumnClass,
+  resourceAllDayRowClass,
+  resourceColumnsClipClass,
+  resourceColumnsTrackClass,
+} from "@registry/shared/resource-columns-view/resource-columns.styles";
+import { fullDateFormat } from "@registry/shared/time-grid-view/time-grid-labels";
+import {
   AllDayRowHeader,
   TimeGridAllDayCells,
   useAllDayCollapse,
 } from "@registry/time-grid-view/time-grid-all-day";
-
-import { resourceTitle } from "./resource-columns-header";
 
 export interface ResourceColumnsAllDayProps<TEvent> {
   /** Follows the body's sideways scroll; see `useAxisSync`. */
@@ -49,16 +59,13 @@ export function ResourceColumnsAllDay<TEvent>({
     [resources],
   );
   const collapse = useAllDayCollapse(days, rows);
-  const format = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "full" }), [locale]);
+  const formatDate = useMemo(() => fullDateFormat(locale), [locale]);
 
   return (
-    <div role="row" className="flex" style={{ height: collapse.height }}>
+    <div role="row" className={resourceAllDayRowClass} style={{ height: collapse.height }}>
       <AllDayRowHeader collapse={collapse} />
-      <div
-        className="relative min-w-0 flex-1 overflow-clip"
-        style={{ marginInlineEnd: scrollbarWidth }}
-      >
-        <div ref={followX} className="relative h-full" style={{ width: totalSize }}>
+      <div className={resourceColumnsClipClass} style={{ marginInlineEnd: scrollbarWidth }}>
+        <div ref={followX} className={resourceColumnsTrackClass} style={{ width: totalSize }}>
           {items.map(({ index, key, size, start }) => {
             const { allDay, resource } = resources[index]!;
             const title = resourceTitle(resource);
@@ -66,13 +73,13 @@ export function ResourceColumnsAllDay<TEvent>({
               <div
                 key={key}
                 {...resourceIdAttributes(resource.id)}
-                className="absolute inset-y-0 flex"
+                className={resourceAllDayColumnClass}
                 style={{ insetInlineStart: start, width: size }}
               >
                 <TimeGridAllDayCells
-                  colIndex={2 + index * days.length}
+                  colIndex={resourceColIndex(index, days.length)}
                   days={days}
-                  formatDate={(date) => `${title}, ${format.format(date)}`}
+                  formatDate={(date) => resourceDateLabel(title, formatDate(date))}
                   getEventColor={getEventColor}
                   getEventIcon={getEventIcon}
                   labelEvent={(event) => labelEvent(event, title)}

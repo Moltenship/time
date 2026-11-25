@@ -188,11 +188,14 @@ ResourceColumnsView              resource-columns-view.tsx
             └── Now line         data-slot="time-grid-now"
 ```
 
-- `useColumnVirtualizer` in `column-virtualizer.ts` decides which columns render. Columns share the
-  width until they are 128px per day, then the view scrolls sideways.
-- The header, all-day row and gutter sit beside the scrolling body, not over it. `useAxisSync` in
-  `axis-sync.ts` moves them with the body's scroll, so a drag never lands on a column hidden behind
-  them.
+- The column virtualizer in `column-virtualizer.ts`, which `use-column-virtualizer.ts` binds,
+  decides which columns render. Columns share the width until they are 128px per day, then the
+  view scrolls sideways.
+- The header, all-day row and gutter sit beside the scrolling body, not over it. The axis sync in
+  `axis-sync.ts`, which `use-axis-sync.ts` binds, moves them with the body's scroll, so a drag never
+  lands on a column hidden behind them.
+- Words such as "Unassigned" are in `resource-columns-labels.ts`, sizes in
+  `resource-columns-layout.ts`, and the classes in `resource-columns.styles.ts`.
 
 ## Options
 

@@ -26,25 +26,29 @@ import {
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
+import {
+  resourceColumnsSnap as snap,
+  resourceMinWidth,
+} from "@registry/shared/resource-columns-view/resource-columns-layout";
+import { resourceColumnsHeadClass } from "@registry/shared/resource-columns-view/resource-columns.styles";
+import { timeGridViewClass } from "@registry/shared/time-grid-view/time-grid.styles";
 import { TimeGridEventTooltip } from "@registry/time-grid-view/time-grid-event";
 import { offsetLabel } from "@registry/time-grid-view/time-grid-header";
 import {
   gutterColumn,
   gutterStyle,
   TimeGridGutterLabels,
-  timeGridGutterClassName,
   useTimeGridZones,
 } from "@registry/time-grid-view/time-grid-zones";
-import { cn } from "cn";
 
-import { useAxisSync } from "./axis-sync";
-import { useColumnVirtualizer } from "./column-virtualizer";
 import { ResourceColumnsAllDay } from "./resource-columns-all-day";
 import { ResourceColumnsBody } from "./resource-columns-body";
 import { ResourceColumnsDates } from "./resource-columns-dates";
 import { ResourceColumnsHeader } from "./resource-columns-header";
 import type { ResourceHeaderProps } from "./resource-header";
-import { useFocusedColumnInView } from "./focused-column";
+import { useAxisSync } from "./use-axis-sync";
+import { useColumnVirtualizer } from "./use-column-virtualizer";
+import { useFocusedColumnInView } from "./use-focused-column";
 
 /**
  * Overlapping events in a resource's column follow `getResourceOverlapLayout`, such as `"stack"`
@@ -93,11 +97,6 @@ export interface ResourceColumnsViewOptions<
 
 const selectResource = (focus: CalendarFocus | null) => focus?.resourceId;
 
-/** Pointer and keyboard both step by these slots, so they reach the same times. */
-const snap = { increment: 15, smallestUnit: "minute" } as const;
-/** The narrowest a resource's day gets before the columns scroll sideways, in pixels. */
-const MIN_DAY_WIDTH = 128;
-
 export type ResourceColumnsViewProps<
   TEvent,
   TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
@@ -129,7 +128,7 @@ export function ResourceColumnsView<
   const focusedResource = useCalendarFocus(selectResource);
   const { scrollRef, scrollbarWidth, virtualizer } = useColumnVirtualizer({
     keys,
-    minWidth: MIN_DAY_WIDTH * Math.max(1, columns.length),
+    minWidth: resourceMinWidth(columns.length),
     pinned: resources.findIndex(({ resource }) => resource.id === focusedResource),
     rtl,
   });
@@ -173,15 +172,10 @@ export function ResourceColumnsView<
         aria-colcount={1 + resources.length * columns.length}
         {...keyboard}
         data-slot="resource-columns"
-        className={cn(
-          "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize",
-          timeGridGutterClassName,
-          // A long-press on a touch screen picks events up: it selects no text and opens no callout.
-          !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
-        )}
+        className={timeGridViewClass(isReadOnly)}
         style={gutterStyle(zones)}
       >
-        <div className="shrink-0 border-b border-calendar-grid">
+        <div className={resourceColumnsHeadClass}>
           <ResourceColumnsHeader
             {...placed}
             corner={

@@ -6,9 +6,22 @@ import type {
   VisibleResource,
 } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
-import type { VirtualItem } from "@tanstack/react-virtual";
+import type { VirtualItem } from "@tanstack/virtual-core";
 import { useMemo, type ComponentType, type ReactNode, type RefCallback } from "react";
 
+import {
+  resourceGroupsWords,
+  resourceTitle,
+} from "@registry/shared/resource-columns-view/resource-columns-labels";
+import {
+  groupBandHeight,
+  headerFillHeight,
+  headerLevels,
+  headerRowHeight,
+  nameRowHeight,
+  resourceColIndex,
+  resourceGroupsOf,
+} from "@registry/shared/resource-columns-view/resource-columns-layout";
 import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
 import {
   draftStatusAttributes,
@@ -102,15 +115,7 @@ export interface ResourceColumnsHeaderProps {
   readonly totalSize: number;
 }
 
-/** Height of one hierarchy level, in rem. */
-const LEVEL = 2;
-/** A name row with room for the status badge under the name, in rem. */
-const STATUS_ROW = 2.75;
-
-/** A resource's name, or "Unassigned" for the bucket of events without resources. */
-export function resourceTitle({ resource }: VisibleResource): string {
-  return resource?.title ?? "Unassigned";
-}
+export { resourceTitle };
 
 /**
  * One column's header. A resource sits on the row for its depth, under a band for each group it
@@ -145,7 +150,7 @@ function ResourceHeaderCell({
           key={level}
           aria-hidden
           {...stylex.props(styles.band)}
-          style={{ height: `${LEVEL}rem` }}
+          style={{ height: groupBandHeight }}
         />
       ))}
       <div
@@ -153,7 +158,7 @@ function ResourceHeaderCell({
         {...draftStatusAttributes(headerStatus)}
         {...stylex.props(styles.name, expanded && styles.nameExpanded)}
         // Groups show no status, so their name row keeps the height their members' bands have.
-        style={{ height: `${status !== null && !resource.hasChildren ? STATUS_ROW : LEVEL}rem` }}
+        style={{ height: nameRowHeight(status !== null, resource.hasChildren) }}
       >
         <ResourceHeaderContext
           value={{ environment, groups, status: headerStatus, title, visible: resource }}
@@ -161,12 +166,12 @@ function ResourceHeaderCell({
           <ResourceHeader resource={resource.resource} title={title} />
         </ResourceHeaderContext>
         {groups.length > 0 && (
-          <span {...stylex.props(visuallyHiddenStyles.hidden)}>, {groups.join(", ")}</span>
+          <span {...stylex.props(visuallyHiddenStyles.hidden)}>{resourceGroupsWords(groups)}</span>
         )}
       </div>
       <div
         {...stylex.props(styles.filler)}
-        style={{ minHeight: `${(levels - depth - 1) * LEVEL}rem` }}
+        style={{ minHeight: headerFillHeight(levels, depth) }}
       />
     </div>
   );
@@ -188,31 +193,14 @@ export function ResourceColumnsHeader({
   status,
   totalSize,
 }: ResourceColumnsHeaderProps) {
-  // A visible resource's parents are visible too, so its groups are found among the columns.
-  const byId = useMemo(
-    () => new Map(resources.map(({ resource }) => [resource.id, resource] as const)),
-    [resources],
-  );
-  const levels = resources.reduce(
-    (deepest, { resource }) => Math.max(deepest, resource.depth + 1),
-    1,
-  );
-  const groupsOf = (resource: VisibleResource) => {
-    const groups: string[] = [];
-    for (let parentId = resource.parentId; parentId !== null;) {
-      const parent = byId.get(parentId);
-      if (parent === undefined) break;
-      groups.unshift(resourceTitle(parent));
-      parentId = parent.parentId;
-    }
-    return groups;
-  };
+  const groupsOf = useMemo(() => resourceGroupsOf(resources), [resources]);
+  const levels = headerLevels(resources);
 
   return (
     <div
       role="row"
       {...stylex.props(styles.row)}
-      style={{ height: `${(levels - 1) * LEVEL + (status !== null ? STATUS_ROW : LEVEL)}rem` }}
+      style={{ height: headerRowHeight(levels, status !== null) }}
     >
       <div role="columnheader" aria-colindex={1} {...stylex.props(styles.corner)}>
         {corner}
@@ -225,7 +213,7 @@ export function ResourceColumnsHeader({
               <div
                 key={key}
                 role="columnheader"
-                aria-colindex={2 + index * days}
+                aria-colindex={resourceColIndex(index, days)}
                 aria-colspan={days > 1 ? days : undefined}
                 {...stylex.props(styles.columnHeader)}
                 style={{ insetInlineStart: start, width: size }}
