@@ -39,8 +39,12 @@ export interface TimeGridBodyProps<TEvent> {
   /** The root takes no changes: events have no resize handles. */
   readonly isReadOnly?: boolean;
   readonly labelEvent: EventLabeler<TEvent>;
+  /** Opens a date in the day view; Shift+Enter on a slot does so. */
+  readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   /** Receives the scrolling element, which dragging also scrolls near its edges. */
   readonly ref?: (element: HTMLDivElement) => void;
+  /** Length of a keyboard slot, as the keyboard's snap sets it. */
+  readonly slotMinutes: number;
   /** The root's secondary time zones, with an hour column each; see `useTimeGridZones`. */
   readonly zones?: readonly TimeGridZone[];
 }
@@ -152,7 +156,10 @@ export function TimeGridBody<TEvent>(props: TimeGridBodyProps<TEvent>) {
                 labelEvent={props.labelEvent}
                 nowTop={nowPosition()?.column === index() ? nowPosition()!.top : null}
                 formats={formats()}
+                onOpenDay={props.onOpenDay}
+                slotMinutes={props.slotMinutes}
                 timeZone={props.environment.timeZone}
+                zones={props.zones}
               />
             )}
           </For>

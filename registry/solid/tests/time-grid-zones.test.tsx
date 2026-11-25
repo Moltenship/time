@@ -4,6 +4,7 @@ import {
   createCalendar,
   createCanonicalEventAdapter,
   type CalendarEvent,
+  type CalendarFocus,
   type CalendarSecondaryTimeZone,
 } from "@moltenship/calendar-solid";
 import { expect, test } from "vite-plus/test";
@@ -11,10 +12,10 @@ import { expect, test } from "vite-plus/test";
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
 
 import { render } from "./render";
-import { text } from "./view-fixtures";
+import { ariaLabel, text } from "./view-fixtures";
 
 // The React time grid's zone tests (registry/tests/time-grid-zones.test.tsx), in Solid: the two
-// gutters show the same hours, names and notes. A slot's name joins them with the keyboard.
+// gutters show the same hours, names and notes, and a focused slot names its time in each zone.
 
 type Fixture = CalendarEvent<null, string>;
 
@@ -25,6 +26,7 @@ const Calendar = createCalendar<Fixture>()({
 
 interface RootProps {
   readonly defaultAnchorDate?: Temporal.PlainDate;
+  readonly defaultFocus?: CalendarFocus;
   readonly defaultView?: "day" | "week";
   readonly locale?: string;
   readonly timeZone?: string;
@@ -40,6 +42,7 @@ async function renderCalendar(
   const { container, unmount } = await render(() => (
     <Calendar.Root
       defaultAnchorDate={props.defaultAnchorDate ?? Temporal.PlainDate.from("2026-10-12")}
+      defaultFocus={props.defaultFocus}
       defaultView={props.defaultView ?? "week"}
       events={[]}
       locale={props.locale ?? "en-US"}
@@ -206,4 +209,67 @@ test("the corner reads the display zone's offset on the day the zone hours follo
 
   expect(zoneHours(container)[0]!.slice(0, 1)).toEqual(["8 PM-1"]);
   expect(corner?.lastElementChild?.textContent).toBe("GMT+1");
+});
+
+/** The focused slot's name, in the column whose date starts with `weekday`. */
+const slotName = (container: ParentNode, weekday: string) =>
+  ariaLabel(container.querySelector(`[role="grid"] [role="button"][aria-label^="${weekday}"]`));
+
+const slotFocus = (date: string, time: string): CalendarFocus => ({
+  date: Temporal.PlainDate.from(date),
+  kind: "slot",
+  time: Temporal.PlainTime.from(time),
+});
+
+test("a focused slot names its time in each zone, with the weekday on another date", async () => {
+  const container = await renderCalendar(
+    ["America/New_York", { label: "Kolkata", timeZone: "Asia/Kolkata" }],
+    { defaultFocus: slotFocus("2026-10-12", "21:00") },
+  );
+
+  expect(slotName(container, "Monday")).toBe(
+    "Monday, October 12 at 9:00 PM, 3:00 PM Eastern Daylight Time, Tue 12:30 AM Kolkata",
+  );
+});
+
+test("a slot on a shifted day names the zone as it is then", async () => {
+  const container = await renderCalendar(["America/New_York"], {
+    defaultAnchorDate: Temporal.PlainDate.from("2026-10-29"),
+    defaultFocus: slotFocus("2026-11-01", "09:00"),
+  });
+
+  expect(slotName(container, "Sunday")).toBe(
+    "Sunday, November 1 at 9:00 AM, 3:00 AM Eastern Standard Time",
+  );
+});
+
+test("a repeated hour names each moment, by offset under a label", async () => {
+  // Berlin and London fall back at the same instant, so 02:30 in Berlin is 1:30 AM in London twice.
+  const props = {
+    defaultAnchorDate: Temporal.PlainDate.from("2026-10-25"),
+    defaultFocus: slotFocus("2026-10-25", "02:30"),
+    defaultView: "day",
+  } as const;
+
+  const named = await renderCalendar(["Europe/London"], props);
+  expect(slotName(named, "Sunday")).toBe(
+    "Sunday, October 25 at 2:30 AM, 1:30 AM British Summer Time or 1:30 AM Greenwich Mean Time",
+  );
+  named.unmount();
+  const labelled = await renderCalendar([{ label: "London", timeZone: "Europe/London" }], props);
+  expect(slotName(labelled, "Sunday")).toBe(
+    "Sunday, October 25 at 2:30 AM, 1:30 AM London GMT+1 or 1:30 AM London GMT+0",
+  );
+});
+
+test("names both moments of a repeated hour in a slot's name", async () => {
+  const container = await renderCalendar(["UTC"], {
+    defaultAnchorDate: Temporal.PlainDate.from("2026-10-25"),
+    defaultFocus: slotFocus("2026-10-25", "02:30"),
+    defaultView: "day",
+  });
+
+  expect(slotName(container, "Sunday")).toBe(
+    "Sunday, October 25 at 2:30 AM, 12:30 AM or 1:30 AM Coordinated Universal Time",
+  );
 });
