@@ -185,7 +185,7 @@ and registry file's sha512 against it before and after. Nothing packs again.
 | --- | --- | --- |
 | `ssr-fixture` | The fixture's tests: render, hydrate, interact and unmount, the known-bad hydration fails, and its calendar hydrates through `@moltenship/calendar-testing`'s tarball | None, unless pnpm's cache lacks metadata (below) |
 | `showcase` | `next build` of the docs site; every route through `next start` (`scripts/verify-production.mjs`), with the dry run's registry at `/r`; then the docs tests, which render the live examples | The build fetches the site's Google fonts, as `ci:build` does; metadata as for the fixture |
-| `registry` | `vp run registry:e2e` on the dry run's tarballs: `shadcn add` into clean Vite and Next.js apps, then a typecheck and a build of each | npm and shadcn's own components |
+| `registry` | `vp run registry:e2e` on the dry run's tarballs: `shadcn add` into clean Vite, Next.js and Solid apps, then a typecheck and a build of each | npm and shadcn's own components |
 
 The SSR fixture and the docs site run in a copy outside the workspace: `apps/ssr-fixture`, or
 `apps/showcase` with `registry/`, at the same paths, with the files git tracks or would track. The
@@ -244,7 +244,9 @@ manifest in `tools/registry/fixtures/known-bad` must fail every contract it brea
 components, takes 15 to 35 seconds once the pnpm store is warm, and isn't part of `ready`. It
 makes clean Vite and Next.js apps with `shadcn init`, runs `shadcn add <url>/calendar-full.json`
 against the registry served from a local server, checks the files, aliases, package.json and
-installed runtime, then typechecks and builds both apps. The Next.js app's page is a Server
+installed runtime, then typechecks and builds both apps. A clean Solid 2.0 app, set up by hand as
+the Solid docs say from `tools/registry/consumers/solid`, adds `base-tokens` and `list-view` from
+`/r/solid` by the `@moltenship` namespace, then typechecks and builds too. The Next.js app's page is a Server
 Component that also imports every item the client page uses, so a component without its client
 boundary fails the build. The runtime packages are packed from the
 workspace and served from a local npm registry for the `@moltenship` scope, and each app's lockfile

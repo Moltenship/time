@@ -146,7 +146,7 @@ export const consumers: readonly Consumer[] = [
     },
   },
   {
-    // #43's install test: `shadcn add` into clean Vite and Next.js apps, then a typecheck and a
+    // #43's install test: `shadcn add` into clean Vite, Next.js and Solid apps, then a typecheck and a
     // build of each, with the tarballs served as the `@moltenship` packages. It needs the network
     // for npm and shadcn's own components.
     name: "registry",
