@@ -8,8 +8,9 @@ import {
   test,
   vi,
 } from "vite-plus/test";
-import { cdp, page, server } from "vite-plus/test/browser";
+import { cdp, commands, page, server } from "vite-plus/test/browser";
 
+import type { SwipeSteps } from "../../swipe";
 import { nextFrame } from "../waits";
 import { atRest, inWebKit, press, render, settled, until } from "./render";
 import {
@@ -23,6 +24,12 @@ import {
   title,
   toolbar,
 } from "./scrolling-screen";
+
+declare module "vite-plus/test/browser" {
+  interface BrowserCommands {
+    swipe: (steps: SwipeSteps) => Promise<void>;
+  }
+}
 
 // The Solid scrolling week, 3-day and day's two axes in a real browser, against what React's
 // files check (scrolling-axis-lock, scrolling-header and scrolling-views' drags): the hours and the
@@ -368,31 +375,13 @@ function onPage([x, y]: readonly [number, number]) {
   return { x: box.left + x * scale, y: box.top + y * scale };
 }
 
-/** A finger on the touch screen, through Chromium's own input pipeline. */
-async function touch(
-  type: "touchEnd" | "touchMove" | "touchStart",
-  at?: readonly [number, number],
-) {
-  await cdp().send("Input.dispatchTouchEvent", {
-    touchPoints: at === undefined ? [] : [{ id: 1, ...onPage(at) }],
-    type,
-  });
-}
-
-/** A finger's swipe from `from`, `by` along each axis, in steps past the browser's touch slop. */
-async function swipe(from: readonly [number, number], by: readonly [number, number]) {
-  const steps = 12;
-  await touch("touchStart", from);
-  try {
-    for (let step = 1; step <= steps; step++) {
-      const t = step / steps;
-      await touch("touchMove", [from[0] + by[0] * t, from[1] + by[1] * t]);
-      await new Promise((resolve) => setTimeout(resolve, 16));
-    }
-  } finally {
-    await touch("touchEnd");
-  }
-}
+/**
+ * A finger's swipe from `from`, `by` along each axis, in steps, from Node, so a loaded page
+ * can't make it late (`swipe.ts`). Each move is past the browser's touch slop, so the swipe
+ * scrolls from its first move and never waits out a long-press.
+ */
+const swipe = (from: readonly [number, number], by: readonly [number, number]) =>
+  commands.swipe({ by, from, steps: 12 });
 
 // A phone's touch screen needs Chromium's touch emulation through CDP.
 describe.runIf(server.browser === "chromium")("a finger on a phone's Solid 3-day view", () => {

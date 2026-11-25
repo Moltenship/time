@@ -524,6 +524,63 @@ describe("time grid", () => {
     expect(scroll.defaultPrevented).toBe(true);
   });
 
+  test("keeps the pressed element's touch listener until the finger lifts", () => {
+    // In Chromium's touch emulation, a touch listener removed while the page scrolls under the
+    // finger could stop that scroll after its first step.
+    const grid = mountTimeGrid([meeting]);
+    setup(grid, { columns: grid.columns });
+    const element = grid.elements.get("a")!;
+    const touch = { pointerType: "touch" };
+    const removed = (spy: { mock: { calls: unknown[][] } }) =>
+      spy.mock.calls.filter(([type]) => type === "touchmove").length;
+    /** Whether the page would hold still under the finger's next move. */
+    const holdsStill = () => {
+      const scroll = new Event("touchmove", { bubbles: true, cancelable: true });
+      element.dispatchEvent(scroll);
+      return scroll.defaultPrevented;
+    };
+
+    for (const scroll of ["pointercancel", "pointermove"] as const) {
+      const removes = vi.spyOn(element, "removeEventListener");
+      pointer("pointerdown", element, 50, yAt("09:30"), touch);
+      // The browser takes the finger for a scroll, or it moves past the tolerance first.
+      pointer(scroll, element, 50, yAt("09:30") + 20, touch);
+      expect(removed(removes)).toBe(0);
+      expect(holdsStill()).toBe(false);
+      const lift = scroll === "pointercancel" ? "touchend" : "touchcancel";
+      // A second finger lifts first; the one the page scrolls under is still down.
+      element.dispatchEvent(
+        Object.assign(new Event(lift, { bubbles: true }), { touches: { length: 1 } }),
+      );
+      expect(removed(removes)).toBe(0);
+      element.dispatchEvent(new Event(lift, { bubbles: true }));
+      expect(removed(removes)).toBe(1);
+      removes.mockRestore();
+    }
+
+    // A re-render takes the pressed element out before the finger lifts, so the region never
+    // hears the lift; the next press lets the element go.
+    const outRemoves = vi.spyOn(element, "removeEventListener");
+    pointer("pointerdown", element, 50, yAt("09:30"), touch);
+    pointer("pointercancel", element, 50, yAt("09:30") + 20, touch);
+    const parent = element.parentNode!;
+    const next = element.nextSibling;
+    element.remove();
+    pointer("pointerdown", grid.region, 10, yAt("12:00"), touch);
+    pointer("pointerup", grid.region, 10, yAt("12:00"), touch);
+    expect(removed(outRemoves)).toBe(1);
+    outRemoves.mockRestore();
+    parent.insertBefore(element, next);
+
+    // Detached with the finger still down.
+    const removes = vi.spyOn(element, "removeEventListener");
+    pointer("pointerdown", element, 50, yAt("09:30"), touch);
+    pointer("pointercancel", element, 50, yAt("09:30") + 20, touch);
+    detach?.();
+    detach = undefined;
+    expect(removed(removes)).toBe(1);
+  });
+
   test("keeps a drag going when the browser takes over another finger", () => {
     vi.useFakeTimers();
     const grid = mountTimeGrid([meeting]);

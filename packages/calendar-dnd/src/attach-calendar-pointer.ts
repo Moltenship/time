@@ -387,6 +387,23 @@ export function attachCalendarPointer<
   getOptions: () => CalendarPointerOptions<TEvent, TEventId, TResourceId>,
 ): () => void {
   let session: Session<TEvent, TEventId, TResourceId> | null = null;
+  /**
+   * The last touch's pressed element, which keeps its `touchmove` listener until the finger
+   * lifts. The gesture ends as the page starts scrolling under the finger, and in Chromium's touch
+   * emulation, a change to the page's touch listeners then could stop that scroll after its first
+   * step. So the region hears the lift through listeners it has from the start.
+   */
+  let lastTouch: EventTarget | null = null;
+
+  function releaseLastTouch(): void {
+    lastTouch?.removeEventListener("touchmove", onTouchMove);
+    lastTouch = null;
+  }
+
+  function onTouchLift(event: Event): void {
+    // Another finger can still be down, the one the page scrolls under.
+    if (((event as Partial<TouchEvent>).touches?.length ?? 0) === 0) releaseLastTouch();
+  }
 
   function placementAt(
     current: Session<TEvent, TEventId, TResourceId>,
@@ -791,7 +808,7 @@ export function attachCalendarPointer<
     window.removeEventListener("pointerup", onPointerUp);
     window.removeEventListener("pointercancel", onPointerCancel);
     window.removeEventListener("keydown", onKeyDown, true);
-    current.touchTarget?.removeEventListener("touchmove", onTouchMove);
+    lastTouch = current.touchTarget;
     for (const type of ["contextmenu", "dragstart", "selectstart"]) {
       window.removeEventListener(type, preventDefault);
     }
@@ -918,6 +935,9 @@ export function attachCalendarPointer<
 
   function onPointerDown(event: PointerEvent): void {
     if (session !== null || event.button !== 0 || !event.isPrimary) return;
+    // Its lift never reached the region: a re-render took it out. Out of the region, it no
+    // longer decides where the page takes touches.
+    if (lastTouch instanceof Node && !region.contains(lastTouch)) releaseLastTouch();
     const options = getOptions();
     if (options.disabled === true || !(event.target instanceof Element)) return;
 
@@ -997,6 +1017,8 @@ export function attachCalendarPointer<
   region.addEventListener("pointerdown", onPointerDown);
   if (getOptions().disabled !== true) {
     region.addEventListener("touchmove", onTouchMove, { passive: false });
+    region.addEventListener("touchend", onTouchLift, { passive: true });
+    region.addEventListener("touchcancel", onTouchLift, { passive: true });
   }
   // Listed while attached, so items dragged in from outside the calendar find the view.
   const unregister = registerRegion({ element: region, getOptions } as unknown as PointerRegion);
@@ -1005,6 +1027,9 @@ export function attachCalendarPointer<
     cancel();
     region.removeEventListener("pointerdown", onPointerDown);
     region.removeEventListener("touchmove", onTouchMove);
+    region.removeEventListener("touchend", onTouchLift);
+    region.removeEventListener("touchcancel", onTouchLift);
+    releaseLastTouch();
     unregister();
   };
 }
