@@ -19,7 +19,7 @@ const summary =
   "A calendar on the Temporal API whose engine imports no UI framework. React renders it, with " +
   "week, day, month, year, agenda and resource views you copy and own, and drag and keyboard " +
   "editing. SolidJS 2 renders it as a preview, with the week, day, month, year and agenda, and " +
-  "the scrolling month and agenda, and the resource columns, so far. " +
+  "the scrolling week, day, month and agenda, and the resource columns, so far. " +
   "It is built on ui-sdk, so an " +
   "AI agent can read a calendar and act on it once the app creates a bridge." +
   // Only while the version these docs are built for is one (`lib/install-tag.ts`).

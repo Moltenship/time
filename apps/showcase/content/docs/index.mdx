@@ -27,8 +27,8 @@ Google Calendar-style app built from the same views.
 These are the Solid docs. `@moltenship/calendar-solid` renders the engine in SolidJS 2: the parts,
 the hooks, keyboard navigation, dragging, undo and the actions an agent calls. It is a preview.
 The registry has styled Solid views for the [week and day](/docs/views/week-and-day), the
-[month](/docs/views/month), the [year](/docs/views/year) and the [agenda](/docs/views/agenda), the
-month and agenda each also as a [scrolling view](/docs/views/scrolling), and the
+[month](/docs/views/month), the [year](/docs/views/year) and the [agenda](/docs/views/agenda), each
+but the year also as a [scrolling view](/docs/views/scrolling), and the
 [resource columns](/docs/views/resource-columns), with a
 [toolbar and a mini month](/docs/views/toolbar) and a [theme](/docs/theming) of color tokens, and
 you write the other views as Solid components that draw a layout the engine computes.
@@ -155,9 +155,9 @@ where they're ahead.
 ## What you get today
 
 The engine, the calendar's state, the keyboard, the gestures and the hooks are the same in React
-and Solid. Solid's registry has the week and day, the month, the year, the agenda and the scrolling
-month and agenda so far. The scrolling week and day, the resource views and the testing package
-exist in React only.
+and Solid. Solid's registry has the week and day, the month, the year and the agenda, each but the year
+also as a scrolling view, and the resource columns, so far. The resource timeline and the testing
+package exist in React only.
 [React and Solid](/docs/frameworks) has the full table.
 
 - **Your data, read through an adapter.** You describe how to read an ID, a title and a time range
@@ -250,8 +250,7 @@ exist in React only.
 
 ### Not in Solid yet
 
-The registry's [scrolling](/docs/views/scrolling) week and day, its resource timeline, the testing
-package and the dnd-kit adapter exist in React only.
+The registry's resource timeline, the testing package and the dnd-kit adapter exist in React only.
 [What's coming](/docs/frameworks#whats-coming) lists them and links the issue that tracks the
 work.
 

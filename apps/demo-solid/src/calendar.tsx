@@ -6,6 +6,11 @@ import { createResourceColumnsView } from "@registry/resource-columns-view/resou
 import { createScrollingAgendaView } from "@registry/scrolling-list-view/scrolling-agenda-view";
 import { createScrollingMonthView } from "@registry/scrolling-month-view/scrolling-month-view";
 import {
+  createScrollingDayView,
+  createScrollingThreeDayView,
+  createScrollingWeekView,
+} from "@registry/scrolling-time-grid-view/scrolling-time-grid-view";
+import {
   createDayView,
   createThreeDayView,
   createWeekView,
@@ -43,8 +48,13 @@ export const Calendar = createCalendar<DemoOccurrence, DemoResource>()({
     createYearView<DemoOccurrence>(options),
     createAgendaView<DemoOccurrence>(options),
     createResourceColumnsView<DemoOccurrence, DemoResource>({ ...options, resourceStatus: true }),
-    createScrollingMonthView<DemoOccurrence>({ ...options, dayView: "day" }),
-    createScrollingAgendaView<DemoOccurrence>({ ...options, dayView: "day" }),
+    // The same days, week, month and agenda, scrolling: the "scrolling views" setting switches
+    // between them and the paged ones, as in the React demo.
+    createScrollingWeekView<DemoOccurrence>({ ...options, dayView: "scrolling-day" }),
+    createScrollingDayView<DemoOccurrence>(options),
+    createScrollingThreeDayView<DemoOccurrence>({ ...options, dayView: "scrolling-day" }),
+    createScrollingMonthView<DemoOccurrence>({ ...options, dayView: "scrolling-day" }),
+    createScrollingAgendaView<DemoOccurrence>({ ...options, dayView: "scrolling-day" }),
   ],
 });
 

@@ -36,6 +36,18 @@ export function describeLayout(...roots: readonly Element[]): string {
   return describe(roots, true);
 }
 
+/**
+ * `describeLayout` for a scrolling view, whose header follows the days by a transform of their
+ * scroll offset in pixels: that offset depends on the page's width, so it's left out. The
+ * scrolling files check the header stays on the days.
+ */
+export function describeScrollingLayout(...roots: readonly Element[]): string {
+  return describeLayout(...roots).replace(
+    /translateX\(-?[\d.]+(?:e[+-]?\d+)?px\)/gu,
+    "translateX(…)",
+  );
+}
+
 function styleOf(element: Element): string {
   const { style } = element as HTMLElement;
   return [...style]

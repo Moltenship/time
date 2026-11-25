@@ -143,7 +143,7 @@ const frameworkRows = [
   [
     "Ready-made views",
     "shadcn/ui or StyleX source",
-    "Week, day, month, year and agenda, the scrolling month and agenda, and resource columns",
+    "Week, day, month, year and agenda, the scrolling week, day, month and agenda, and resource columns",
   ],
   ["Testing package", "Yes", "Not yet"],
 ] as const;

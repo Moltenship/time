@@ -5,8 +5,12 @@ import { server } from "vite-plus/test/browser";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { createScrollingAgendaView } from "@registry/scrolling-list-view/scrolling-agenda-view";
 import { createScrollingMonthView } from "@registry/scrolling-month-view/scrolling-month-view";
+import {
+  createScrollingDayView,
+  createScrollingWeekView,
+} from "@registry/scrolling-time-grid-view/scrolling-time-grid-view";
 
-import { describeTree } from "./kit-twins";
+import { describeScrollingLayout, describeTree } from "./kit-twins";
 import {
   monthAnchor,
   monthAvailability,
@@ -16,10 +20,18 @@ import {
   type MonthFixture,
 } from "./month-fixture";
 import { atRest, render, until } from "./render";
+import {
+  timeGridAnchor,
+  timeGridEvents,
+  timeGridNow,
+  timeGridWeekRules,
+  type TimeGridFixture,
+} from "./time-grid-fixture";
 
-// React's scrolling month and agenda render what `view-twins/` stores, and
-// `solid/scrolling-month.a11y.tsx` and `solid/scrolling-agenda.a11y.tsx` check the Solid views
-// render the same (ADR 0279). React's run writes the files, with `-u` on a change.
+// React's scrolling month, agenda, week and day render what `view-twins/` stores, and
+// `solid/scrolling-month.a11y.tsx`, `solid/scrolling-agenda.a11y.tsx` and
+// `solid/scrolling-time-grid.a11y.tsx` check the Solid views render the same (ADR 0279). React's
+// run writes the files, with `-u` on a change.
 
 const Calendar = createCalendar<MonthFixture>()({
   eventAdapter: createCanonicalEventAdapter<{ readonly color: CalendarEventColor }, string>(),
@@ -51,6 +63,38 @@ function Screen({ view }: { readonly view: "scrolling-agenda" | "scrolling-month
   );
 }
 
+const TimeGridCalendar = createCalendar<TimeGridFixture>()({
+  eventAdapter: createCanonicalEventAdapter<{ readonly color: CalendarEventColor }, string>(),
+  views: [
+    createScrollingWeekView<TimeGridFixture>({
+      dayView: "scrolling-day",
+      getEventColor: (event) => event.data.color,
+    }),
+    createScrollingDayView<TimeGridFixture>({ getEventColor: (event) => event.data.color }),
+  ],
+});
+
+function TimeGridScreen({ view }: { readonly view: "scrolling-day" | "scrolling-week" }) {
+  return (
+    <TimeGridCalendar.Root
+      defaultAnchorDate={timeGridAnchor}
+      defaultTimeZone="UTC"
+      defaultView={view}
+      events={timeGridEvents}
+      locale="en-US"
+      now={timeGridNow}
+      onEventChange={() => {}}
+      weekRules={timeGridWeekRules}
+    >
+      <TimeGridCalendar.Frame className="flex h-dvh flex-col">
+        <TimeGridCalendar.Viewport className="min-h-0 flex-1">
+          <TimeGridCalendar.ActiveView />
+        </TimeGridCalendar.Viewport>
+      </TimeGridCalendar.Frame>
+    </TimeGridCalendar.Root>
+  );
+}
+
 // The descriptions are Chromium's: another engine serializes some attributes its own way.
 describe.runIf(server.browser === "chromium")("scrolling twins", () => {
   test("the scrolling month", async () => {
@@ -69,5 +113,13 @@ describe.runIf(server.browser === "chromium")("scrolling twins", () => {
     await until(() => expect(agenda().querySelector("[data-event-id]")).not.toBeNull());
     await atRest(agenda());
     await expect(describeTree(agenda())).toMatchFileSnapshot("./view-twins/scrolling-agenda.txt");
+  });
+
+  test.each(["scrolling-week", "scrolling-day"] as const)("the %s view", async (view) => {
+    await render(<TimeGridScreen view={view} />);
+    const grid = () => document.querySelector('[data-slot="scrolling-time-grid"]')!;
+    await until(() => expect(grid().querySelector('[data-slot="time-grid-now"]')).not.toBeNull());
+    await atRest(document.querySelector<HTMLElement>('[data-slot="scrolling-time-grid-days"]')!);
+    await expect(describeScrollingLayout(grid())).toMatchFileSnapshot(`./view-twins/${view}.txt`);
   });
 });
