@@ -161,7 +161,8 @@ import { calendarAnnouncements } from "@/components/calendar/announcements";
 
 Keyboard and pointer moves, resizes, and creates are announced through a polite live region. Render
 `<Calendar.Announcer messages={announcements} />` once inside `Root`, with your messages. The
-packages ship no text, and this is a short English set:
+packages ship no text. The registry's `calendar` item adds a full English set, `calendarAnnouncements`,
+in `components/calendar/announcements.ts`, and this is a short one of your own:
 
 <include meta='title="announcements.ts"'>../examples/solid/announcements.ts#messages</include>
 

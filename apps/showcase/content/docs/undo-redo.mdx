@@ -277,13 +277,13 @@ const history = createEventHistory<TeamEvent, string, string>({
 
 With `messages`, `useCalendarHistory` speaks each undo and redo outcome through the root's
 `Announcer`, such as "Undid the move: Design review is back at Thursday, October 8, 3:00 – 4:00
-PM." The packages ship no text<React>: the registry's `calendar/announcements.ts` has an English set,
-`calendarHistoryAnnouncements`, to edit or translate</React>. Each message gets the outcome and the
+PM." The packages ship no text: the registry's `calendar/announcements.ts` has an English set,
+`calendarHistoryAnnouncements`, to edit or translate. Each message gets the outcome and the
 announcement context, with the step's event when the calendar shows it.
 
 <Solid>
 
-This is a short English set, to edit or translate:
+This is a short set of your own:
 
 <include meta='title="announcements.ts"'>../examples/solid/announcements.ts#history</include>
 

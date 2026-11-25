@@ -62,7 +62,7 @@ These work the same in both frameworks, because they run below the integration:
 | Packages you install          | `@moltenship/calendar`, `@ui-sdk/core`, `@ui-sdk/react`           | `@moltenship/calendar-solid`, `@ui-sdk/core`, `@ui-sdk/solid`                                 |
 | Parts                         | `Root`, the structural parts, `Event` and `Announcer`             | The same parts                                                                                |
 | Hooks                         | Every hook, returning values                                      | The same hooks: accessors for state, refs from `useCalendarKeyboard` and `useCalendarPointer` |
-| Ready-made views              | The registry's views, in shadcn/ui with Tailwind CSS or in StyleX | The agenda, in Tailwind CSS. You write the other views' `Renderer`                            |
+| Ready-made views              | The registry's views, in shadcn/ui with Tailwind CSS or in StyleX | The agenda, toolbar and mini month, in Tailwind CSS. You write the other views' `Renderer`    |
 | Keyboard navigation in a view | Yes                                                               | Yes, in a view you write                                                                      |
 | Drag, resize and create       | Yes, with a mouse, a pen or touch                                 | Yes, in a view you write                                                                      |
 | Undo and redo                 | `useCalendarHistory`, its shortcuts and the registry's toast      | `useCalendarHistory` and its shortcuts. No toast                                              |

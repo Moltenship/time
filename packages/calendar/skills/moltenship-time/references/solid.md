@@ -1,6 +1,6 @@
 # Solid
 
-`@moltenship/calendar-solid` is the SolidJS 2 integration, a preview. It renders the same primitive as React, so state, actions, event changes, policies and the agent surface are the same. It has every hook React has, and one ready-made view so far: the agenda, in the Solid registry. Read the Solid docs before you write Solid code, and check the package's own types: the preview changes between releases. The docs in the package are React's. Solid's are on the site: `https://time.molten.sh/llms.txt` lists them, and `https://time.molten.sh/docs/solid/api/components.md` is the reference.
+`@moltenship/calendar-solid` is the SolidJS 2 integration, a preview. It renders the same primitive as React, so state, actions, event changes, policies and the agent surface are the same. It has every hook React has, and one ready-made view so far: the agenda, in the Solid registry, with a toolbar, a view switcher, a mini month and a kit of controls. Read the Solid docs before you write Solid code, and check the package's own types: the preview changes between releases. The docs in the package are React's. Solid's are on the site: `https://time.molten.sh/llms.txt` lists them, and `https://time.molten.sh/docs/solid/api/components.md` is the reference.
 
 ## What it has, and what it doesn't
 
@@ -28,6 +28,7 @@ Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - `@moltenship/calendar-solid` is the one package to import. It re-exports the engine and the Temporal helpers, so the adapter and the view functions come from it too.
 - The agenda installs with the shadcn CLI from the Solid registry: `npx shadcn@latest add https://time.molten.sh/r/solid/list-view.json`. `https://time.molten.sh/docs/solid/installation.md` has the setup, and `https://time.molten.sh/docs/solid/views/agenda.md` the view.
+- The same registry's `calendar` item has the toolbar, the view switcher and the mini month (`https://time.molten.sh/docs/solid/views/toolbar.md`), and `calendar-ui` the controls they're built from (`https://time.molten.sh/docs/solid/views/controls.md`).
 - Don't install `@moltenship/calendar` in a Solid app. It's the React package.
 - With Vite, use `@solidjs/vite-plugin`, and set `"jsx": "preserve"` and `"jsxImportSource": "@solidjs/web"` in `tsconfig.json`. Exclude `@ui-sdk/core` from `optimizeDeps` so the dev server loads one copy.
 

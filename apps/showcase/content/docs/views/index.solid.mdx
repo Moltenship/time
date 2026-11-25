@@ -9,13 +9,24 @@ example an agenda and a month grid. The `view` state names the active one, and
 
 A view is a strategy and a `Renderer`. The strategy picks the dates and lays out the events, and
 the `Renderer` is a Solid component that draws that layout. The registry has one styled view so
-far, the agenda, which you add to your app as source. You write the others.
+far, the agenda, with a toolbar, a mini month and the controls they're built from. You add them to
+your app as source, and you write the other views.
 
 <Cards>
   <Card
     title="Agenda"
     href="/docs/views/agenda"
     description="The registry's list of events grouped by day, added with the shadcn CLI."
+  />
+  <Card
+    title="Toolbar and mini month"
+    href="/docs/views/toolbar"
+    description="The registry's toolbar, view switcher and mini month."
+  />
+  <Card
+    title="Controls"
+    href="/docs/views/controls"
+    description="The buttons, badges, tooltips and selects the registry's views are built from."
   />
   <Card
     title="Custom views"
@@ -74,7 +85,8 @@ show four weeks instead of two.
 ## Switching views
 
 `Calendar.ViewSwitcher` renders a plain `<select>` with one option per registered view, labelled by
-`getViewLabel`. To build your own control, call `setView` from `useCalendarActions()`:
+`getViewLabel`, and the registry's [`ViewSwitcher`](/docs/views/toolbar) is a styled one. To build
+your own control, call `setView` from `useCalendarActions()`:
 
 <include meta='title="view-buttons.tsx"'>../../examples/solid/anatomy.tsx#switcher</include>
 
