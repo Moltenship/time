@@ -93,7 +93,7 @@ export function App() {
           <PlusIcon class="size-6" />
         </Button>
         <Sheet
-          class="gap-2 outline-none w-72"
+          class="w-80 gap-2 outline-none"
           onOpenChange={workspace.setSidebarOpen}
           open={workspace.sidebarOpen()}
         >

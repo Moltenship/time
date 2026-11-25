@@ -94,7 +94,7 @@ export function App() {
             <Sheet open={sidebarOpen} onOpenChange={workspace.setSidebarOpen}>
               <SheetContent
                 ref={sheetRef}
-                className="gap-2 outline-none data-[side=left]:w-72"
+                className="gap-2 outline-none data-[side=left]:w-80"
                 // Focus the sheet itself so the first control's tooltip does not pop open.
                 initialFocus={sheetRef}
                 side="left"
