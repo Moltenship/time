@@ -1,14 +1,21 @@
 import * as stylex from "@stylexjs/stylex";
-import type { VirtualItem } from "@tanstack/react-virtual";
+import type { VirtualItem } from "@tanstack/virtual-core";
 import { memo } from "react";
 
+import {
+  resourcesHeading,
+  type TimelineLabels,
+} from "@registry/shared/resource-timeline-view/timeline-labels";
+import { slotGroupBox } from "@registry/shared/resource-timeline-view/timeline-placement";
+import type {
+  TimelineSlot,
+  TimelineSlotGroup,
+  TimelineSlotUnit,
+} from "@registry/shared/resource-timeline-view/timeline-scale";
 import {
   calendarConsts,
   calendarVars,
 } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
-
-import type { TimelineLabels } from "./timeline-labels";
-import type { TimelineSlot, TimelineSlotGroup, TimelineSlotUnit } from "./timeline-scale";
 
 const styles = stylex.create({
   corner: {
@@ -148,17 +155,14 @@ export const ResourceTimelineHeader = memo(function ResourceTimelineHeader({
       {...stylex.props(styles.header)}
     >
       <div role="columnheader" aria-colindex={1} {...stylex.props(styles.corner)}>
-        Resources
+        {resourcesHeading}
       </div>
       <div aria-hidden {...stylex.props(styles.groups)}>
         {groups.map((group) => (
           <div
             key={group.key}
             {...stylex.props(styles.group)}
-            style={{
-              insetInlineStart: `calc(var(--calendar-resource-column) + ${group.first * slotWidth}px)`,
-              width: group.count * slotWidth,
-            }}
+            style={slotGroupBox(group.first, group.count, slotWidth)}
           >
             <span {...stylex.props(styles.groupLabel)}>
               <bdi>{labels.group(group)}</bdi>

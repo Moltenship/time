@@ -12,7 +12,7 @@ import {
   calendarVars,
 } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 
-import type { PlacedBar } from "./timeline-placement";
+import { barBox, type PlacedBar } from "@registry/shared/resource-timeline-view/timeline-placement";
 
 const styles = stylex.create({
   bar: {
@@ -79,11 +79,6 @@ const styles = stylex.create({
   },
 });
 
-/** A lane's height, the gap under it, and the space above the first lane, in pixels. */
-export const LANE_HEIGHT = 24;
-export const LANE_GAP = 2;
-export const ROW_PADDING = 6;
-
 export interface ResourceTimelineEventProps<TEvent> {
   readonly bar: PlacedBar<TEvent>;
   readonly color?: CalendarEventColor;
@@ -103,13 +98,14 @@ export interface ResourceTimelineEventProps<TEvent> {
  * hovered, and above that while focused, so its title shows.
  */
 export function ResourceTimelineEvent<TEvent>({
-  bar: { date, days, endsAfter, event, lane, offset, startsBefore, time, top, width },
+  bar,
   color,
   icon,
   isReadOnly = false,
   labelEvent,
   resourceId,
 }: ResourceTimelineEventProps<TEvent>) {
+  const { date, days, endsAfter, event, lane, startsBefore, time, top } = bar;
   const chip = useEventChip(event, { date, days, labelEvent, resourceId });
   const resizable = !isReadOnly && !event.isReadOnly;
 
@@ -118,12 +114,7 @@ export function ResourceTimelineEvent<TEvent>({
       color={color}
       {...chip}
       title={event.title}
-      style={{
-        height: LANE_HEIGHT,
-        insetInlineStart: offset,
-        top: ROW_PADDING + top * (LANE_HEIGHT + LANE_GAP),
-        width,
-      }}
+      style={barBox(bar)}
       xstyle={[
         styles.bar,
         top !== lane && styles.barStacked,
