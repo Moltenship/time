@@ -12,16 +12,22 @@ const extents = [
   { label: "All tokens", value: "full" },
 ] as const;
 
-/** The theme to paste into an app, as CSS or StyleX, with only the changed tokens or all of them. */
+/**
+ * The theme to paste into an app, as CSS or StyleX, with only the changed tokens or all of them.
+ * Without `stylex` it is CSS alone, and there is no format to choose.
+ */
 export function CssOutput({
   source,
+  stylex = true,
   theme,
 }: {
   readonly source: ThemeSource;
+  readonly stylex?: boolean;
   readonly theme: Theme;
 }) {
   const id = useId();
-  const [formatValue, setFormat] = useState<(typeof formats)[number]["value"]>("tailwind");
+  const [picked, setFormat] = useState<(typeof formats)[number]["value"]>("tailwind");
+  const formatValue = stylex ? picked : "tailwind";
   const [extent, setExtent] = useState<(typeof extents)[number]["value"]>("changed");
   const [status, setStatus] = useState("");
   const format = formats.find(({ value }) => value === formatValue)!;
@@ -51,12 +57,14 @@ export function CssOutput({
         <span aria-live="polite" className="text-sm text-fd-muted-foreground" role="status">
           {status}
         </span>
-        <Segmented
-          label="Output format"
-          onValueChange={setFormat}
-          options={formats}
-          value={formatValue}
-        />
+        {stylex ? (
+          <Segmented
+            label="Output format"
+            onValueChange={setFormat}
+            options={formats}
+            value={formatValue}
+          />
+        ) : null}
         <Segmented
           label="Tokens to copy"
           onValueChange={setExtent}

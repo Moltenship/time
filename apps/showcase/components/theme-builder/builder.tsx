@@ -88,11 +88,13 @@ function Presets({
   onApply,
   onReset,
   source,
+  stylex,
   theme,
 }: {
   readonly onApply: (preset: Preset) => void;
   readonly onReset: () => void;
   readonly source: ThemeSource;
+  readonly stylex: boolean;
   readonly theme: Theme;
 }) {
   const id = useId();
@@ -104,7 +106,7 @@ function Presets({
       </span>
       <div aria-labelledby={`${id}-${kind}`} className="flex flex-wrap gap-1.5" role="group">
         {presets
-          .filter((preset) => preset.kind === kind)
+          .filter((preset) => preset.kind === kind && (stylex || preset.stylex !== true))
           .map((preset) => (
             <button
               key={preset.name}
@@ -182,7 +184,14 @@ function Contrast({
  * Every token of `calendar-theme.css` beside a live calendar. Edits restyle only the preview: its
  * CSS is scoped to the preview's attribute, so the docs page keeps its own theme.
  */
-export default function ThemeBuilder({ source }: { readonly source: ThemeSource }) {
+export default function ThemeBuilder({
+  source,
+  stylex = true,
+}: {
+  readonly source: ThemeSource;
+  /** Whether to offer the StyleX theme, and the preset that goes with it. */
+  readonly stylex?: boolean;
+}) {
   const [theme, setTheme] = useState(() => defaultTheme(source));
   const docs = useSyncExternalStore(subscribeToDocsTheme, docsMode, serverMode);
   // A mode picked here holds until the docs switch theme; then the preview follows the docs.
@@ -310,6 +319,7 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
             onApply={(preset) => setTheme((current) => applyPreset(source, current, preset))}
             onReset={() => setTheme(defaultTheme(source))}
             source={source}
+            stylex={stylex}
             theme={theme}
           />
           <Section defaultOpen title={`Calendar colors, ${mode}`}>
@@ -479,7 +489,7 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
           </Section>
         </div>
       </div>
-      <CssOutput source={source} theme={theme} />
+      <CssOutput source={source} stylex={stylex} theme={theme} />
     </div>
   );
 }

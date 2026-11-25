@@ -1,0 +1,189 @@
+---
+title: Theming
+description: The Solid registry's color tokens, dark mode, the event color palette, and the files that hold each control's look.
+---
+
+The package ships no CSS. The Solid registry's files style themselves with Tailwind classes, and
+those classes read their colors and sizes from CSS variables. Two items of the registry at
+`https://time.molten.sh/r/solid` hold the variables:
+
+| Item             | What it adds                                                                                       |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
+| `calendar-theme` | The calendar's tokens, its event color palette, and `components/calendar/event-colors.ts`          |
+| `base-tokens`    | shadcn/ui's neutral tokens, such as `--background`, `--primary` and `--border`, for light and dark |
+
+Every view brings `calendar-theme`. You add `base-tokens` yourself, once, unless your app already
+has a shadcn/ui-style theme that defines those tokens.
+[UI source](/docs/installation#ui-source-optional) has the commands.
+
+To see a change before you write it, use the [Theme builder](/docs/theme-builder). It gives you the
+CSS to paste.
+
+## What the items write
+
+`shadcn add` writes both items into the stylesheet that `components.json` names, `src/app.css` in
+[UI source](/docs/installation#ui-source-optional):
+
+- An `@theme inline` block that gives Tailwind a color for each token, so `bg-calendar-today` and
+  `border-calendar-grid` are classes.
+- The tokens' light values on `:root` and their dark values on `.dark`, inside `@layer base`.
+- In the same layer, the event palette, a `[data-color]` rule for each color, and the look of the
+  preview a drag shows.
+- A `prefers-reduced-motion` block, which stills that preview and the view transitions.
+
+The CLI writes those blocks again on each `shadcn add`. Keep your changes in rules of your own, as
+[Changing tokens](#changing-tokens) shows.
+
+## Tokens
+
+The calendar's tokens, and the files of the Solid registry that read each one today:
+
+| Variable                      | Used for                                              | Tailwind class                    | Read by                               |
+| ----------------------------- | ----------------------------------------------------- | --------------------------------- | ------------------------------------- |
+| `--calendar-grid`             | Lines between days and hours                          | `border-calendar-grid`            | The agenda                            |
+| `--calendar-today`            | Today's date marker                                   | `bg-calendar-today`               | The agenda, the mini month            |
+| `--calendar-today-foreground` | Text on today's marker                                | `text-calendar-today-foreground`  | The agenda, the mini month            |
+| `--calendar-selection`        | Selected days and ranges, and the dates in view       | `bg-calendar-selection`           | The mini month                        |
+| `--calendar-event`            | Event background                                      | `bg-calendar-event`               | The agenda, the event chip            |
+| `--calendar-event-foreground` | Event text                                            | `text-calendar-event-foreground`  | The agenda, the event chip            |
+| `--calendar-event-border`     | Event accent edge, and the agenda's color dot         | `border-calendar-event-border`    | The agenda, the event chip            |
+| `--calendar-busy`             | A resource status's busy dot                          | `bg-calendar-busy`                | The resource status                   |
+| `--calendar-free`             | A resource status's free dot                          | `bg-calendar-free`                | The resource status                   |
+| `--calendar-invalid`          | A preview the policies would reject                   | `outline-calendar-invalid`        | The event chip, the previews' classes |
+| `--calendar-warning`          | A preview the policies would flag                     | `outline-calendar-warning`        | The event chip, the previews' classes |
+| `--calendar-surface`          | Behind sticky headers, between events                 | `bg-calendar-surface`             | No file yet                           |
+| `--calendar-axis`             | Hour and weekday labels                               | `text-calendar-axis`              | No file yet                           |
+| `--calendar-now`              | The current-time line                                 | `bg-calendar-now`                 | No file yet                           |
+| `--calendar-weekend`          | Weekend background                                    | `bg-calendar-weekend`             | No file yet                           |
+| `--calendar-unavailable`      | Closed time in time grids and timelines               | `bg-calendar-unavailable`         | No file yet                           |
+| `--calendar-closed`           | Closed days in a month or a year                      | `bg-calendar-closed`              | No file yet                           |
+| `--calendar-hour-height`      | Height of one hour in time grids (`3rem`)             | `h-(--calendar-hour-height)`      | No file yet                           |
+| `--calendar-event-padding-x`  | Padding at the sides of time-grid events (`0.375rem`) | `px-(--calendar-event-padding-x)` | No file yet                           |
+| `--calendar-event-padding-y`  | Padding above and below time-grid events (`0.25rem`)  | `py-(--calendar-event-padding-y)` | No file yet                           |
+
+The tokens no file reads yet belong to views the registry doesn't have in Solid: grids of hours,
+and months with weekends and closed days. The theme defines them all the same, so a
+[view you write](/docs/views/custom-views) uses their classes today and matches the registry's
+views when they arrive.
+
+The color tokens work with any Tailwind color utility, so `text-calendar-today` and
+`ring-calendar-now` are classes too. Most calendar tokens derive from the base tokens:
+`--calendar-grid` is your `--border`, and the default event colors mix your `--primary` into
+`--background`. The controls read the base tokens directly: a button's fill is `--primary`, a
+tooltip's is `--foreground`, and the focus ring is `--ring`.
+
+## Changing tokens
+
+Every token is declared inside `@layer base`, so a plain rule in your own CSS wins without
+`!important`. Set the light values on `:root` and the dark values on `.dark`, below the imports:
+
+```css title="src/app.css"
+:root {
+  --calendar-today: oklch(0.55 0.17 150);
+  --primary: oklch(0.45 0.2 264);
+}
+
+.dark {
+  --calendar-today: oklch(0.72 0.15 150);
+  --primary: oklch(0.7 0.16 264);
+}
+```
+
+An app with its own shadcn/ui-style theme changes nothing here: the calendar follows the base
+tokens the app already defines.
+
+## Dark mode
+
+The dark values apply when an ancestor of the calendar has the `dark` class. Put it on `<html>`
+from your app's theme setting:
+
+<include meta='title="theme-toggle.tsx"'>../examples/solid/theme-toggle.tsx#toggle</include>
+
+The files' own `dark:` classes must follow the same class. The stylesheet in
+[UI source](/docs/installation#ui-source-optional) has the line that makes them:
+`@custom-variant dark (&:is(.dark *));`. Without it, Tailwind's `dark:` follows the system's theme,
+and the two can disagree.
+
+## Event colors
+
+The theme has a palette of nine event colors: `blue`, `green`, `red`, `orange`, `yellow`,
+`purple`, `pink`, `teal`, and `gray`. A `data-color` attribute switches that element's three event
+tokens to the color, in light and dark. `EventChip`, in `components/calendar/event-chip.tsx`, sets
+the attribute from its `color` prop:
+
+<include meta='title="event-palette.tsx"'>../examples/solid/event-palette.tsx#palette</include>
+
+<SolidExample
+  name="theming"
+  title="The event colors, and a switch for the dark theme"
+  size="h-36"
+  caption="Live. The switch changes this example alone."
+/>
+
+The names come from `event-colors.ts` as `calendarEventColors`, with the type `CalendarEventColor`.
+
+### Choosing a color per event
+
+The agenda takes a `getEventColor` option: a function from your event to a color name. Pass it when
+you create the view:
+
+<include meta='title="calendar-page.tsx"'>../examples/solid/calendar-page.tsx#view</include>
+
+Without `getEventColor`, events use the default event tokens. To set it for one calendar, pass it
+in `viewOptions` on `Root`, as [Options](/docs/views/agenda#options) shows for the agenda's other
+options.
+
+### Adding a color
+
+Each palette entry sets a hue and a chroma, and the `[data-color]` rule turns them into the three
+event tokens for light and dark. To add a color, add its name to `calendarEventColors` in
+`event-colors.ts` and give it a hue and a chroma in your CSS:
+
+```css title="src/app.css"
+[data-color="brand"] {
+  --calendar-event-hue: 285;
+  --calendar-event-chroma: 0.2;
+}
+```
+
+## A control's look
+
+Tokens change colors. The shape of a control, its sizes and its states are Tailwind classes, and
+each control keeps them in a `.styles.ts` file beside it, apart from its behaviour:
+
+| File                         | What it holds                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------- |
+| `ui/button.styles.ts`        | `buttonVariants`: the button's base classes, its six variants and its eight sizes     |
+| `ui/badge.styles.ts`         | `badgeVariants`: the badge's base classes and its four variants                       |
+| `ui/tooltip.styles.ts`       | The bubble's and the arrow's classes, and `tooltipDefaults`: the delay and the offset |
+| `ui/select.styles.ts`        | A class list for each part of the select, and `selectDefaults`: where the list opens  |
+| `calendar-toolbar.styles.ts` | The toolbar's layout, its title, and the view switcher's trigger                      |
+| `mini-month.styles.ts`       | The mini month's grid, its days, today and the band of dates in view                  |
+| `event-chip.styles.ts`       | The event chip, in every state                                                        |
+| `resource-status.styles.ts`  | A resource's status badge and its dot                                                 |
+| `preview-state.styles.ts`    | The outline of a draft the policies would reject or flag                              |
+| `list-view/agenda.styles.ts` | The agenda's days and rows                                                            |
+
+The paths are from `components/calendar/`. These files are plain TypeScript: strings of classes,
+with no JSX and no import from Solid. To change a look, edit the file, and every view that draws
+the control follows. Round icon buttons, and tooltips that open sooner:
+
+```diff title="components/calendar/ui/button.styles.ts"
+-        icon: "size-8",
++        icon: "size-8 rounded-full",
+```
+
+```diff title="components/calendar/ui/tooltip.styles.ts"
+-export const tooltipDefaults = { delay: 400, sideOffset: 4 } as const;
++export const tooltipDefaults = { delay: 150, sideOffset: 4 } as const;
+```
+
+For one control in one place, pass `class` instead. The kit merges it over its own classes, so
+`<Button class="rounded-full">` rounds that button alone.
+
+A file you edited is yours to merge: `shadcn add` asks before it replaces it, as
+[UI source](/docs/installation#ui-source-optional) describes. React's registry installs the same
+`.styles.ts` files, so a team with an app in each framework keeps one copy of a look.
+
+To replace a control with a component of your own, see
+[Use your own controls](/docs/views/controls#use-your-own-controls).

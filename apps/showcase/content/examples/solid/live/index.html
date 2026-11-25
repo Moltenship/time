@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Solid example · Moltenship Time</title>
+    <script>
+      // The docs page around this frame sets `dark` on its root, and this page follows it, before
+      // first paint and on every switch. Opened on its own, it follows the system's theme.
+      (() => {
+        const root = document.documentElement;
+        const apply = (dark) => {
+          root.classList.toggle("dark", dark);
+          root.style.colorScheme = dark ? "dark" : "light";
+        };
+        let host = null;
+        try {
+          if (window.parent !== window) host = window.parent.document.documentElement;
+        } catch {}
+        if (host) {
+          const follow = () => apply(host.classList.contains("dark"));
+          follow();
+          new MutationObserver(follow).observe(host, {
+            attributes: true,
+            attributeFilter: ["class"],
+          });
+        } else {
+          const system = matchMedia("(prefers-color-scheme: dark)");
+          apply(system.matches);
+          system.addEventListener("change", () => apply(system.matches));
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

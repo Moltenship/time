@@ -32,6 +32,7 @@ import { DndKitPreview } from "@/components/dnd-kit-preview";
 import { MotionPreview } from "@/components/motion-preview";
 import { QueryPreview } from "@/components/query-preview";
 import { RecurrencePreview } from "@/components/recurrence-preview";
+import { SolidExample } from "@/components/solid-example";
 import { ThemeBuilder } from "@/components/theme-builder";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Step, Steps } from "fumadocs-ui/components/steps";
@@ -68,6 +69,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     ShadingRecipesPreview,
     ResourceColumnsAnatomy,
     ResourceTimelineAnatomy,
+    SolidExample,
     ThemeBuilder,
     TimeGridAnatomy,
     YearAnatomy,

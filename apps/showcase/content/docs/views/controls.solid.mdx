@@ -34,11 +34,23 @@ and Tailwind's win over it. The select's list, the tooltips and the popovers ope
 through the Popover API: Chrome and Edge 114, Safari 17 and Firefox 125 or later.
 
 Tooltips wait 400 ms. Change `tooltipDefaults` in `components/calendar/ui/tooltip.styles.ts`, or
-pass `delay` to one `Tooltip`.
+pass `delay` to one `Tooltip`. Each control keeps its classes in such a `.styles.ts` file, and
+[A control's look](/docs/theming#a-controls-look) shows how to change them.
 
 In your own components, use the kit's controls as you would any other:
 
 <include meta='title="refresh.tsx"'>../../examples/solid/calendar-page.tsx#own-controls</include>
+
+Here is each control once: two buttons, an icon button with a tooltip, a select and a badge.
+
+<SolidExample
+  name="controls"
+  title="The kit's controls"
+  size="h-40"
+  caption="Live. Save stays pending while its promise settles, and the tooltip waits 400 ms."
+/>
+
+<include meta='title="controls.tsx"'>../../examples/solid/controls.tsx#controls</include>
 
 ## Use your own controls
 

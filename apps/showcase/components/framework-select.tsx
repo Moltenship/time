@@ -31,20 +31,29 @@ export interface FrameworkSelectProps {
 /**
  * The options of the select: one for each framework, each leading to the page the reader is on in
  * that framework's docs, or to the nearest page above it when that framework has no such page.
+ *
+ * `hash` is the heading the reader is at (`#keyboard`). The same page in the other framework's docs
+ * keeps it, so a switch lands on the same section. A page that only stands in for the one the
+ * reader was on has other headings, so it opens at its top. Where the two sets name a section
+ * differently, the browser finds no such heading and opens the page at its top too.
  */
 export function frameworkOptions(
   pathname: string,
   current: Framework,
   pages: FrameworkSelectProps["pages"],
+  hash = "",
 ): LayoutTab[] {
+  const here = parseDocsUrl(pathname)?.path;
   return frameworks.map((framework) => {
     const own = new Set(pages[framework]);
     const selected = framework === current;
+    const twin = selected ? pathname : twinUrl(pathname, framework, (url) => own.has(url));
+    const samePage = here !== undefined && parseDocsUrl(twin)?.path === here;
     return {
       title: frameworkNames[framework],
       icon: logos[framework],
       // The selected option leads where the reader is, so choosing it again changes nothing.
-      url: selected ? pathname : twinUrl(pathname, framework, (url) => own.has(url)),
+      url: samePage ? `${twin}${hash}` : twin,
       props: { "aria-current": selected ? "page" : undefined },
     };
   });
@@ -63,11 +72,14 @@ export function frameworkOptions(
 export function FrameworkSelect({ framework, pages }: FrameworkSelectProps) {
   const pathname = usePathname();
   const current = parseDocsUrl(pathname)?.framework ?? framework;
-  const options = useMemo(
-    () => frameworkOptions(pathname, current, pages),
-    [pathname, current, pages],
-  );
   const [open, setOpen] = useState(false);
+  // The address's hash, read as the list opens: the links exist only while it is open, and a
+  // click on a heading or in the table of contents changes the hash without rendering this again.
+  const [hash, setHash] = useState("");
+  const options = useMemo(
+    () => frameworkOptions(pathname, current, pages, hash),
+    [pathname, current, pages, hash],
+  );
 
   // Remember the framework being read, for the addresses that name none (`docs-redirects.mjs`).
   useEffect(() => {
@@ -75,7 +87,13 @@ export function FrameworkSelect({ framework, pages }: FrameworkSelectProps) {
   }, [current]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (next) setHash(window.location.hash);
+        setOpen(next);
+      }}
+    >
       <PopoverTrigger
         aria-label={`Framework: ${frameworkNames[current]}`}
         className="flex items-center gap-2 rounded-lg border bg-fd-secondary/50 p-2 text-start text-fd-secondary-foreground transition-colors hover:bg-fd-accent data-[state=open]:bg-fd-accent data-[state=open]:text-fd-accent-foreground"

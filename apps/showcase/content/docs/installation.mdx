@@ -464,7 +464,8 @@ around it.
 The theme switches when an ancestor of the calendar has the `dark` class, as shadcn/ui does. Toggle
 it on `<html>` from your app's theme setting; the `@custom-variant` line in `src/app.css` makes the
 files' `dark:` classes follow the same class. The theme's tokens go into `src/app.css` inside
-`@layer base`, so your own rules win over them: change a token in a rule of your own.
+`@layer base`, so your own rules win over them: change a token in a rule of your own, as
+[Theming](/docs/theming#changing-tokens) shows.
 
 The files are copies you own: edit them as you would any component. A fix in the registry reaches
 your app when you add the item again. The command writes the files your app doesn't have, skips

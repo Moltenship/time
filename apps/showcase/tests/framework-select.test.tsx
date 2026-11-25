@@ -59,6 +59,20 @@ describe("the options", () => {
     expect(urls("/docs/react/views/month", "react").Solid).toBe("/docs/solid");
   });
 
+  test("the same page keeps the heading the reader is at", () => {
+    const options = frameworkOptions("/docs/react/quick-start", "react", pages, "#render-it");
+    expect(options.map((option) => option.url)).toEqual([
+      "/docs/react/quick-start#render-it",
+      "/docs/solid/quick-start#render-it",
+    ]);
+  });
+
+  test("a page that stands in for the one being read opens at its top", () => {
+    const [react, solid] = frameworkOptions("/docs/react/api/store", "react", pages, "#selectors");
+    expect(react?.url).toBe("/docs/react/api/store#selectors");
+    expect(solid?.url).toBe("/docs/solid/api");
+  });
+
   test("the selected option is marked, and leads where the reader is", () => {
     const [react, solid] = frameworkOptions("/docs/solid/quick-start", "solid", pages);
     expect(solid?.props?.["aria-current"]).toBe("page");
@@ -87,6 +101,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   document.cookie = `${frameworkCookie}=; path=/; max-age=0`;
+  window.history.replaceState(null, "", window.location.pathname);
 });
 
 afterEach(() => {
@@ -166,6 +181,20 @@ describe("the select", () => {
       "/docs/solid/api/components",
     ]);
     expect(links.map((link) => link.getAttribute("aria-current"))).toEqual([null, "page"]);
+  });
+
+  test("the links keep the address's hash, as it is when the list opens", () => {
+    const button = renderAt("/docs/react/quick-start", "react");
+    // A click in the table of contents changes the hash and renders nothing.
+    window.history.replaceState(null, "", "#render-it");
+    expect(open(button).map((link) => link.getAttribute("href"))).toEqual([
+      "/docs/react/quick-start#render-it",
+      "/docs/solid/quick-start#render-it",
+    ]);
+
+    act(() => button.click());
+    window.history.replaceState(null, "", "#next-steps");
+    expect(open(button)[1]?.getAttribute("href")).toBe("/docs/solid/quick-start#next-steps");
   });
 
   test("a page Solid lacks leads to the nearest one it has", () => {

@@ -24,6 +24,10 @@ in place of the kit's. It checks below its region that it takes every prop of th
 A Solid page takes its TypeScript from here and writes none inline, which
 `tests/solid-docs.test.ts` checks.
 
+`live/` holds no samples either. It is the build of the live examples: one page that runs a
+sample inside the iframe a Solid page shows with `<SolidExample>`. Each `<name>.example.tsx` there
+names a sample and its stylesheet. `docs/internal/solid-examples.md` says how to add one.
+
 `mount/` holds no samples. It is a test project of the root's `vp test`, with Solid's Vite plugin,
 that mounts the quick start through `main.tsx` and checks it renders a calendar that navigates.
 The docs site's own tests compile JSX for React, so they leave this folder out.

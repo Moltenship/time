@@ -18,6 +18,8 @@ export interface Preset {
   /** Light values, and the sizes, which both modes share. */
   readonly light?: Declarations;
   readonly name: string;
+  /** For the StyleX flavour alone: a builder without StyleX leaves the preset out. */
+  readonly stylex?: true;
 }
 
 /** A solid fill per palette colour, with white text, for themes that want bold events. */
@@ -132,6 +134,7 @@ export const presets: readonly Preset[] = [
       "--secondary-foreground": "oklch(0 0 0)",
     },
     name: "Astryx neutral",
+    stylex: true,
   },
   {
     kind: "density",
