@@ -103,6 +103,8 @@ export const optionalFeatures: readonly OptionalFeature[] = [
     files: [
       "packages/calendar-core/src/history/event-history.ts",
       "packages/calendar-core/src/history/types.ts",
+      "packages/calendar-primitives/src/history.ts",
+      "packages/calendar-primitives/src/history-shortcuts.ts",
       "packages/calendar-react/src/history.ts",
       "packages/calendar-react/src/history-shortcuts.ts",
     ],
