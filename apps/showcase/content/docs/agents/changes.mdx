@@ -9,6 +9,17 @@ description: Tell an agent's change from a person's, refuse it with a policy, an
 
 </React>
 
+<Solid>
+
+<SolidExample
+  name="agent-log"
+  title="An agent's changes in the app's log"
+  size="h-[32rem]"
+  caption="Live, in the browser's own styles. A policy refuses the move to Saturday."
+/>
+
+</Solid>
+
 An agent's change reaches the same handlers as a person's, with a detail that says who made it.
 You can log it, refuse it, and take it back. This page's samples import <React>the `Calendar`, `Meeting`,
 `meetings` and `weekRules` that the [Quick start](/docs/quick-start) puts in `calendar.tsx`</React><Solid>the
@@ -59,6 +70,11 @@ This calendar logs both:
 <Solid>
 
 <include meta='title="agent-audit.tsx"'>../../examples/solid/agent-audit.tsx#audit</include>
+
+The example at the top of this page shows what it logs. `AgentSteps` is the buttons and the
+answer, from [Agents in your app](/docs/agents):
+
+<include meta='title="agent-log.tsx"'>../../examples/solid/agent-log.tsx#log</include>
 
 </Solid>
 

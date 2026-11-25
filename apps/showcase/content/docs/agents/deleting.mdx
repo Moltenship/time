@@ -9,6 +9,17 @@ description: Let an agent delete an event only after the person on the page says
 
 </React>
 
+<Solid>
+
+<SolidExample
+  name="agent-delete"
+  title="An agent asks to delete a meeting"
+  size="h-[28rem]"
+  caption="Live, in the browser's own styles. Send the delete, then answer the question."
+/>
+
+</Solid>
+
 A deleted event is gone from the calendar, so an agent can't delete until you turn it on. Two
 switches are involved, and a careful app sets both:
 
@@ -86,6 +97,11 @@ The calendar turns deleting on and draws the question from <React>that store</Re
 <include meta='title="agent-confirm-calendar.tsx"'>
   ../../examples/solid/agent-confirm-calendar.tsx#calendar
 </include>
+
+The example at the top of this page is that calendar and two calls. `AgentSteps` is the buttons
+and the answer, from [Agents in your app](/docs/agents):
+
+<include meta='title="agent-delete.tsx"'>../../examples/solid/agent-delete.tsx#delete</include>
 
 </Solid>
 
