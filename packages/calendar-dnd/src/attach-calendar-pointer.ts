@@ -41,11 +41,13 @@ import {
   type PointerTarget,
 } from "./gestures";
 import {
+  FLOATING_MAXIMUM,
   GhostClone,
   ghostLayout,
   GhostLayer,
   ghostValidity,
   prefersReducedMotion,
+  visibleOf,
   type GhostBox,
   type GhostLayout,
   type GhostRect,
@@ -231,8 +233,6 @@ const DRAG_DISTANCE = 4;
  */
 const LONG_PRESS_MS = 450;
 const TOUCH_TOLERANCE = 8;
-/** The most of a long or wide event the copy that follows the pointer outside the view shows. */
-const FLOATING_MAXIMUM = { height: 120, width: 320 } as const;
 const noFollowers: readonly CalendarDragFollower[] = Object.freeze([]);
 const pointerInput: CalendarProposalDetail = Object.freeze({ input: "pointer" });
 
@@ -293,6 +293,16 @@ function floatingRect({ height, offset, width }: Floating, point: CalendarPoint)
     visible: { bottom: innerHeight, left: 0, right: innerWidth, top: 0 },
     width,
   };
+}
+
+/** An element of the view's and its box, in viewport coordinates. */
+interface RenderedBox extends GhostBox {
+  readonly element: Element;
+}
+
+function renderedBox(element: Element): RenderedBox {
+  const { height, left, top, width } = element.getBoundingClientRect();
+  return { element, height, left, top, width };
 }
 
 /** Whether two boxes are the same to within half a pixel. */
@@ -526,11 +536,17 @@ export function attachCalendarPointer<
     const { label, layout, validity } = free;
     if (layout === null) return;
     if (gesture.kind === "move") {
+      const { clone } = free;
+      if (clone === undefined) return;
+      clone.float(false);
       if (laidOut) {
         free.marker.render(layout.rects, null, null, validity);
-        free.clone?.mark(label, validity, false);
+        clone.mark(label, validity, false);
+        // Clipped as the cell it would land in clips its content, so it slides under headers.
+        const landing = nearest(layout.rects, clone.rect);
+        if (landing !== null) clone.clip(landing.visible);
       }
-      free.clone?.follow(current.point);
+      clone.follow(current.point);
       return;
     }
 
@@ -552,28 +568,46 @@ export function attachCalendarPointer<
     current.ghost.render(drawn.rects, template, label, validity);
   }
 
-  /** Where a free drag has nothing to drop on: no landing, and a moved event's copy marked so. */
+  /**
+   * Where a free drag has nothing to drop on: no landing, and a moved event's copy marked so. Off
+   * the view, or over a drop zone of the app's, the copy shrinks as a snapped drag's does; over a
+   * header of the view it keeps its size and its last cell's clip.
+   */
   function followOutside(current: Session<TEvent, TEventId, TResourceId>, free: FreePreview): void {
     free.marker.clear();
     current.ghost.clear();
-    free.clone?.mark(null, null, true);
-    free.clone?.follow(current.point);
+    const { clone } = free;
+    if (clone === undefined) return;
+    clone.mark(null, null, true);
+    clone.float(current.claimed || !overView(current.point));
+    clone.follow(current.point);
   }
 
   /** Where the view renders the event now: a box per segment it shows. */
-  function renderedBoxes(id: TEventId): GhostBox[] {
-    const boxes: GhostBox[] = [];
+  function renderedBoxes(id: TEventId): RenderedBox[] {
+    const boxes: RenderedBox[] = [];
     for (const element of region.querySelectorAll("[data-event-id]")) {
       if (String(eventIdOf(element)) !== String(id)) continue;
-      const rect = element.getBoundingClientRect();
-      if (rect.width > 0 || rect.height > 0) boxes.push(rect);
+      const box = renderedBox(element);
+      if (box.width > 0 || box.height > 0) boxes.push(box);
     }
     return boxes;
   }
 
+  /** A rendered box as a target to settle on, clipped where its element may paint. */
+  function settleTarget(
+    current: Session<TEvent, TEventId, TResourceId>,
+    box: RenderedBox | null,
+  ): GhostRect | null {
+    if (box === null) return null;
+    const { element, ...rest } = box;
+    return { ...rest, visible: visibleOf(current.surface, element) };
+  }
+
   /**
    * Ends a free drag's preview: `"drop"` slides it to where the drop lands, `"home"` back to the
-   * event, and `null` removes it, as for a drop zone of the app's.
+   * event, and `null` removes it, as for a drop zone of the app's. A drop waits a frame, for a
+   * refusal the policies or the app give at once and for the view to render the change.
    */
   function settleFree(
     current: Session<TEvent, TEventId, TResourceId>,
@@ -582,9 +616,17 @@ export function attachCalendarPointer<
   ): void {
     free.marker.clear();
     const { gesture } = current;
+    const refused = () => free.refused || free.validity === "invalid";
     if (gesture.kind !== "move") {
-      if (to === "drop" && free.layout !== null) current.ghost.settle(free.layout.rects);
-      else current.ghost.clear();
+      const { layout } = free;
+      if (to !== "drop" || layout === null || refused()) {
+        current.ghost.clear();
+        return;
+      }
+      requestAnimationFrame(() => {
+        if (refused()) current.ghost.clear();
+        else current.ghost.settle(layout.rects);
+      });
       return;
     }
     const { clone } = free;
@@ -594,17 +636,18 @@ export function attachCalendarPointer<
       return;
     }
     const from = clone.rect;
+    const { id } = gesture.event;
     if (to === "home") {
       clone.settle(
         gesture.element.isConnected
-          ? gesture.element.getBoundingClientRect()
-          : nearest(renderedBoxes(gesture.event.id), from),
+          ? settleTarget(current, renderedBox(gesture.element))
+          : settleTarget(current, nearest(renderedBoxes(id), from)),
       );
       return;
     }
-    const layout = free.layout;
+    const { layout } = free;
     const landing = layout === null ? null : nearest(layout.rects, from);
-    const fallback: GhostBox | null =
+    const fallback: GhostRect | null =
       landing === null
         ? null
         : {
@@ -612,23 +655,24 @@ export function attachCalendarPointer<
               layout!.axis === "time" ? landing.height : Math.min(from.height, landing.height),
             left: landing.left,
             top: landing.top,
+            visible: landing.visible,
             width: Math.min(from.width, landing.width),
           };
     // Where the event shows before the proposal renders it anywhere new.
-    const before = renderedBoxes(gesture.event.id);
+    const before = renderedBoxes(id);
     requestAnimationFrame(() => {
-      const after = renderedBoxes(gesture.event.id);
-      // A refusal, known by now when the policies or the app answered at once, leaves the event
-      // where it was: the copy goes back to it.
-      if (free.refused || free.validity === "invalid") {
-        clone.settle(nearest(after, from) ?? fallback);
+      const after = renderedBoxes(id);
+      // A refusal leaves the event where it was: the copy goes back to it, or to where it was
+      // pressed when the view doesn't show it.
+      if (refused()) {
+        clone.settle(settleTarget(current, nearest(after, from)) ?? clone.home);
         return;
       }
       // Otherwise the copy lands on the event where it renders anew. An app that hasn't rendered
       // the change yet shows it nowhere new, so the copy lands on the landing box instead of
       // sliding home before the event appears.
       const moved = after.filter((box) => !before.some((old) => sameBox(old, box)));
-      clone.settle(nearest(moved, from) ?? fallback);
+      clone.settle(settleTarget(current, nearest(moved, from)) ?? fallback);
     });
   }
 
@@ -689,6 +733,7 @@ export function attachCalendarPointer<
           current.gesture.element,
           current.free.className,
           current.origin,
+          visibleOf(current.surface, current.gesture.element),
         );
       }
     }
@@ -739,8 +784,6 @@ export function attachCalendarPointer<
     if (current.placement !== null) getOptions().onPreview?.(null);
     clearTimeout(current.longPress);
     if (current.frame !== undefined) cancelAnimationFrame(current.frame);
-    if (current.free === undefined) current.ghost.clear();
-    else settleFree(current, current.free, dropped ? null : settle);
     region.removeAttribute("data-interaction");
     if (current.gesture.kind !== "create") current.gesture.element.removeAttribute("data-dragging");
 
@@ -752,7 +795,13 @@ export function attachCalendarPointer<
     for (const type of ["contextmenu", "dragstart", "selectstart"]) {
       window.removeEventListener(type, preventDefault);
     }
-    tellFollowers(current.followers, (follower) => follower.end?.(dropped, landing));
+    // Last, so a preview that fails to settle leaves no listener or attribute behind.
+    try {
+      if (current.free === undefined) current.ghost.clear();
+      else settleFree(current, current.free, dropped ? null : settle);
+    } finally {
+      tellFollowers(current.followers, (follower) => follower.end?.(dropped, landing));
+    }
   }
 
   /** Ends the gesture without proposing anything. */

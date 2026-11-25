@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, test, vi } from "vite-plus/test";
+import { afterEach, describe, expect, onTestFinished, test, vi } from "vite-plus/test";
 
 import type { CalendarEventProposal, CalendarPolicyResult } from "@moltenship/calendar-core";
 
 import {
   attachCalendarPointer,
+  eventIdAttributes,
   monitorCalendarDrags,
   type CalendarPointerOptions,
 } from "../src/index";
@@ -95,6 +96,71 @@ const ghostsOf = (region: HTMLElement, kind: string) => [
   ...region.querySelectorAll<HTMLElement>(`[data-calendar-ghost="${kind}"]`),
 ];
 
+/** Clips the region as a scroll viewport does, to `box`: its cells and events paint only there. */
+function scrollViewport(
+  region: HTMLElement,
+  box: { readonly bottom: number; readonly top: number },
+) {
+  region.style.overflowY = "auto";
+  region.getBoundingClientRect = () =>
+    ({
+      ...box,
+      height: box.bottom - box.top,
+      left: 0,
+      right: 2 * COLUMN_WIDTH,
+      width: 200,
+    }) as DOMRect;
+}
+
+/** Puts the time column for `date` in a container that clips it to `box`, as a pane would. */
+function clipColumn(
+  region: HTMLElement,
+  date: string,
+  box: {
+    readonly bottom: number;
+    readonly left: number;
+    readonly right: number;
+    readonly top: number;
+  },
+) {
+  const column = region.querySelector<HTMLElement>(`[data-date="${date}"]:not([data-all-day])`)!;
+  const pane = document.createElement("div");
+  pane.style.overflowX = "hidden";
+  pane.style.overflowY = "hidden";
+  pane.getBoundingClientRect = () =>
+    ({ ...box, height: box.bottom - box.top, width: box.right - box.left }) as DOMRect;
+  column.replaceWith(pane);
+  pane.append(column);
+}
+
+/** Reads of boxes the fixture doesn't place, such as the previews' origin probes. */
+function unplacedReads() {
+  return vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+}
+
+/** Records attribute changes on `element`, to show it isn't drawn again. */
+function watch(element: HTMLElement): () => number {
+  const observer = new MutationObserver(() => undefined);
+  observer.observe(element, { attributes: true, subtree: true });
+  onTestFinished(() => observer.disconnect());
+  return () => observer.takeRecords().length;
+}
+
+/** A new element for event `id` at `box`, as a view renders one when it renders the event again. */
+function rendered(id: string, at: Parameters<typeof place>[1]): HTMLElement {
+  const node = document.createElement("div");
+  for (const [name, value] of Object.entries(eventIdAttributes(id))) {
+    if (value !== undefined) node.setAttribute(name, value);
+  }
+  return place(node, at, 1);
+}
+
+const refuse = () =>
+  ({ status: "rejected" }) as unknown as CalendarPolicyResult<TestEvent, string | number, string>;
+
+/** The origin probes left in the document, which a finished preview removes. */
+const probes = () => document.querySelectorAll("[data-calendar-ghost-origin]").length;
+
 function translation(element: HTMLElement): readonly [number, number] {
   const match = /translate3d\((-?[\d.]+)px, (-?[\d.]+)px, 0\)/u.exec(element.style.transform);
   if (match === null) throw new Error(`No translation in "${element.style.transform}"`);
@@ -148,12 +214,15 @@ function record(
     onPreview: (draft) => heard.push(`draft ${JSON.stringify(draft)}`),
     ...extra,
   });
-  for (const [type, x, y] of steps) {
-    pointer(type, target(), x, y, { pointerType });
-    // A touch drag starts once the finger has rested.
-    if (type === "pointerdown" && pointerType === "touch") vi.advanceTimersByTime(450);
+  try {
+    for (const [type, x, y] of steps) {
+      pointer(type, target(), x, y, { pointerType });
+      // A touch drag starts once the finger has rested.
+      if (type === "pointerdown" && pointerType === "touch") vi.advanceTimersByTime(450);
+    }
+  } finally {
+    stop();
   }
-  stop();
   return { heard, proposals: proposals.map(interval) };
 }
 
@@ -269,7 +338,8 @@ describe("a free move", () => {
       top: yAt("09:00") + yAt("10:37") - yAt("09:30"),
       width: COLUMN_WIDTH,
     });
-    expect(clone!.style.clipPath).toBe("");
+    // Nothing clips it: its insets only leave room for its shadow.
+    expect(clone!.style.clipPath).toBe("inset(-32px -32px -32px -32px)");
     expect(clone!.hasAttribute("data-outside")).toBe(false);
     // Its label and the landing box show where a drop lands: 10:37 snaps to 10:30.
     expect(clone!.querySelector("[data-event-time]")!.textContent).toMatch(
@@ -300,9 +370,11 @@ describe("a free move", () => {
     const laidOut = layouts.count;
     const drafts = onPreview.mock.calls.length;
     const landingStyle = landing!.style.cssText;
+    const landingChanges = watch(landing!);
     const transforms: string[] = [];
     const style = clone!.style;
     const writes = vi.spyOn(style, "setProperty");
+    const reads = unplacedReads();
 
     for (const minute of ["10:32", "10:34", "10:36"]) {
       pointer("pointermove", element, 60, yAt(minute));
@@ -312,8 +384,11 @@ describe("a free move", () => {
     expect(layouts.count).toBe(laidOut);
     expect(onPreview.mock.calls.length).toBe(drafts);
     expect(landing!.style.cssText).toBe(landingStyle);
+    expect(landingChanges()).toBe(0);
     expect(new Set(transforms).size).toBe(3);
     expect(writes).not.toHaveBeenCalled();
+    // Not even the landing box's origin.
+    expect(reads).not.toHaveBeenCalled();
   });
 
   test("marks the copy and the landing box with what the policies say", () => {
@@ -391,6 +466,57 @@ describe("a free move", () => {
     const [landing] = ghostsOf(month.region, "landing");
     expect(box(landing!)).toEqual({ height: 80, left: 200, top: 80, width: 100 });
   });
+
+  test("clips the copy where the cell it would land in paints, and slides the clip home with it", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([meeting]);
+    const element = grid.elements.get("a")!;
+    // The grid scrolls under its headers from 09:30, which hides the event's first half hour, and
+    // the next day's column shows only down to 09:45.
+    scrollViewport(grid.region, { bottom: 600, top: yAt("09:30") });
+    clipColumn(grid.region, "2026-08-18", { bottom: yAt("09:45"), left: 100, right: 200, top: 0 });
+    setup(grid, { preview: "free" });
+
+    pointer("pointerdown", element, 50, yAt("09:45"));
+    pointer("pointermove", element, 150, yAt("09:45"));
+    const [clone] = ghostsOf(grid.region, "event");
+    expect(box(clone!)).toEqual({
+      height: HOUR_HEIGHT,
+      left: COLUMN_WIDTH,
+      top: yAt("09:00"),
+      width: COLUMN_WIDTH,
+    });
+    // Over that column, it shows only between the headers and 09:45.
+    expect(clone!.style.clipPath).toBe(
+      `inset(${yAt("09:30") - yAt("09:00")}px 0px ${yAt("10:00") - yAt("09:45")}px 0px)`,
+    );
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { cancelable: true, key: "Escape" }));
+    expect(clone!.style.transition).toContain("clip-path");
+    expect(box(clone!)).toEqual({ height: HOUR_HEIGHT, left: 0, top: yAt("09:00"), width: 100 });
+    expect(clone!.style.clipPath).toBe(`inset(${yAt("09:30") - yAt("09:00")}px -32px -32px 0px)`);
+  });
+
+  test("shrinks the copy off the view as a snapped drag's, and gives it its size back over it", () => {
+    const grid = mountTimeGrid([timedEvent("a", "2026-08-17T08:00Z", "2026-08-17T14:00Z")]);
+    const element = grid.elements.get("a")!;
+    setup(grid, { preview: "free" });
+
+    // Pressed 60px down a 240px event: off the view, the copy is at most 120px tall around that.
+    pointer("pointerdown", element, 50, yAt("09:30"));
+    pointer("pointermove", element, 500, 300);
+    const [clone] = ghostsOf(grid.region, "event");
+    expect(box(clone!)).toEqual({ height: 120, left: 450, top: 240, width: COLUMN_WIDTH });
+    expect(clone!.style.clipPath).toBe("inset(-32px -32px -32px -32px)");
+
+    pointer("pointermove", element, 150, yAt("10:30"));
+    expect(box(clone!)).toEqual({
+      height: 6 * HOUR_HEIGHT,
+      left: COLUMN_WIDTH,
+      top: yAt("09:00"),
+      width: COLUMN_WIDTH,
+    });
+  });
 });
 
 describe("a free move's release", () => {
@@ -425,8 +551,11 @@ describe("a free move's release", () => {
     expect(clone!.style.transition).toContain("ease-out");
     expect(clone!.hasAttribute("data-settling")).toBe(true);
     expect(box(clone!)).toEqual(moved);
+    expect(element.hasAttribute("data-dragging")).toBe(false);
+    expect(grid.region.hasAttribute("data-interaction")).toBe(false);
     vi.advanceTimersByTime(200);
     expect(ghostsOf(grid.region, "event")).toHaveLength(0);
+    expect(probes()).toBe(0);
   });
 
   test("slides onto the landing box when the view doesn't render the event", () => {
@@ -534,9 +663,90 @@ describe("a free move's release", () => {
       width: COLUMN_WIDTH,
     });
     expect(ghostsOf(grid.region, "landing")).toHaveLength(0);
+    expect(element.hasAttribute("data-dragging")).toBe(false);
     vi.advanceTimersByTime(200);
     expect(ghostsOf(grid.region, "event")).toHaveLength(0);
+    expect(probes()).toBe(0);
     expect(proposals).toEqual([]);
+  });
+
+  test("goes back to the event where the view renders it again, in a new element", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([meeting]);
+    const element = grid.elements.get("a")!;
+    setup(grid, { preview: "free" });
+
+    pointer("pointerdown", element, 50, yAt("09:30"));
+    pointer("pointermove", element, 150, yAt("12:37"));
+    const again = { height: HOUR_HEIGHT, left: 10, top: yAt("09:00"), width: 80 };
+    element.replaceWith(rendered("a", again));
+    window.dispatchEvent(new KeyboardEvent("keydown", { cancelable: true, key: "Escape" }));
+
+    expect(box(ghostsOf(grid.region, "event")[0]!)).toEqual(again);
+  });
+
+  test("slides onto the landing box, not home, when the policies only warn", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([meeting]);
+    const element = grid.elements.get("a")!;
+    setup(grid, {
+      check: () =>
+        ({
+          change: { warnings: ["outside-hours"] },
+          status: "accepted",
+        }) as unknown as CalendarPolicyResult<TestEvent, string | number, string>,
+      onPropose: () => new Promise(() => undefined),
+      preview: "free",
+    });
+
+    pointer("pointerdown", element, 50, yAt("09:30"));
+    pointer("pointermove", element, 150, yAt("10:37"));
+    expect(ghostsOf(grid.region, "landing")[0]!.hasAttribute("data-warning")).toBe(true);
+    pointer("pointerup", element, 150, yAt("10:37"));
+    vi.advanceTimersToNextFrame();
+
+    expect(translation(ghostsOf(grid.region, "event")[0]!)).toEqual([COLUMN_WIDTH, yAt("10:00")]);
+  });
+
+  test("goes back to where it was pressed when a refused event shows nowhere", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([meeting]);
+    const element = grid.elements.get("a")!;
+    setup(grid, { check: refuse, onPropose: () => element.remove(), preview: "free" });
+
+    pointer("pointerdown", element, 50, yAt("09:30"));
+    pointer("pointermove", element, 150, yAt("10:37"));
+    pointer("pointerup", element, 150, yAt("10:37"));
+    vi.advanceTimersToNextFrame();
+
+    expect(box(ghostsOf(grid.region, "event")[0]!)).toEqual({
+      height: HOUR_HEIGHT,
+      left: 0,
+      top: yAt("09:00"),
+      width: COLUMN_WIDTH,
+    });
+  });
+
+  test("slides a month copy onto the landing box at its own height when the view doesn't render it", () => {
+    vi.useFakeTimers();
+    const month = mountMonth([meeting]);
+    const element = month.elements.get("a")!;
+    setup(month, { onPropose: () => element.remove(), preview: "free" });
+    const from = cellCenter("2026-08-17");
+    const to = cellCenter("2026-08-25");
+
+    pointer("pointerdown", element, from.x, from.y);
+    pointer("pointermove", element, to.x - 30, to.y + 20);
+    pointer("pointerup", element, to.x - 30, to.y + 20);
+    vi.advanceTimersToNextFrame();
+
+    // The chip's height, not the day cell's.
+    expect(box(ghostsOf(month.region, "event")[0]!)).toEqual({
+      height: 20,
+      left: 200,
+      top: 80,
+      width: 100,
+    });
   });
 
   test("removes the copy at once under reduced motion", () => {
@@ -558,38 +768,38 @@ describe("a free move's release", () => {
     pointer("pointermove", element, 150, yAt("10:37"));
     window.dispatchEvent(new KeyboardEvent("keydown", { cancelable: true, key: "Escape" }));
     expect(ghostsOf(grid.region, "event")).toHaveLength(0);
+    expect(probes()).toBe(0);
   });
 
   test("removes the copy at once when a drop zone of the app's takes it", () => {
     const grid = mountTimeGrid([meeting]);
     const element = grid.elements.get("a")!;
-    const stop = monitorCalendarDrags(() => ({ claims: () => true }));
+    onTestFinished(monitorCalendarDrags(() => ({ claims: () => true })));
     const proposals = setup(grid, { preview: "free" });
 
     pointer("pointerdown", element, 50, yAt("09:30"));
     pointer("pointermove", element, 500, yAt("10:37"));
     expect(ghostsOf(grid.region, "event")[0]!.hasAttribute("data-outside")).toBe(true);
     pointer("pointerup", element, 500, yAt("10:37"));
-    stop();
 
     expect(proposals).toEqual([]);
     expect(ghostsOf(grid.region, "event")).toHaveLength(0);
+    expect(probes()).toBe(0);
   });
 });
 
 describe("a free move while the view scrolls", () => {
-  test("keeps the copy under the pointer and the landing box on the scrolled grid", () => {
-    vi.useFakeTimers();
+  /** The time grid in a container that scrolls it, and the event to drag. */
+  function scrollingGrid() {
     const grid = mountTimeGrid([meeting]);
-    const element = grid.elements.get("a")!;
-    let scrollTop = 0;
+    const scroll = { top: 0 };
     // The grid scrolls: its cells and events move up as the container scrolls down.
     for (const node of grid.region.querySelectorAll<HTMLElement>("[data-date], [data-event-id]")) {
       const fixed = node.getBoundingClientRect.bind(node);
       node.getBoundingClientRect = () => {
         const rect = fixed();
         const { height, left, width } = rect;
-        const top = rect.top - scrollTop;
+        const top = rect.top - scroll.top;
         return { bottom: top + height, height, left, right: left + width, top, width } as DOMRect;
       };
     }
@@ -597,17 +807,23 @@ describe("a free move while the view scrolls", () => {
     container.getBoundingClientRect = () =>
       ({ bottom: 600, left: 0, right: 200, top: 0 }) as DOMRect;
     Object.defineProperty(container, "scrollTop", {
-      get: () => scrollTop,
+      get: () => scroll.top,
       set: (value: number) => {
-        scrollTop = Math.max(0, value);
+        scroll.top = Math.max(0, value);
       },
     });
+    return { container, element: grid.elements.get("a")!, grid, scroll };
+  }
+
+  test("keeps the copy under the pointer and the landing box on the scrolled grid", () => {
+    vi.useFakeTimers();
+    const { container, element, grid, scroll } = scrollingGrid();
     const proposals = setup(grid, { preview: "free", scrollContainer: { current: container } });
 
     pointer("pointerdown", element, 50, yAt("09:30"));
     pointer("pointermove", element, 50, 590);
     for (let frame = 0; frame < 10; frame += 1) vi.advanceTimersToNextFrame();
-    expect(scrollTop).toBeGreaterThan(0);
+    expect(scroll.top).toBeGreaterThan(0);
 
     const [clone] = ghostsOf(grid.region, "event");
     expect(translation(clone!)).toEqual([0, yAt("09:00") + 590 - yAt("09:30")]);
@@ -619,7 +835,36 @@ describe("a free move while the view scrolls", () => {
     expect(proposal?.cause).toBe("move");
     const start = proposal!.cause === "move" ? proposal!.proposed.start : null;
     const time = (start as Temporal.Instant).toZonedDateTimeISO(timeZone).toPlainTime().toString();
-    expect(landingTop).toBeCloseTo(yAt(time) - scrollTop);
+    expect(landingTop).toBeCloseTo(yAt(time) - scroll.top);
+  });
+
+  test("finds its origin again when the scroll carries a transformed ancestor", () => {
+    vi.useFakeTimers();
+    const { container, element, grid, scroll } = scrollingGrid();
+    // A transformed ancestor that scrolls with the grid is where fixed boxes are placed from.
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      // Everything else the fixture doesn't place has no box, as in jsdom.
+      const top = this.hasAttribute("data-calendar-ghost-origin") ? -scroll.top : 0;
+      return {
+        bottom: top,
+        height: 0,
+        left: 0,
+        right: 0,
+        top,
+        width: 0,
+      } as DOMRect;
+    });
+    setup(grid, { preview: "free", scrollContainer: { current: container } });
+
+    pointer("pointerdown", element, 50, yAt("09:30"));
+    pointer("pointermove", element, 50, 590);
+    for (let frame = 0; frame < 10; frame += 1) vi.advanceTimersToNextFrame();
+    expect(scroll.top).toBeGreaterThan(0);
+
+    const [clone] = ghostsOf(grid.region, "event");
+    expect(translation(clone!)[1]).toBeCloseTo(yAt("09:00") + 590 - yAt("09:30") + scroll.top);
   });
 });
 
@@ -664,6 +909,50 @@ describe("a free resize", () => {
     expect(box(ghostsOf(grid.region, "event")[0]!).height).toBeCloseTo(hour(15));
   });
 
+  test("draws the landing box again only when the snapped end changes", () => {
+    const grid = mountTimeGrid([meeting]);
+    const handle = grid.elements.get("a")!.querySelector<HTMLElement>('[data-resize="end"]')!;
+    setup(grid, { preview: "free" });
+    pointer("pointerdown", handle, 50, yAt("09:58"));
+    pointer("pointermove", handle, 50, yAt("10:40"));
+    const changes = watch(ghostsOf(grid.region, "landing")[0]!);
+    const [clone] = ghostsOf(grid.region, "event");
+    const heights = new Set<string>();
+    const reads = unplacedReads();
+    for (const time of ["10:41", "10:42", "10:43"]) {
+      pointer("pointermove", handle, 50, yAt(time));
+      heights.add(clone!.style.height);
+    }
+    expect(heights.size).toBe(3);
+    expect(changes()).toBe(0);
+    // One origin a move, for the edge; none for the landing box.
+    expect(reads).toHaveBeenCalledTimes(3);
+  });
+
+  test("doesn't slide onto an end the policies or the app refuse", async () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([meeting]);
+    const handle = grid.elements.get("a")!.querySelector<HTMLElement>('[data-resize="end"]')!;
+    const drag = () => {
+      pointer("pointerdown", handle, 50, yAt("09:58"));
+      pointer("pointermove", handle, 50, yAt("11:07"));
+      pointer("pointerup", handle, 50, yAt("11:07"));
+    };
+
+    setup(grid, { check: refuse, preview: "free" });
+    drag();
+    expect(ghostsOf(grid.region, "event")).toHaveLength(0);
+
+    setup(grid, {
+      onPropose: () => Promise.resolve({ reason: "policy", status: "rejected" } as never),
+      preview: "free",
+    });
+    drag();
+    for (let tick = 0; tick < 3; tick += 1) await Promise.resolve();
+    vi.advanceTimersToNextFrame();
+    expect(ghostsOf(grid.region, "event")).toHaveLength(0);
+  });
+
   test("slides onto the snapped edge on release", () => {
     vi.useFakeTimers();
     const grid = mountTimeGrid([meeting]);
@@ -675,6 +964,9 @@ describe("a free resize", () => {
 
     expect(proposals).toHaveLength(1);
     const [clone] = ghostsOf(grid.region, "event");
+    // It waits a frame, for a refusal that comes at once.
+    expect(clone!.style.transition).toBe("");
+    vi.advanceTimersToNextFrame();
     expect(clone!.style.transition).toContain("height");
     expect(box(clone!).height).toBeCloseTo(hour(120));
     vi.advanceTimersByTime(200);
@@ -712,6 +1004,32 @@ describe("a free create", () => {
     pointer("pointermove", column(grid), 50, yAt("13:20"));
     expect(box(ghostsOf(grid.region, "range")[0]!).top).toBeCloseTo(yAt("13:20"));
     expect(box(ghostsOf(grid.region, "range")[0]!).height).toBeCloseTo(hour(55));
+  });
+
+  test("covers at least the slot it started in", () => {
+    const grid = mountTimeGrid([]);
+    const column = grid.region.querySelector<HTMLElement>(
+      '[data-date="2026-08-17"]:not([data-all-day])',
+    )!;
+    setup(grid, { preview: "free" });
+    pointer("pointerdown", column, 50, yAt("14:05"));
+    pointer("pointermove", column, 50, yAt("14:12"));
+    const [range] = ghostsOf(grid.region, "range");
+    expect(box(range!).top).toBe(yAt("14:00"));
+    expect(box(range!).height).toBeCloseTo(hour(15));
+  });
+
+  test("doesn't slide onto a range the policies refuse", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([]);
+    const column = grid.region.querySelector<HTMLElement>(
+      '[data-date="2026-08-17"]:not([data-all-day])',
+    )!;
+    setup(grid, { check: refuse, preview: "free" });
+    pointer("pointerdown", column, 50, yAt("14:05"));
+    pointer("pointermove", column, 50, yAt("15:10"));
+    pointer("pointerup", column, 50, yAt("15:10"));
+    expect(ghostsOf(grid.region, "range")).toHaveLength(0);
   });
 });
 

@@ -23,7 +23,7 @@ import {
   type TargetSurface,
 } from "./targets";
 
-interface Bounds {
+export interface Bounds {
   readonly bottom: number;
   readonly left: number;
   readonly right: number;
@@ -73,6 +73,11 @@ function visibleBounds(surface: TargetSurface, cell: Element, rectOf: RectReader
     };
   }
   return bounds;
+}
+
+/** Where an element's content can paint, read now: for one box, outside any layout pass. */
+export function visibleOf(surface: TargetSurface, element: Element): Bounds {
+  return visibleBounds(surface, element, (ancestor) => ancestor.getBoundingClientRect());
 }
 
 function isVisible({ height, left, top, visible, width }: GhostRect): boolean {
@@ -301,7 +306,7 @@ export interface GhostBox {
  * `transition-duration` says otherwise; see `--calendar-ghost-settle-duration`.
  */
 const SETTLE_MS = 150;
-const SETTLE_TRANSITION = ["transform", "width", "height"]
+const SETTLE_TRANSITION = ["transform", "width", "height", "clip-path"]
   .map(
     (property) =>
       `${property} var(--calendar-ghost-settle-duration, ${SETTLE_MS}ms) var(--calendar-ghost-settle-easing, ease-out)`,
@@ -575,15 +580,49 @@ function ghostSegment(
   return segment;
 }
 
+/** The most of a long or wide event a copy that follows the pointer outside the view shows. */
+export const FLOATING_MAXIMUM = { height: 120, width: 320 } as const;
+
+/** How far past its box a copy may paint where nothing clips it, so its shadow shows. */
+const SHADOW_ROOM = 32;
+
+function viewportBounds(): Bounds {
+  return { bottom: innerHeight, left: 0, right: innerWidth, top: 0 };
+}
+
+/**
+ * A `clip-path` that hides what of `box` falls outside `bounds`. Insets are always given, and
+ * negative where nothing clips, so the clip transitions with the box and keeps the shadow.
+ */
+function clipTo({ height, left, top, width }: GhostBox, bounds: Bounds): string {
+  const insets = [
+    bounds.top - top,
+    left + width - bounds.right,
+    top + height - bounds.bottom,
+    bounds.left - left,
+  ].map((inset) => `${Math.max(-SHADOW_ROOM, inset)}px`);
+  return `inset(${insets.join(" ")})`;
+}
+
 /**
  * The copy of a moved event that a free drag (`preview: "free"`) moves with the pointer, pixel for
- * pixel: the event's box at the press, carried by how far the pointer has gone since. It keeps the
- * event's size, isn't clipped to cells, and passes over the landing boxes. Its `[data-event-time]`
- * shows the range a drop would propose; `data-outside` marks it where there's nothing to drop on.
+ * pixel: the event's box at the press, carried by how far the pointer has gone since. Over the view
+ * it keeps the event's size and is clipped where the cell it would land in may paint, as scrolled
+ * content is; off the view it shrinks to at most `FLOATING_MAXIMUM` around the press, as the copy
+ * of a snapped drag does there. Its `[data-event-time]` shows the range a drop would propose;
+ * `data-outside` marks it where there's nothing to drop on.
  */
 export class GhostClone {
+  #bounds: Bounds;
   readonly #box: GhostBox;
   readonly #element: HTMLElement;
+  readonly #floating: {
+    readonly height: number;
+    readonly offset: { readonly x: number; readonly y: number };
+    readonly width: number;
+  };
+  #floats = false;
+  readonly #home: Bounds;
   #label: string | null = null;
   #origin: DOMRect;
   readonly #probe: OriginProbe;
@@ -594,28 +633,51 @@ export class GhostClone {
   #validity: GhostValidity = null;
   #outside = false;
 
+  /** `visible` is where the event may paint at the press. */
   constructor(
     region: HTMLElement,
     template: HTMLElement,
     className: string | undefined,
     press: { readonly x: number; readonly y: number },
+    visible: Bounds,
   ) {
     const rect = template.getBoundingClientRect();
     this.#box = { height: rect.height, left: rect.left, top: rect.top, width: rect.width };
+    const width = Math.min(rect.width, FLOATING_MAXIMUM.width);
+    const height = Math.min(rect.height, FLOATING_MAXIMUM.height);
+    this.#floating = {
+      height,
+      offset: {
+        x: Math.min(Math.max(press.x - rect.left, 0), width),
+        y: Math.min(Math.max(press.y - rect.top, 0), height),
+      },
+      width,
+    };
+    this.#bounds = visible;
+    this.#home = visible;
     this.#press = press;
     this.#point = press;
     this.#probe = new OriginProbe(region);
     this.#origin = this.#probe.measure();
     this.#element = ghostSegment(region, template, className, "event");
-    this.#element.style.width = `${rect.width}px`;
-    this.#element.style.height = `${rect.height}px`;
+    this.#resize(this.#box);
+    this.#element.style.clipPath = clipTo(this.#box, visible);
     this.#times = [...this.#element.querySelectorAll("[data-event-time]")].map(
       (time) => [time, time.textContent] as const,
     );
   }
 
+  /** The event's box at the press, and where it could paint then. */
+  get home(): GhostRect {
+    return { ...this.#box, visible: this.#home };
+  }
+
   /** The copy's box now, in viewport coordinates. */
   get rect(): GhostBox {
+    if (this.#floats) {
+      const { height, offset, width } = this.#floating;
+      return { height, left: this.#point.x - offset.x, top: this.#point.y - offset.y, width };
+    }
     return {
       ...this.#box,
       left: this.#box.left + this.#point.x - this.#press.x,
@@ -623,11 +685,27 @@ export class GhostClone {
     };
   }
 
-  /** Puts the copy under the pointer: one transform write. */
+  /** Clips the copy, from its next move, to where a cell's content may paint. */
+  clip(bounds: Bounds): void {
+    this.#bounds = bounds;
+  }
+
+  /**
+   * Shrinks the copy, from its next move, to at most `FLOATING_MAXIMUM` around the press, off the
+   * view or over a drop zone of the app's; `false` gives it the event's size again.
+   */
+  float(floats: boolean): void {
+    if (floats === this.#floats) return;
+    this.#floats = floats;
+    this.#resize(this.rect);
+  }
+
+  /** Puts the copy under the pointer: a transform and a clip. */
   follow(point: { readonly x: number; readonly y: number }): void {
     this.#point = point;
-    const { left, top } = this.rect;
-    this.#element.style.transform = `translate3d(${left - this.#origin.left}px, ${top - this.#origin.top}px, 0)`;
+    const box = this.rect;
+    this.#element.style.transform = this.#translate(box);
+    this.#element.style.clipPath = clipTo(box, this.#floats ? viewportBounds() : this.#bounds);
   }
 
   /**
@@ -656,8 +734,11 @@ export class GhostClone {
     this.follow(this.#point);
   }
 
-  /** Slides the copy onto `target` and removes it there; at once without one. */
-  settle(target: GhostBox | null): void {
+  /**
+   * Slides the copy onto `target`, its clip onto `target.visible`, and removes it there; at once
+   * without a target.
+   */
+  settle(target: GhostRect | null): void {
     if (target === null) {
       this.remove();
       return;
@@ -665,9 +746,9 @@ export class GhostClone {
     settle(
       [this.#element],
       ({ style }) => {
-        style.width = `${target.width}px`;
-        style.height = `${target.height}px`;
-        style.transform = `translate3d(${target.left - this.#origin.left}px, ${target.top - this.#origin.top}px, 0)`;
+        this.#resize(target);
+        style.transform = this.#translate(target);
+        style.clipPath = clipTo(target, target.visible);
       },
       () => this.#probe.remove(),
     );
@@ -676,5 +757,14 @@ export class GhostClone {
   remove(): void {
     this.#element.remove();
     this.#probe.remove();
+  }
+
+  #resize({ height, width }: GhostBox): void {
+    this.#element.style.width = `${width}px`;
+    this.#element.style.height = `${height}px`;
+  }
+
+  #translate({ left, top }: GhostBox): string {
+    return `translate3d(${left - this.#origin.left}px, ${top - this.#origin.top}px, 0)`;
   }
 }
