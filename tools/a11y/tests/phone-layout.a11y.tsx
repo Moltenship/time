@@ -247,6 +247,27 @@ describe.runIf(server.browser === "chromium")("on a 375 px touch screen", () => 
     expect([more.offsetHeight, event.offsetHeight]).toEqual([24, 24]);
   });
 
+  test("month timed events are tinted blocks, and only a dragged copy is tinted on a desktop", async () => {
+    await render(<Phone view="month" />);
+    const timed = () =>
+      document.querySelector<HTMLElement>("[data-slot='month-view'] [data-event-id='blue call']")!;
+    const background = () => getComputedStyle(timed()).backgroundColor;
+    const transparent = "rgba(0, 0, 0, 0)";
+    await until(() => expect(timed()).not.toBeNull());
+
+    expect(background()).not.toBe(transparent);
+
+    await page.viewport(1024, 768);
+    try {
+      // A dot, a time and a title on the grid; tinted as a copy, which would show the grid through.
+      await until(() => expect(background()).toBe(transparent));
+      timed().setAttribute("data-calendar-ghost", "event");
+      expect(background()).not.toBe(transparent);
+    } finally {
+      await page.viewport(375, 667);
+    }
+  });
+
   test("a week at its shortest still shows events beside +N more", async () => {
     // Weeks shrink to their 80 px minimum, which holds an event and +N more.
     await page.viewport(375, 480);
