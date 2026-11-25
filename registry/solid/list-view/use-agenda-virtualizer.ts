@@ -74,7 +74,9 @@ export function useAgendaVirtualizer({
     items();
     return untrack(() => virtualizer.getTotalSize());
   });
+  // On every change, not just new rows: a resize can leave the rows in view as they were.
   const viewportHeight = createMemo(() => {
+    version();
     items();
     return untrack(agenda.viewportHeight);
   });

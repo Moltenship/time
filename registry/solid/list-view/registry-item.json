@@ -4,13 +4,7 @@
   "type": "registry:component",
   "title": "Agenda view",
   "description": "Chronological agenda grouped by day, virtualized so only the days in view render: sticky dates, Intl time ranges, all-day badges, \"Day k of n\" for multi-day events, and empty and loading states. The same agenda as the React registry's, in Solid.",
-  "dependencies": [
-    "@moltenship/calendar-solid",
-    "@solidjs/web",
-    "@tanstack/virtual-core",
-    "cn",
-    "solid-js"
-  ],
+  "dependencies": ["@moltenship/calendar-solid", "@tanstack/virtual-core", "cn"],
   "registryDependencies": ["@moltenship/calendar", "@moltenship/calendar-theme"],
   "files": [
     {

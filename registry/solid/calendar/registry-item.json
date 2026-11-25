@@ -4,14 +4,7 @@
   "type": "registry:component",
   "title": "Calendar shell",
   "description": "Event chip, accessible event names, the views' navigation keys and the icons the views draw, shared by every Solid calendar view.",
-  "dependencies": [
-    "@moltenship/calendar-solid",
-    "@solidjs/web",
-    "@ui-sdk/core",
-    "@ui-sdk/solid",
-    "cn",
-    "solid-js"
-  ],
+  "dependencies": ["@moltenship/calendar-solid", "cn"],
   "registryDependencies": ["@moltenship/calendar-theme"],
   "files": [
     {
