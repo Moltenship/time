@@ -168,13 +168,30 @@ test("the view switcher picks a view by pointer and by keyboard", async () => {
 test("the toolbar's tooltips wait 400 ms, then name their buttons", async () => {
   await render(() => <Screen />);
   const tooltip = () => document.querySelector('[role="tooltip"][data-open]');
-  const start = performance.now();
-  await userEvent.hover(button("Next period"));
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  expect(tooltip()).toBeNull();
-
-  await until(() => expect(tooltip()).not.toBeNull());
-  expect(performance.now() - start).toBeGreaterThanOrEqual(400);
+  // The wait, timed in the page from the pointer's arrival to the tooltip's opening. Timing it
+  // from the test's side read the hover's reply, which a busy page takes late: past 400 ms, the
+  // tooltip had opened on time before a check meant for 200 ms in.
+  const next = button("Next period");
+  let entered = Number.NaN;
+  let opened = Number.NaN;
+  // Captured on the window, this runs before the tooltip's own pointer handlers.
+  const onOver = (event: PointerEvent) => {
+    if (Number.isNaN(entered) && next.contains(event.target as Node)) entered = performance.now();
+  };
+  addEventListener("pointerover", onOver, { capture: true });
+  // A mutation's callback runs as a microtask, so it reads the time the tooltip opened.
+  const observer = new MutationObserver(() => {
+    if (Number.isNaN(opened) && tooltip() !== null) opened = performance.now();
+  });
+  observer.observe(document.body, { attributeFilter: ["data-open"], subtree: true });
+  try {
+    await userEvent.hover(next);
+    await until(() => expect(tooltip()).not.toBeNull());
+  } finally {
+    observer.disconnect();
+    removeEventListener("pointerover", onOver, { capture: true });
+  }
+  expect(opened - entered).toBeGreaterThanOrEqual(400);
   expect(tooltip()!.textContent).toBe("Next period");
   expect(button("Next period").getAttribute("aria-labelledby")).toBe(tooltip()!.id);
 });

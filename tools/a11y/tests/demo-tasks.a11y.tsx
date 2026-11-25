@@ -22,16 +22,32 @@ const center = (element: Element): Point => {
   return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
 };
 
-/** Presses at `from`, moves past both layers' activation distance, then on to `to`, and lets go. */
-async function drag(from: Point, to: Point) {
+/** Whether the week's drop preview covers `point`. */
+const previewAt = ({ x, y }: Point) =>
+  [...document.querySelectorAll("[data-calendar-ghost]")].some((ghost) => {
+    const box = ghost.getBoundingClientRect();
+    return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
+  });
+
+/**
+ * Presses at `from`, moves past both layers' activation distance, then on to `to`, and lets go:
+ * onto the week once its preview is under the pointer, where the drop lands. Two frames after the
+ * last move were enough on an idle machine; on a busy one the task landed where the pointer had
+ * been two steps before.
+ */
+async function drag(from: Point, to: Point, { onWeek }: { readonly onWeek: boolean }) {
   await mouse({ type: "move", x: from.x, y: from.y });
   await mouse({ type: "down" });
   await mouse({ steps: 4, type: "move", x: from.x + 12, y: from.y + 6 });
   await mouse({ steps: 16, type: "move", x: to.x, y: to.y });
-  await act(async () => {
-    await nextFrame();
-    await nextFrame();
-  });
+  if (onWeek) {
+    await until(() => expect(previewAt(to)).toBe(true));
+  } else {
+    await act(async () => {
+      await nextFrame();
+      await nextFrame();
+    });
+  }
   await mouse({ type: "up" });
 }
 
@@ -56,10 +72,14 @@ describe(`the demo's unscheduled tasks in ${server.browser}`, () => {
     await act(nextFrame);
     const box = column().getBoundingClientRect();
 
-    await drag(center(taskCard("Call the dentist")!), {
-      x: box.left + box.width / 2,
-      y: box.top + (box.height * 11.1) / 24,
-    });
+    await drag(
+      center(taskCard("Call the dentist")!),
+      {
+        x: box.left + box.width / 2,
+        y: box.top + (box.height * 11.1) / 24,
+      },
+      { onWeek: true },
+    );
 
     // The demo saves after a delay; the task leaves the list once its event is saved.
     await until(() => expect(eventOf("task-dentist")).not.toBeNull());
@@ -74,7 +94,7 @@ describe(`the demo's unscheduled tasks in ${server.browser}`, () => {
     const shown = list.getBoundingClientRect();
     aside.scrollTop += shown.top + shown.height / 2 - innerHeight / 2;
     await act(nextFrame);
-    await drag(center(eventOf("task-dentist")!), center(list));
+    await drag(center(eventOf("task-dentist")!), center(list), { onWeek: false });
 
     await until(() => expect(taskCard("Call the dentist")).not.toBeNull());
     await until(() => expect(eventOf("task-dentist")).toBeNull());

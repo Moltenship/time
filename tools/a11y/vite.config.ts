@@ -11,6 +11,7 @@ import { solidRegistrySource } from "../registry/src/solid-source";
 import { animationRate } from "./animation-rate";
 import { mouse } from "./mouse";
 import { solidDemo } from "./solid-demo";
+import { swipe } from "./swipe";
 import { Watchdog } from "./watchdog";
 
 /**
@@ -87,9 +88,10 @@ export default defineConfig(({ mode }) => {
     headless: true,
     provider: playwright(),
     viewport: { height: 800, width: 1280 },
-    // Real mouse input at page points, step by step, for drags a test watches as they go, and
-    // slowed animations for a test that samples them as they run.
-    commands: { animationRate, mouse },
+    // Real mouse input at page points, step by step, for drags a test watches as they go; a
+    // finger's swipe on the touch screen, which the page can't make late; and slowed animations
+    // for a test that samples them as they run.
+    commands: { animationRate, mouse, swipe },
   };
 
   return {

@@ -3,7 +3,7 @@
 // No setup file: it installs jsdom stubs, and this file's renders must not see a document.
 
 import { createComponent, isServer, renderToString } from "@solidjs/web";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { RatingApp } from "./fixtures/rating-app";
 import type { CalendarFocus, CalendarSelection } from "@moltenship/calendar-core";
@@ -11,7 +11,7 @@ import type { CalendarFocus, CalendarSelection } from "@moltenship/calendar-core
 import { createCalendarStore } from "../src";
 import { EngineCalendar, review, weekRules } from "./fixtures/calendar";
 import { CalendarApp, createMeetingSource, LabelApp, standup } from "./fixtures/server-apps";
-import { createHydrationPage, type HydrationPage } from "./harness/hydration";
+import { closeHydrationServer, createHydrationPage, type HydrationPage } from "./harness/hydration";
 import { createTestStore } from "./harness/store";
 
 type Entry = typeof import("./fixtures/hydrate-entry");
@@ -39,6 +39,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
   expect(messages).toEqual([]);
 });
+afterAll(closeHydrationServer);
 
 async function openPage(html: string) {
   const page = await createHydrationPage(html);

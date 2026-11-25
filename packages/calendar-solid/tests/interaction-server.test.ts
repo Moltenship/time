@@ -5,7 +5,7 @@
 import type { CalendarFocus } from "@moltenship/calendar-core";
 import { attachCalendarPointer } from "@moltenship/calendar-dnd";
 import { createComponent, isServer, renderToString, type JSX } from "@solidjs/web";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { useCalendarPointer } from "../src";
 import { element } from "../src/props";
@@ -22,7 +22,7 @@ import {
   InteractionApp,
   type InteractionAppProps,
 } from "./fixtures/interaction-app";
-import { createHydrationPage, type HydrationPage } from "./harness/hydration";
+import { closeHydrationServer, createHydrationPage, type HydrationPage } from "./harness/hydration";
 
 type Entry = typeof import("./fixtures/hydrate-entry");
 
@@ -46,6 +46,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
   expect(messages).toEqual([]);
 });
+afterAll(closeHydrationServer);
 
 function render(props: Partial<InteractionAppProps> = {}) {
   return renderToString(() =>

@@ -39,6 +39,44 @@ export interface HydrationPage {
   close(): Promise<void>;
 }
 
+let server: Promise<ViteDevServer> | undefined;
+
+/**
+ * The Vite server that transforms the pages' modules, one per test file: Solid's browser build,
+ * ui-sdk and this package, all of it, since the page inlines its dependencies. A server per page
+ * transformed them again for each test, which took half a second alone and past the 15 s timeout
+ * on a machine busy with the browser suites. Each page still gets a runner of its own, so its
+ * modules run afresh.
+ */
+function sharedServer(): Promise<ViteDevServer> {
+  server ??= createServer({
+    configFile: false,
+    root: fileURLToPath(new URL("../..", import.meta.url)),
+    logLevel: "error",
+    appType: "custom",
+    server: { middlewareMode: true, hmr: false, ws: false, watch: null },
+    environments: {
+      ssr: {
+        resolve: {
+          conditions: ["browser", "development"],
+          externalConditions: ["browser", "development"],
+          noExternal: true,
+        },
+      },
+    },
+  });
+  // A server that failed to start isn't kept, so the next page tries again.
+  server.catch(() => (server = undefined));
+  return server;
+}
+
+/** Closes the pages' Vite server, after the file's last test. */
+export async function closeHydrationServer(): Promise<void> {
+  const closing = server;
+  server = undefined;
+  await (await closing?.catch(() => undefined))?.close();
+}
+
 /**
  * Puts server HTML in a page and loads the client's modules into it, in a test that renders on the
  * server. The test file runs in Node, so `@solidjs/web` is the server build there; the page's
@@ -66,24 +104,9 @@ export async function createHydrationPage(html: string): Promise<HydrationPage> 
     });
   }
 
-  let server: ViteDevServer | undefined;
+  let server: ViteDevServer;
   try {
-    server = await createServer({
-      configFile: false,
-      root: fileURLToPath(new URL("../..", import.meta.url)),
-      logLevel: "error",
-      appType: "custom",
-      server: { middlewareMode: true, hmr: false, ws: false },
-      environments: {
-        ssr: {
-          resolve: {
-            conditions: ["browser", "development"],
-            externalConditions: ["browser", "development"],
-            noExternal: true,
-          },
-        },
-      },
-    });
+    server = await sharedServer();
   } catch (error) {
     restore();
     throw error;
@@ -103,7 +126,6 @@ export async function createHydrationPage(html: string): Promise<HydrationPage> 
     load: (path) => runner.import(path),
     async close() {
       await runner.close();
-      await server.close();
       restore();
       dom.window.close();
     },

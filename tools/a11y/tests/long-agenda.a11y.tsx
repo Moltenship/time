@@ -167,13 +167,16 @@ describe.each(["ltr", "rtl"] as const)(
         await atRest(list());
         expect(inView(document.activeElement!)).toBe(true);
 
+        // A day paged moves the anchor once the list settles, and the agenda takes its new range
+        // of 10,000 events: 90 ms here, over half a second at a runner's speed, where each key
+        // comes after the settle and pays it. Four days show the paging as well as ten did.
         const from = dayOf();
-        for (let step = 0; step < 10; step += 1) await press("PageDown");
-        expect(dayOf().toString()).toBe(from.add({ days: 10 }).toString());
+        for (let step = 0; step < 4; step += 1) await press("PageDown");
+        expect(dayOf().toString()).toBe(from.add({ days: 4 }).toString());
         await atRest(list());
         expect(inView(document.activeElement!)).toBe(true);
         await press("PageUp");
-        expect(dayOf().toString()).toBe(from.add({ days: 9 }).toString());
+        expect(dayOf().toString()).toBe(from.add({ days: 3 }).toString());
         await press("End");
         await atRest(list());
         expect(inView(document.activeElement!)).toBe(true);
