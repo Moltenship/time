@@ -28,6 +28,11 @@ const pageNames: Readonly<Record<Page, string>> = {
   tailwind: "Tailwind",
 };
 const themes = ["light", "dark"] as const;
+/**
+ * The instant every page's clock stops at (demo-parity/now.ts). The seed, the now line and the
+ * annotations follow the clock, so pages loaded a minute or a quarter hour apart would differ.
+ */
+const now = "2026-10-08T10:30:00Z";
 const sizes = {
   desktop: { height: 800, width: 1280 },
   phone: { height: 800, width: 390 },
@@ -126,9 +131,9 @@ async function open(page: Page, theme: string, size: Size) {
     // the React pages' `prepare.ts` sets it.
     localStorage.clear();
     localStorage.setItem("moltenship-demo:theme", theme);
-    element.src = "/solid/?view=week";
+    element.src = `/solid/?view=week&now=${now}`;
   } else {
-    element.src = `${new URL(`./demo-parity/${page}.html`, import.meta.url).href}?theme=${theme}`;
+    element.src = `${new URL(`./demo-parity/${page}.html`, import.meta.url).href}?theme=${theme}&now=${now}`;
   }
   const { height, width } = sizes[size];
   element.style.cssText = `position: fixed; inset: 0 auto auto 0; z-index: 2147483646; border: 0; width: ${width}px; height: ${height}px`;
@@ -138,6 +143,10 @@ async function open(page: Page, theme: string, size: Size) {
   } else {
     await until(() => expect(element.contentWindow?.demoParityReady).toBe(true));
   }
+  expect(
+    (win() as Window & { Temporal: typeof Temporal }).Temporal.Now.instant().toString(),
+    `${page}'s clock`,
+  ).toBe(now);
   await settle();
 }
 
