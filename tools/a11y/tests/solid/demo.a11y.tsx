@@ -1,0 +1,341 @@
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
+import { commands, page, userEvent } from "vite-plus/test/browser";
+
+import { App } from "../../../../apps/demo-solid/src/app";
+import type { MouseStep } from "../../mouse";
+import { seriousViolations, setTheme, themes } from "../axe";
+import { nextFrame } from "../waits";
+import { render, settled, tab, until } from "./render";
+
+// The React demo's checks (demo.a11y.tsx and demo-tasks.a11y.tsx) on the Solid demo,
+// apps/demo-solid: axe over each view and with each popup open, in both themes, then the keyboard
+// through the chrome, a task dragged in by mouse and by keys, and the sidebar's sheet on a phone.
+
+/** The views the Solid demo registers; the timeline and the scrolling grids come later. */
+const views = ["week", "day", "3-day", "month", "year", "agenda", "resources"] as const;
+
+/** Opens the demo the way a link does: the view comes from the URL, the events from the seed. */
+async function renderDemo(view: string, { scrolling = false } = {}) {
+  localStorage.clear();
+  if (scrolling) localStorage.setItem("moltenship-demo:settings", JSON.stringify({ scrolling }));
+  history.replaceState(null, "", `?view=${view}`);
+  await render(() => <App />);
+  await until(() => expect(document.querySelector("main [data-slot]")).not.toBeNull());
+  await settle();
+}
+
+/** Ends what's running, and what that starts in turn, so a popup is checked open, not fading in. */
+async function settle() {
+  await until(() => expect(document.querySelector("[data-starting-style]")).toBeNull());
+  for (let round = 0; round < 3; round += 1) {
+    await settled();
+    await nextFrame();
+    for (const animation of document.getAnimations()) {
+      if (animation.effect?.getComputedTiming().endTime !== Infinity) animation.finish();
+    }
+  }
+  await settled();
+}
+
+const find = (selector: string, name: string) =>
+  [...document.querySelectorAll<HTMLElement>(selector)].find(
+    (element) =>
+      element.getAttribute("aria-label") === name || element.textContent?.trim() === name,
+  );
+
+async function click(element: HTMLElement | null | undefined) {
+  if (element == null) throw new Error("nothing to click");
+  await userEvent.click(element);
+  await settle();
+}
+
+const createButton = () => find("aside button", "Create");
+const focusedName = () =>
+  document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.textContent;
+/** A stored event: the meetings in progress as the demo opens are read-only. */
+const storedEvent = () =>
+  document.querySelector<HTMLElement>(
+    'main [data-event-id]:not([data-event-id^="busy-now-"]):not([data-event-id*="::"])',
+  );
+
+describe.each(themes)("the Solid demo, %s theme", (theme) => {
+  test.each(views)("%s view", async (view) => {
+    setTheme(theme);
+    await renderDemo(view);
+
+    expect(document.querySelector("main [data-slot]")).not.toBeNull();
+    expect(await seriousViolations()).toEqual([]);
+  });
+
+  test.each(["month", "agenda"] as const)("scrolling %s view", async (view) => {
+    setTheme(theme);
+    await renderDemo(view, { scrolling: true });
+
+    // The setting picks each view's scrolling version; the scrolling month marks its parts.
+    if (view === "month") {
+      expect(document.querySelector('[data-slot^="scrolling-"]')).not.toBeNull();
+    }
+    expect(await seriousViolations()).toEqual([]);
+  });
+
+  test("resources view's status badges", async () => {
+    setTheme(theme);
+    await renderDemo("resources");
+
+    // Meetings in progress as the demo opens make someone busy.
+    expect(
+      document.querySelector('[data-slot="resource-status"][data-state="busy"]'),
+    ).not.toBeNull();
+    expect(await seriousViolations()).toEqual([]);
+  });
+
+  test("event popover", async () => {
+    setTheme(theme);
+    await renderDemo("week");
+    await click(document.querySelector<HTMLElement>("main [data-event-id]"));
+
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(await seriousViolations()).toEqual([]);
+  });
+
+  test("event editor dialog, with the calendar's list open", async () => {
+    setTheme(theme);
+    await renderDemo("week");
+    await click(createButton());
+
+    expect(document.querySelector('[data-slot="dialog-content"]')).not.toBeNull();
+    expect(await seriousViolations()).toEqual([]);
+
+    await click(
+      document.querySelector<HTMLElement>('[data-slot="dialog-content"] [role="combobox"]'),
+    );
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull();
+    expect(await seriousViolations()).toEqual([]);
+  });
+
+  test("event editor dialog, editing an event, with Repeat's list open", async () => {
+    setTheme(theme);
+    await renderDemo("week");
+    await click(storedEvent());
+    await click(find('[role="dialog"] button', "Edit event"));
+    await click(find('[data-slot="dialog-content"] [role="combobox"]', "Does not repeat"));
+
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull();
+    expect(await seriousViolations()).toEqual([]);
+  });
+
+  test("keyboard shortcuts dialog", async () => {
+    setTheme(theme);
+    await renderDemo("week");
+    await click(find("header button", "Keyboard shortcuts"));
+
+    expect(find('[role="dialog"] h2', "Keyboard shortcuts")).toBeDefined();
+    expect(await seriousViolations()).toEqual([]);
+  });
+
+  test("view switcher's list", async () => {
+    setTheme(theme);
+    await renderDemo("week");
+    await click(document.querySelector<HTMLElement>('header [role="combobox"]'));
+
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull();
+    expect(await seriousViolations()).toEqual([]);
+  });
+
+  test("undo toast", async () => {
+    setTheme(theme);
+    await renderDemo("week");
+    await click(storedEvent());
+    await click(find('[role="dialog"] button', "Delete event"));
+    // The demo saves after a delay; the toast offers to undo once the delete is saved.
+    await until(() =>
+      expect(
+        document.querySelector('[aria-label="Notifications"] [data-slot="toast"]'),
+      ).not.toBeNull(),
+    );
+    await settle();
+
+    expect(await seriousViolations()).toEqual([]);
+    // At the bottom centre of the window, as the React demo's.
+    const region = document.querySelector('[aria-label="Notifications"]')!.getBoundingClientRect();
+    expect(Math.abs(region.left + region.width / 2 - innerWidth / 2)).toBeLessThan(1);
+  });
+});
+
+describe("the Solid demo from the keyboard", () => {
+  test("Create opens the editor on its title, and Escape gives focus back", async () => {
+    await renderDemo("week");
+    createButton()!.focus();
+    await userEvent.keyboard("{Enter}");
+    await until(() => expect(focusedName()).toBe("Title"));
+
+    await userEvent.keyboard("{Escape}");
+    await until(() => expect(document.activeElement).toBe(createButton()));
+  });
+
+  test("c opens the editor and ? the shortcuts, outside text fields", async () => {
+    await renderDemo("week");
+    document.body.focus();
+    await userEvent.keyboard("c");
+    await until(() => expect(focusedName()).toBe("Title"));
+    // Typed into the title, not taken as a shortcut.
+    await userEvent.keyboard("?");
+    expect((document.activeElement as HTMLInputElement).value).toBe("?");
+    await userEvent.keyboard("{Escape}");
+    await until(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+
+    document.body.focus();
+    await userEvent.keyboard("?");
+    await until(() => expect(find('[role="dialog"] h2', "Keyboard shortcuts")).toBeDefined());
+  });
+
+  test("an event's popover takes focus, and Escape gives it back to the event", async () => {
+    await renderDemo("week");
+    const event = storedEvent()!;
+    event.focus();
+    await userEvent.keyboard("{Enter}");
+    await until(() => expect(focusedName()).toBe("Edit event"));
+
+    await userEvent.keyboard("{Escape}");
+    await until(() => expect(document.activeElement).toBe(event));
+  });
+
+  test("Tab goes through the top bar's controls in order", async () => {
+    await renderDemo("week");
+    document.body.focus();
+    const reached: string[] = [];
+    for (let step = 0; step < 12; step += 1) {
+      await userEvent.keyboard(tab);
+      if (document.activeElement?.closest("header") === null) break;
+      reached.push(focusedName() ?? "");
+    }
+
+    expect(reached).toEqual(
+      expect.arrayContaining([
+        "Today",
+        "Previous period",
+        "Next period",
+        "React",
+        "Solid",
+        "Keyboard shortcuts",
+      ]),
+    );
+    expect(reached.indexOf("Today")).toBeLessThan(reached.indexOf("Keyboard shortcuts"));
+  });
+
+  test("a task picked up with Space drops onto the week as an event", async () => {
+    await renderDemo("week");
+    const card = taskCard("Call the dentist")!;
+    card.focus();
+    await userEvent.keyboard(" ");
+    // From the sidebar, rightwards into the week's columns.
+    await userEvent.keyboard("{Shift>}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{/Shift}");
+    await userEvent.keyboard(" ");
+
+    await until(() => expect(eventOf("task-dentist")).not.toBeNull());
+    await until(() => expect(taskCard("Call the dentist")).toBeNull());
+  });
+});
+
+/** The browser's own mouse, at a point in this page. */
+const mouse = (step: MouseStep) =>
+  (commands as unknown as { mouse(step: MouseStep): Promise<void> }).mouse(step);
+
+type Point = { readonly x: number; readonly y: number };
+
+const center = (element: Element): Point => {
+  const box = element.getBoundingClientRect();
+  return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+};
+
+/** Presses at `from`, moves past the drag's threshold, then on to `to`, and lets go. */
+async function drag(from: Point, to: Point) {
+  await mouse({ type: "move", x: from.x, y: from.y });
+  await mouse({ type: "down" });
+  await mouse({ steps: 4, type: "move", x: from.x + 12, y: from.y + 6 });
+  await mouse({ steps: 16, type: "move", x: to.x, y: to.y });
+  await nextFrame();
+  await nextFrame();
+  await mouse({ type: "up" });
+  await settled();
+}
+
+const taskCard = (title: string) =>
+  [...document.querySelectorAll<HTMLElement>("aside li > button:first-child")].find((card) =>
+    card.textContent?.startsWith(title),
+  ) ?? null;
+const taskList = () => document.querySelector<HTMLElement>("aside ul[aria-describedby]")!;
+const eventOf = (id: string) =>
+  document.querySelector<HTMLElement>(`[data-slot="time-grid-body"] [data-event-id="${id}"]`);
+
+describe("the Solid demo's unscheduled tasks", () => {
+  // A test that fails mid-drag leaves the button down, which the next test's press would inherit.
+  afterEach(async () => {
+    await mouse({ type: "up" });
+  });
+
+  test("a task dragged onto the week becomes an event, and dragged back, a task again", async () => {
+    await renderDemo("week");
+    const body = document.querySelector<HTMLElement>('[data-slot="time-grid-body"]')!;
+    const column = () => body.querySelectorAll<HTMLElement>("[data-date]")[2]!;
+    body.scrollTop = (column().offsetHeight * 8) / 24;
+    await nextFrame();
+    const box = column().getBoundingClientRect();
+
+    await drag(center(taskCard("Call the dentist")!), {
+      x: box.left + box.width / 2,
+      y: box.top + (box.height * 11.1) / 24,
+    });
+
+    // The demo saves after a delay; the task leaves the list once its event is saved.
+    await until(() => expect(eventOf("task-dentist")).not.toBeNull());
+    await until(() => expect(taskCard("Call the dentist")).toBeNull());
+    expect(eventOf("task-dentist")!.getAttribute("aria-label")).toMatch(/11:00\s–\s11:30/);
+
+    // Back to the list, mid-screen, scrolling the sidebar alone.
+    const list = taskList();
+    const aside = list.closest("aside")!;
+    const shown = list.getBoundingClientRect();
+    aside.scrollTop += shown.top + shown.height / 2 - innerHeight / 2;
+    await nextFrame();
+    await drag(center(eventOf("task-dentist")!), center(list));
+
+    await until(() => expect(taskCard("Call the dentist")).not.toBeNull());
+    await until(() => expect(eventOf("task-dentist")).toBeNull());
+  });
+});
+
+describe("the Solid demo on a phone", () => {
+  beforeAll(async () => {
+    await page.viewport(390, 800);
+  });
+  afterAll(async () => {
+    await page.viewport(1280, 800);
+  });
+
+  test.each(themes)("the sidebar's sheet, %s theme", async (theme) => {
+    setTheme(theme);
+    await renderDemo("week");
+    const menu = find("header button", "Open sidebar")!;
+    await click(menu);
+
+    const sheet = document.querySelector<HTMLElement>('[role="dialog"]')!;
+    expect(sheet.contains(document.activeElement)).toBe(true);
+    expect(find('[role="dialog"] a', "React")).toBeDefined();
+    expect(find('[role="dialog"] button', "Create")).toBeDefined();
+    expect(await seriousViolations()).toEqual([]);
+
+    await userEvent.keyboard("{Escape}");
+    await until(() => expect(document.activeElement).toBe(menu));
+  });
+
+  test("Create floats over the views, and a choice in the sheet closes it", async () => {
+    await renderDemo("week");
+    expect(find("main ~ button, button", "Create event")?.checkVisibility()).toBe(true);
+    await click(find("header button", "Open sidebar"));
+    await click(find('[role="dialog"] button', "Create"));
+
+    await until(() => expect(focusedName()).toBe("Title"));
+    expect(find('[role="dialog"] h2', "New event")).toBeDefined();
+  });
+});

@@ -10,6 +10,7 @@ import { playwright } from "vite-plus/test/browser-playwright";
 import { solidRegistrySource } from "../registry/src/solid-source";
 import { animationRate } from "./animation-rate";
 import { mouse } from "./mouse";
+import { solidDemo } from "./solid-demo";
 import { Watchdog } from "./watchdog";
 
 /**
@@ -38,12 +39,14 @@ const solidFiles = ["tests/solid/**/*.a11y.tsx"];
 const tailwindExclude = [...chromiumOnly, ...stylexOnly, ...solidFiles];
 /**
  * The flavours' parity slows animations through Chromium's DevTools protocol, so Chromium alone,
- * and the demo's parity with it: both compare two pages in one engine, which one engine shows.
+ * and the demo's parity and framework switch with it: they compare two pages in one engine, or
+ * carry one page's address and storage to the other, which one engine shows.
  */
 const otherBrowsersExclude = [
   ...tailwindExclude,
   "tests/parity.a11y.tsx",
   "tests/demo-parity.a11y.tsx",
+  "tests/demo-switch.a11y.tsx",
 ];
 // Absolute: Vitest doesn't resolve the paths of an instance's own setup files.
 const stylexSetup = [fromHere("./tests/setup.ts")];
@@ -113,6 +116,8 @@ export default defineConfig(({ mode }) => {
               unstable_moduleResolution: { rootDir: fromHere("../.."), type: "commonJS" },
             }),
             tailwindcss(),
+            // The Solid demo, which the demo's parity test compares with the React demo.
+            solidDemo(),
           ],
           resolve: {
             tsconfigPaths: true,
@@ -175,6 +180,14 @@ export default defineConfig(({ mode }) => {
           optimizeDeps: { exclude: ["@ui-sdk/core", "@ui-sdk/solid"] },
           plugins: [solid(), solidRegistrySource(), tailwindcss()],
           resolve: {
+            // The Solid demo's shared modules from the React demo (`@demo/*`) name the calendar's
+            // facade, which is the Solid one here, as in the Solid demo's own config.
+            alias: [
+              {
+                find: /^@moltenship\/calendar$/u,
+                replacement: fromHere("../../packages/calendar-solid/src/index.ts"),
+              },
+            ],
             tsconfigPaths: true,
           },
           test: {
