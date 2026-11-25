@@ -176,7 +176,7 @@ export default async function HomePage() {
         />
         <div className="mx-auto flex max-w-3xl flex-col items-center px-6 pt-20 pb-14 text-center sm:pt-28">
           <p className="rounded-full border bg-fd-background px-3 py-1 text-xs font-medium text-fd-muted-foreground">
-            2.0 pre-release · React 19 · SolidJS 2 preview
+            {installTag === undefined ? "2.0" : "2.0 pre-release"} · React 19 · SolidJS 2 preview
           </p>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
             {siteHeadline}
@@ -219,7 +219,14 @@ export default async function HomePage() {
             />
           </div>
           <p className="mt-3 text-xs text-fd-muted-foreground">
-            Time 2.0 is a pre-release on npm&apos;s <code>next</code> tag, and ui-sdk is a beta.
+            {installTag === undefined ? (
+              "ui-sdk is a beta."
+            ) : (
+              <>
+                Time 2.0 is a pre-release on npm&apos;s <code>{installTag}</code> tag, and ui-sdk is
+                a beta.
+              </>
+            )}
           </p>
         </div>
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -314,7 +321,9 @@ export default async function HomePage() {
             ready-made views yet, so you write them.
           </p>
           <p className="mt-4 text-fd-muted-foreground">
-            Time 2.0 is a pre-release and ui-sdk is a beta, so both APIs can still change.
+            {installTag === undefined
+              ? "ui-sdk is a beta, so its API can still change."
+              : "Time 2.0 is a pre-release and ui-sdk is a beta, so both APIs can still change."}
           </p>
           <div className="mt-8 flex flex-col items-start gap-3">
             <Link className={sectionLinkClass} href="/docs/react/quick-start">

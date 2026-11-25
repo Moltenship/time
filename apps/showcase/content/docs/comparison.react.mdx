@@ -11,14 +11,21 @@ Claims about the other two link their sources in the notes at the end of the pag
 note means we found no such feature in their docs or code. If something here is wrong or out of
 date, [open an issue](https://github.com/Moltenship/time/issues).
 
-<Callout type="warn" title="Time is new, and has no stable release">
-  Time started in August 2026 and has one maintainer. Its newest release is 2.0.0-beta.1, a
-  pre-release on npm's `next` tag. npm's `latest` tag for `@moltenship/calendar` is 1.0.0-rc.1, a
-  release candidate. These docs describe 2.0, which is built on [ui-sdk](https://ui-sdk.dev), a
-  beta, so the API can still change before 2.0.0. The SolidJS 2 package is a preview, and this page
-  doesn't compare it. FullCalendar has been developed since 2009 and react-big-calendar since 2015.
-  Both are downloaded more than a million times a week and run in production in many apps. Read the
-  rows below with that in mind.
+<PreRelease>
+
+<Callout type="warn" title="Time has no stable release">
+  Its newest release is 2.0.0-beta.1, a pre-release on npm's `next` tag. npm's `latest` tag for
+  `@moltenship/calendar` is 1.0.0-rc.1, a release candidate. These docs describe 2.0, which is built
+  on [ui-sdk](https://ui-sdk.dev), a beta, so the API can still change before 2.0.0.
+</Callout>
+
+</PreRelease>
+
+<Callout type="warn" title="Time is new">
+  Time started in August 2026 and has one maintainer. The SolidJS 2 package is a preview, and this
+  page doesn't compare it. FullCalendar has been developed since 2009 and react-big-calendar since
+  2015. Both are downloaded more than a million times a week and run in production in many apps.
+  Read the rows below with that in mind.
 </Callout>
 
 **✓** means built in. **Partial** means it's there, with the limit the note gives. **✗** means
@@ -168,7 +175,7 @@ drag and drop, and you don't need a year view, a timeline, keyboard editing, rec
 time zones beyond a localizer's default. It had two releases in the last twelve months, so expect
 fixes to come slowly.
 
-**Time** if you're on React 19 and can start on a pre-release, and you want Temporal from end to
+**Time** if you're on React 19<PreRelease> and can start on a pre-release</PreRelease>, and you want Temporal from end to
 end, view components you own as source, editing by keyboard with screen reader announcements,
 edits to recurring series, availability and conflict rules, resource views under the MIT license,
 or a calendar an [AI agent](/docs/agents) can read and change under your app's rules. Don't choose

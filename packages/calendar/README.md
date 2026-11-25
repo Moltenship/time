@@ -7,8 +7,13 @@ components, so an AI agent can read a calendar and act on it once your app creat
 bridge. A SolidJS 2 app installs
 [`@moltenship/calendar-solid`](https://time.molten.sh/docs/solid), a preview, instead.
 
-> **2.0 pre-release.** The API can still change before 2.0.0. Coming from 1.x? See
-> [Migrating to 2.0](https://time.molten.sh/docs/react/migrating-to-2).
+<!-- pre-release -->
+
+> **2.0 pre-release.** The API can still change before 2.0.0.
+
+<!-- /pre-release -->
+
+Coming from 1.x? See [Migrating to 2.0](https://time.molten.sh/docs/react/migrating-to-2).
 
 ```ts
 import { createCalendar, defineCalendarView, plainDateInterval } from "@moltenship/calendar";

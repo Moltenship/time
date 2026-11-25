@@ -40,10 +40,15 @@ The engine imports no UI framework. React renders it, and SolidJS 2 renders it a
 screenshot is the [live demo](https://moltenship-time-demo.vercel.app), a Google Calendar-style
 React app built from the same views. Its source is in [`apps/demo`](./apps/demo).
 
+<!-- pre-release -->
+
 > [!NOTE]
 > Time 2.0 is a pre-release. It rebuilds the calendar's parts on [ui-sdk](https://ui-sdk.dev),
-> which is itself in beta, so the API can still change before 2.0.0. Coming from 1.x? See
-> [Migrating to 2.0](https://time.molten.sh/docs/react/migrating-to-2).
+> which is itself in beta, so the API can still change before 2.0.0.
+
+<!-- /pre-release -->
+
+Coming from 1.x? See [Migrating to 2.0](https://time.molten.sh/docs/react/migrating-to-2).
 
 ## Features
 

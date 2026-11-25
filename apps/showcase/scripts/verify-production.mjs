@@ -31,6 +31,28 @@ server.stderr.on("data", (chunk) => {
 const frameworks = ["react", "solid"];
 const blockTag = /<\/?(?:React|Solid)>/u;
 
+// The site names the npm tag of the version it is built with (`lib/install-tag.ts`): `@next` for a
+// pre-release, and no tag for a stable version, whose build must not say `@next` anywhere.
+const { version } = JSON.parse(
+  await readFile(fileURLToPath(import.meta.resolve("@moltenship/calendar/package.json")), "utf8"),
+);
+const preRelease = version.split("+")[0].includes("-");
+const taggedPackage = /@moltenship\/[a-z][a-z-]*@next\b/u;
+const preReleaseBlock = /<\/?PreRelease>/u;
+
+function assertInstallTag(text, where) {
+  assert.doesNotMatch(text, preReleaseBlock, `${where} kept a pre-release block's tags.`);
+  if (preRelease) return;
+  // As written, and as read: a highlighted command has each of its words in an element of its own.
+  for (const read of [text, text.replace(/<[^>]*>/gu, "")]) {
+    assert.doesNotMatch(
+      read,
+      taggedPackage,
+      `${where} installs @next, but the site is built for ${version}, a stable version.`,
+    );
+  }
+}
+
 // Derive routes and titles from the content so copy edits do not break this check. A file's name
 // says which framework's docs have the page (`lib/source.ts`): `page.solid.mdx` is Solid's alone,
 // and a file without a framework is a page of both.
@@ -102,8 +124,14 @@ async function waitForServer() {
 try {
   await waitForServer();
 
-  const landing = await fetch(origin);
-  assert.match(await landing.text(), /The Temporal calendar for React, Solid and AI agents/);
+  const landing = await (await fetch(origin)).text();
+  assert.match(landing, /The Temporal calendar for React, Solid and AI agents/);
+  assertInstallTag(landing, "The landing page");
+  assert.equal(
+    landing.includes("@moltenship/calendar@next"),
+    preRelease,
+    `The landing page's install command ${preRelease ? "lacks" : "names"} @next for ${version}.`,
+  );
 
   const ogImage = await fetch(`${origin}/opengraph-image`);
   assert.equal(ogImage.status, 200);
@@ -127,6 +155,7 @@ try {
     const response = await fetch(`${origin}${page.url}`, { redirect: "manual" });
     assert.equal(response.status, 200, `${page.url} did not render.`);
     const html = await response.text();
+    assertInstallTag(html, page.url);
     for (const [, example] of html.matchAll(/<iframe[^>]* src="(\/examples\/solid\/[^"]+)"/g)) {
       solidExamples.add(example.replaceAll("&amp;", "&"));
     }
@@ -152,11 +181,16 @@ try {
     assert.equal(markdown.status, 200, `${page.url}.md did not render.`);
     assert.match(markdown.headers.get("content-type") ?? "", /^text\/markdown/);
     // The Markdown is one framework's text: no block for either is left in it.
-    assert.doesNotMatch(
-      await markdown.text(),
-      blockTag,
-      `${page.url}.md kept a framework's block.`,
-    );
+    const text = await markdown.text();
+    assert.doesNotMatch(text, blockTag, `${page.url}.md kept a framework's block.`);
+    assertInstallTag(text, `${page.url}.md`);
+    if (page.slug === "installation") {
+      assert.equal(
+        taggedPackage.test(text),
+        preRelease,
+        `${page.url}.md ${preRelease ? "installs no" : "installs"} @next for ${version}.`,
+      );
+    }
   }
 
   // The live examples of Solid's docs: the page each frame loads, the script it runs, and the
@@ -236,6 +270,7 @@ try {
 
   // The index for agents lists both sets, each page by its Markdown.
   const llms = await (await fetch(`${origin}/llms.txt`)).text();
+  assertInstallTag(llms, "/llms.txt");
   for (const framework of frameworks) {
     const page = pages.find((entry) => entry.framework === framework && entry.slug !== "");
     assert(page, `${framework}'s docs have no page.`);
@@ -266,7 +301,7 @@ try {
   );
 
   console.log(
-    "Verified the landing page, every page of the React and Solid docs with its Markdown, canonical address and search, the redirects, the sitemap, the App Router example, the live Solid examples, the shadcn registry and not-found handling.",
+    `Verified the landing page, every page of the React and Solid docs with its Markdown, canonical address and search, the install commands' npm tag for ${version}, the redirects, the sitemap, the App Router example, the live Solid examples, the shadcn registry and not-found handling.`,
   );
 } finally {
   server.kill("SIGTERM");

@@ -1,13 +1,39 @@
 import { createStringifier } from "fumadocs-core/mdx-plugins/stringifier";
 import { describe, expect, test } from "vite-plus/test";
 
-import { installTag, tagged, withInstallTag } from "@/lib/install-tag";
+import manifest from "@moltenship/calendar/package.json" with { type: "json" };
+
+import {
+  installTag,
+  installTagFor,
+  preReleaseTag,
+  tagged,
+  withInstallTag,
+} from "@/lib/install-tag";
 import { remarkFramework } from "@/lib/remark-framework";
 
 import { docsFiles } from "./docs-files";
 
-// The npm tag the docs' install commands name has one home, `lib/install-tag.ts`. The pages write
-// their commands without it, and the step that compiles a page adds it.
+// The npm tag the docs' install commands name has one home, `lib/install-tag.ts`, which takes it
+// from the version of the packages the site is built with. The pages write their commands without
+// it, and the step that compiles a page adds it.
+
+describe("the tag for a version", () => {
+  test("is next for a pre-release and none for a stable version", () => {
+    for (const version of ["2.0.0-beta.2", "2.0.0-rc.1", "3.0.0-alpha.0", "2.0.0-beta.2+build.5"]) {
+      expect(installTagFor(version), version).toBe("next");
+    }
+    // Build metadata may hold a hyphen, and marks no pre-release.
+    for (const version of ["2.0.0", "2.1.3", "10.0.0", "2.0.0+build-5"]) {
+      expect(installTagFor(version), version).toBeUndefined();
+    }
+    expect(preReleaseTag).toBe("next");
+  });
+
+  test("follows the version of the packages the site is built with", () => {
+    expect(installTag).toBe(installTagFor(manifest.version));
+  });
+});
 
 describe("the tag on a command", () => {
   test("goes on each Time package of an install command, and on nothing else", () => {
@@ -181,7 +207,7 @@ describe("the pages", () => {
     expect(missed).toEqual([]);
   });
 
-  test("name the current tag where a pre-release note names one", () => {
+  test("name the pre-release tag where a pre-release note names one", () => {
     const notes = pages.flatMap((page) =>
       [...page.text.matchAll(/<PreRelease>([\s\S]*?)<\/PreRelease>/gu)].map((match) => ({
         file: page.file,
@@ -191,7 +217,9 @@ describe("the pages", () => {
 
     expect(notes.length).toBeGreaterThan(0);
     expect(
-      notes.filter((note) => note.tags.some((tag) => tag !== installTag)).map((note) => note.file),
+      notes
+        .filter((note) => note.tags.some((tag) => tag !== preReleaseTag))
+        .map((note) => note.file),
     ).toEqual([]);
   });
 

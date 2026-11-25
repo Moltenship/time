@@ -193,7 +193,7 @@ content tree. One tree of pages (`content/docs`) is compiled twice, into the Rea
 `/docs/react` and the Solid docs at `/docs/solid`: a file's name says which set has the page, and
 `<React>` and `<Solid>` blocks hold what differs on a page both have (`lib/source.ts`,
 `lib/remark-framework.ts`). The pages write install commands without an npm tag; the same step adds
-the one in `lib/install-tag.ts`, the only place the docs name it. `apps/demo` is a public Google Calendar-style demo built from the registry views; it
+the one `lib/install-tag.ts` takes from the packages' version: `next` for a prerelease, none for a stable version. `apps/demo` is a public Google Calendar-style demo built from the registry views; it
 carries no documentation. `apps/demo-solid` shows the Solid integration and is the one app in the
 repository that compiles Solid JSX; the packages are written without JSX. The Solid docs' samples
 are type-checked, and a test project of their own compiles and mounts the quick start's

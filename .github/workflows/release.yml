@@ -178,6 +178,17 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: node --import tsx src/ci.ts publish
 
+      # A stable release points npm's next tag at itself too, where npm lets this job. The packages
+      # are out by now, so this step can't fail or hold up the release: what it couldn't do, it
+      # reports as a step for the owner.
+      - name: Point npm's next tag at a stable release
+        working-directory: tools/release
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          VERSION: ${{ inputs.version }}
+        run: node --import tsx src/ci.ts next-tag
+
   finish:
     name: Push and write the GitHub release
     needs: publish
@@ -255,6 +266,16 @@ jobs:
           VERSION: ${{ inputs.version }}
           DRY_RUN: "true"
         run: node --import tsx src/ci.ts publish
+
+      # What a stable release would do with npm's next tag. It moves nothing, and a failure here
+      # fails the dry run, so it shows before a release.
+      - name: Check what moving npm's next tag would do
+        working-directory: tools/release
+        timeout-minutes: 5
+        env:
+          VERSION: ${{ inputs.version }}
+          DRY_RUN: "true"
+        run: node --import tsx src/ci.ts next-tag
 
       # How the push would go, and the notes the release would have, from a job that can't write.
       - name: Check what pushing and releasing would do

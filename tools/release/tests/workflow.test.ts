@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { describe, expect, test } from "vite-plus/test";
 import { parse } from "yaml";
 
+import { nextTagLimits } from "../src/next-tag";
 import { publishJob, runTitle } from "../src/release";
 import { trustedPublisher } from "../src/trust";
 
@@ -13,6 +14,8 @@ interface Step {
   readonly uses?: string;
   readonly with?: Record<string, unknown>;
   readonly env?: Record<string, string>;
+  readonly "continue-on-error"?: boolean;
+  readonly "timeout-minutes"?: number;
 }
 
 interface Job {
@@ -95,7 +98,7 @@ describe("the release workflow", () => {
     }
     // The jobs that publish and push never take the dry-run input: a dry run doesn't reach them.
     for (const name of ["publish", "finish"]) {
-      expect(jobs[name]?.steps.at(-1)?.env?.DRY_RUN, name).toBeUndefined();
+      for (const step of jobs[name]?.steps ?? []) expect(step.env?.DRY_RUN, name).toBeUndefined();
     }
   });
 
@@ -152,10 +155,14 @@ describe("the release workflow", () => {
     expect(jobs.gate?.steps.find(({ run }) => run === "vp run release:gate")?.env).toEqual({
       RELEASE_VERSION: "${{ inputs.version }}",
     });
-    expect(runs(jobs.publish)?.at(-1)).toBe(step("publish"));
+    expect(runs(jobs.publish)?.slice(-2)).toEqual([step("publish"), step("next-tag")]);
     expect(runs(jobs.finish)?.at(-1)).toBe(step("finish"));
-    // The dry run's one job runs both, in the release's order.
-    expect(runs(jobs["dry-run"])?.slice(-2)).toEqual([step("publish"), step("finish")]);
+    // The dry run's one job runs them all, in the release's order.
+    expect(runs(jobs["dry-run"])?.slice(-3)).toEqual([
+      step("publish"),
+      step("next-tag"),
+      step("finish"),
+    ]);
     for (const job of Object.values(jobs)) {
       for (const { run, ...rest } of job.steps) {
         if (run?.includes("src/ci.ts")) {
@@ -166,6 +173,30 @@ describe("the release workflow", () => {
       }
     }
     expect(runs(jobs.install)?.at(-1)).toBe("vp run registry:e2e");
+  });
+
+  test("moving npm's next tag can't fail or hold up a release whose packages are out", async () => {
+    const { jobs } = await read("release.yml");
+    const moves = (job: Job | undefined) =>
+      job?.steps.find(({ run }) => run === "node --import tsx src/ci.ts next-tag");
+
+    const release = moves(jobs.publish);
+    expect(release?.["continue-on-error"]).toBe(true);
+    // The move gives up by itself first, and says what is left (`nextTagLimits`).
+    expect(release?.["timeout-minutes"]).toBe(5);
+    expect(nextTagLimits.total + 30_000).toBeLessThan(5 * 60_000);
+    expect(nextTagLimits.call).toBeLessThan(nextTagLimits.total);
+    expect(jobs.publish?.["timeout-minutes"]).toBeGreaterThan(3 * 5);
+    expect(release?.env).toEqual({ VERSION: "${{ inputs.version }}" });
+
+    // A dry run's step may fail the dry run: it moves nothing, and a failure should show.
+    const rehearsal = moves(jobs["dry-run"]);
+    expect(rehearsal?.["continue-on-error"]).toBeUndefined();
+    expect(rehearsal?.["timeout-minutes"]).toBe(5);
+    expect(rehearsal?.env?.DRY_RUN).toBe("true");
+    for (const name of ["check", "gate", "finish", "install"]) {
+      expect(moves(jobs[name]), name).toBeUndefined();
+    }
     expect(jobs.install?.steps.at(-1)?.env).toEqual({ REGISTRY_E2E_PACKAGES: "npm" });
 
     // The gate's release, from one job to the next.

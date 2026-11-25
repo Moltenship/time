@@ -45,6 +45,10 @@ release, then an install from npm. Tell the owner the run's link when it prints 
 wait for the command to end.
 
 - **It says `Released <version>`:** go on to step 3.
+  If it also printed a line that starts with `Left to do by hand:`, the release is out and one
+  step is the owner's: after a stable version, npm's `next` tag still names the last pre-release
+  on the packages it lists. Give the owner that line with its command, word for word, in your
+  report. Don't run it: it needs the owner's npm login.
 - **A dry run** (`--dry-run` in `$ARGUMENTS`) ends with `The dry run of <version> passed` and what
   a release would stop at. Report that, with the run's link, and stop: nothing was published.
 - **It failed:** report what it printed, the failed jobs and their logs' end, and what it says to
@@ -86,5 +90,9 @@ to add again with `shadcn add`, and whether it needs this version of the package
 
 ## After the release
 
-Tell the owner what shipped, with the release URL. Nothing else to do: `docs/internal/releasing.md`
-covers rollbacks.
+Tell the owner what shipped, with the release URL, and any `Left to do by hand:` step the command
+printed. A stable release takes `@next` out of the install commands by itself: the docs site
+follows the packages' version, and the release commit rewrites the READMEs and skill files
+(`docs/internal/releasing.md`, "A stable release and `@next`"). After a stable release, also tell
+the owner that the comparison page's "Latest release" and "Releases in the last 12 months" rows
+about Time need a PR. Nothing else to do: `docs/internal/releasing.md` covers rollbacks.

@@ -1,6 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { releaseTag } from "./github-release";
+import { leftToDo } from "./next-tag";
 import { commitsBetween, previousTag, suggestVersion } from "./notes";
 import { assertVersion, isReleaseCommit, sharedVersion } from "./version";
 import { followRun, runPassed, startedRun, type ListedRun } from "./watch";
@@ -341,6 +342,21 @@ async function dispatch(
   );
 }
 
+/** The warnings a run's jobs left that start with `prefix`, which is how its steps report. */
+async function runWarnings(jobs: readonly Job[], prefix: string): Promise<string[]> {
+  const warnings: string[] = [];
+  for (const job of jobs) {
+    const annotations = await quietly([
+      "api",
+      `repos/{owner}/{repo}/check-runs/${job.databaseId}/annotations`,
+      "--jq",
+      '.[] | select(.annotation_level == "warning") | .message',
+    ]);
+    warnings.push(...annotations.split("\n").filter((line) => line.startsWith(prefix)));
+  }
+  return warnings;
+}
+
 /** Says how a finished run went: the release, or the jobs that failed and their logs' last lines. */
 async function summarize(id: number, version: string, dryRun: boolean): Promise<boolean> {
   const { stdout } = await runOrThrow("gh", [
@@ -359,19 +375,8 @@ async function summarize(id: number, version: string, dryRun: boolean): Promise<
   // Throws for a run that hasn't ended: it has no result to report yet.
   if (runPassed(view)) {
     if (dryRun) {
-      // What the run reported a release would stop at, as its warnings.
-      const warnings: string[] = [];
-      for (const job of view.jobs) {
-        const annotations = await quietly([
-          "api",
-          `repos/{owner}/{repo}/check-runs/${job.databaseId}/annotations`,
-          "--jq",
-          '.[] | select(.annotation_level == "warning") | .message',
-        ]);
-        warnings.push(
-          ...annotations.split("\n").filter((line) => line.startsWith("A release would")),
-        );
-      }
+      // What the run reported a release would stop at, or leave to the owner, as its warnings.
+      const warnings = await runWarnings(view.jobs, "A release would");
       console.log(`\nThe dry run of ${version} passed: ${view.url}`);
       console.log("Nothing was published, pushed or released.");
       if (warnings.length > 0) console.log(`\n${warnings.join("\n")}`);
@@ -391,6 +396,9 @@ async function summarize(id: number, version: string, dryRun: boolean): Promise<
     console.log(
       `Its notes are the ones generated from the commits; /release in Claude Code rewrites them, or: gh release edit ${releaseTag(version)} --notes-file <file>.`,
     );
+    // What the run couldn't do itself, such as the next tag of a stable release.
+    const left = await runWarnings(view.jobs, leftToDo);
+    if (left.length > 0) console.log(`\n${left.join("\n")}`);
     return true;
   }
   console.error(`\nThe release run of ${version} ended with ${view.conclusion}: ${view.url}`);
