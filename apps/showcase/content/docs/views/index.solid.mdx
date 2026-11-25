@@ -1,0 +1,101 @@
+---
+title: Overview
+description: How views work, how to register and switch them, the registry's agenda, and the engine's layouts a view draws.
+---
+
+A view decides which dates are visible and how to draw them. A calendar can have several views, for
+example an agenda and a month grid. The `view` state names the active one, and
+`<Calendar.ActiveView />` renders it.
+
+A view is a strategy and a `Renderer`. The strategy picks the dates and lays out the events, and
+the `Renderer` is a Solid component that draws that layout. The registry has one styled view so
+far, the agenda, with a toolbar, a mini month and the controls they're built from. You add them to
+your app as source, and you write the other views.
+
+<Cards>
+  <Card
+    title="Agenda"
+    href="/docs/views/agenda"
+    description="The registry's list of events grouped by day, added with the shadcn CLI."
+  />
+  <Card
+    title="Toolbar and mini month"
+    href="/docs/views/toolbar"
+    description="The registry's toolbar, view switcher and mini month."
+  />
+  <Card
+    title="Controls"
+    href="/docs/views/controls"
+    description="The buttons, badges, tooltips and selects the registry's views are built from."
+  />
+  <Card
+    title="Custom views"
+    href="/docs/views/custom-views"
+    description="Write a view with a strategy and a Renderer."
+  />
+  <Card
+    title="Keyboard in your own views"
+    href="/docs/accessibility#in-your-own-views"
+    description="Roving focus, arrow keys, and keyboard move, resize and create."
+  />
+  <Card
+    title="Dragging in your own views"
+    href="/docs/interactions#in-your-own-views"
+    description="Drag, resize and create with a mouse, a pen or touch."
+  />
+</Cards>
+
+## The engine's layouts
+
+You rarely compute a layout yourself. `@moltenship/calendar-solid` exports the range, the title,
+the navigation step and the projection of each common layout, and your `Renderer` draws the
+projection.
+
+| Layout            | Functions                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------- |
+| Agenda            | `getListRange`, `navigateList`, `getListTitle`, `projectList`, `listSpatialNavigation`      |
+| Month grid        | `getMonthRange`, `navigateMonth`, `getMonthTitle`, `projectMonth`, `monthSpatialNavigation` |
+| Year              | `getYearRange`, `navigateYear`, `getYearTitle`, `projectYear`, `yearSpatialNavigation`      |
+| Week and day      | `timeGridStrategy({ kind })`, a whole strategy, and `timeGridSpatialNavigation`             |
+| Resource columns  | `resourceColumnsStrategy`, and `resourceColumnsSpatialNavigation`                           |
+| Resource timeline | `resourceTimelineStrategy`, and `resourceTimelineSpatialNavigation`                         |
+| Scrolling         | `scrollingTimeGridStrategy`, `scrollingMonthStrategy`, `scrollingListStrategy`              |
+
+The [Quick start](/docs/quick-start#create-the-calendar) draws the agenda's projection, and
+[Keyboard in your own views](/docs/accessibility#in-your-own-views) the month grid's.
+
+## Registering views
+
+Pass views to `createCalendar`. The first one is active by default unless you set `defaultView` or
+`view` on `Root`. TypeScript learns the view names from this list, so `setView` and `defaultView`
+only accept names you registered.
+
+<include meta='title="team-calendar.ts"'>../../examples/solid/team-calendar.ts#calendar</include>
+
+Each name must be unique. `createCalendar` throws `calendar-duplicate-view-name` if two views share
+one.
+
+## View options
+
+A view can declare `defaultOptions`. Override them per calendar with `viewOptions` on `Root`, keyed
+by view name. Each entry is typed from that view's `defaultOptions`, and you only pass the fields you
+want to change. For example, `viewOptions={{ list: { weeks: 4 } }}` makes the Quick start's agenda
+show four weeks instead of two.
+
+## Switching views
+
+`Calendar.ViewSwitcher` renders a plain `<select>` with one option per registered view, labelled by
+`getViewLabel`, and the registry's [`ViewSwitcher`](/docs/views/toolbar) is a styled one. To build
+your own control, call `setView` from `useCalendarActions()`:
+
+<include meta='title="view-buttons.tsx"'>../../examples/solid/anatomy.tsx#switcher</include>
+
+Inside a view's `Renderer`, use the `actions` prop instead.
+
+The active view also drives `Title`, `PreviousTrigger`, and `NextTrigger`. The title comes from the
+view's `getTitle`, and the buttons move by the view's own step: two weeks in this agenda, a month
+in the month grid.
+
+If the active name doesn't match a registered view, `ActiveView` renders its `fallback` prop, the
+previous and next buttons are disabled, and `meta().diagnostics` includes an
+`unregistered-active-view` error.

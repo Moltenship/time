@@ -20,7 +20,7 @@ export interface Meeting {
   readonly interval: CalendarEventInterval;
 }
 
-const eventAdapter = defineEventAdapter<Meeting>()({
+export const eventAdapter = defineEventAdapter<Meeting>()({
   getId: (meeting) => meeting.id,
   getTitle: (meeting) => meeting.title,
   getInterval: (meeting) => meeting.interval,
@@ -50,7 +50,7 @@ function Agenda(props: CalendarViewRendererProps<List, ListViewOptions>) {
   );
 }
 
-const listView = defineCalendarView({
+export const listView = defineCalendarView({
   name: "list",
   defaultOptions: { weeks: 2 } as ListViewOptions,
   strategy: {

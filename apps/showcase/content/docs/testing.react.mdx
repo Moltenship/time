@@ -15,10 +15,14 @@ works too, and pointer tests run in [Vitest's browser mode](#pointer-and-touch).
 ## Install
 
 ```bash
-pnpm add -D @moltenship/calendar-testing@next vitest jsdom
+pnpm add -D @moltenship/calendar-testing vitest jsdom
 ```
 
+<PreRelease>
+
 Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
+
+</PreRelease>
 
 Its peer dependencies are the four packages a 2.0 app already has: `react` and `react-dom` 19, which
 the harness renders and hydrates with, and `@ui-sdk/core` and `@ui-sdk/react`, which the calendar's

@@ -93,6 +93,7 @@ adapter, changes and policies, and the functions a view is made of.
 | `createCalendar`, `defineCalendarView`, the parts and hooks  | `@moltenship/calendar-solid`      |
 | `createCalendarStore`, `createStateSelector`                 | `@moltenship/calendar-solid`      |
 | `useCalendarPointer`, `eventIdAttributes`                    | `@moltenship/calendar-solid`      |
+| `attachCalendarPointer`, `startCalendarDrop`                 | `@moltenship/calendar-solid`      |
 | `defineEventAdapter`, `createEventHistory`, policies         | `@moltenship/calendar-solid`      |
 | View functions such as `projectMonth` and `getListRange`     | `@moltenship/calendar-solid`      |
 | Temporal helpers such as `plainDateInterval` and `monthGrid` | `@moltenship/calendar-solid`      |
@@ -100,19 +101,39 @@ adapter, changes and policies, and the functions a view is made of.
 | `parseIcs`                                                   | `@moltenship/ics`                 |
 | `createAgent`, `agentTools`, `registerTools`                 | `@ui-sdk/solid/agent`             |
 
-Install `@moltenship/calendar-recurrence` and `@moltenship/ics` with `@next` when you import them.
-Neither imports a framework.
+Install `@moltenship/calendar-recurrence` and `@moltenship/ics`<PreRelease> with `@next`</PreRelease>
+when you import them. Neither imports a framework.
 
 <Cards>
   <Card
     title="Components and hooks"
     href="/docs/api/components"
-    description="createCalendar, the parts, the hooks, keyboard and dragging in a view, undo, server rendering and agents."
+    description="createCalendar, Root and its props, the parts, hooks, meta, diagnostics and server rendering."
+  />
+  <Card
+    title="Events and snapshots"
+    href="/docs/api/events"
+    description="Adapters, ranges, validation, snapshots, and queries."
+  />
+  <Card
+    title="Event changes"
+    href="/docs/api/changes"
+    description="Proposals, changes, policies, placement helpers, and the pointer layer."
+  />
+  <Card
+    title="State store"
+    href="/docs/api/store"
+    description="Calendar state without Root, and sharing a store with Root."
   />
   <Card
     title="Temporal helpers"
     href="/docs/temporal/reference"
     description="Ranges, grids, rounding, day boundaries, and DST from calendar-temporal."
+  />
+  <Card
+    title="Primitives"
+    href="/docs/api/primitives"
+    description="The calendar without a framework, for integrations. A separate package."
   />
   <Card
     title="iCalendar (ICS)"
@@ -124,14 +145,12 @@ Neither imports a framework.
     href="/docs/recurrence/reference"
     description="Expand recurring series for the dates on screen, and edit them."
   />
+  <Card
+    title="Agent reference"
+    href="/docs/agents/reference"
+    description="What a calendar tells an AI agent: snapshot fields, actions, arguments and errors."
+  />
 </Cards>
-
-The engine's own reference pages aren't in the Solid docs yet. What they document is the same in
-both frameworks, so read them in React's docs and change the import to
-`@moltenship/calendar-core`: [Events and snapshots](/docs/react/api/events),
-[Event changes](/docs/react/api/changes), [State store](/docs/react/api/store) and the
-[Agent reference](/docs/react/agents/reference). The store is the exception: it comes from
-`@moltenship/calendar-solid`.
 
 </Solid>
 

@@ -1,0 +1,384 @@
+---
+title: Event changes
+description: Proposals, changes, results, policies, placement helpers, and the pointer layer.
+---
+
+<React>
+
+Everything on this page is exported from `@moltenship/calendar`. [Interactions](/docs/interactions)
+explains how the pieces fit together.
+
+</React>
+
+<Solid>
+
+Proposals, policies, the event history, the placement helpers and `useCalendarPointer` are
+exported from `@moltenship/calendar-solid`.
+[Interactions](/docs/interactions) explains how the pieces fit together.
+
+</Solid>
+
+## Proposals
+
+`actions.proposeEventChange(proposal)` takes one of these:
+
+```ts
+type CalendarEventProposal =
+  | { cause: "create"; proposed: Placement; event?: TEvent }
+  | {
+      cause: "move" | "resize-start" | "resize-end" | "update";
+      eventId: EventId;
+      proposed: Placement;
+    }
+  | { cause: "delete"; eventId: EventId };
+```
+
+A placement is a [range](/docs/api/events#ranges) (`kind`, `start`, `end`) plus optional
+`resourceIds`. Leaving out `resourceIds` keeps the event's current resources. A create may carry
+one of your records as `event`, such as a deleted event an
+[undo](/docs/undo-redo#creates-and-deletes) restores; the change hands it on.
+
+## Changes
+
+`onEventChange` and policies receive a `CalendarEventChange`:
+
+| Field      | `create`                                 | `move`, `resize-*`, `update` | `delete`             |
+| ---------- | ---------------------------------------- | ---------------------------- | -------------------- |
+| `cause`    | `"create"`                               | the cause                    | `"delete"`           |
+| `id`       | a change ID                              | a change ID                  | a change ID          |
+| `eventId`  | `null`                                   | the event's ID               | the event's ID       |
+| `event`    | `null`, or the record the create carries | your record                  | your record          |
+| `original` | `null`                                   | the placement before         | the placement before |
+| `proposed` | the new placement                        | the new placement            | `null`               |
+| `warnings` | reasons `warn` policies flagged, if any  | the same                     | the same             |
+
+Placements in a change always include `resourceIds`. `original` is what the user saw, including any
+change still pending for the same event. `warnings` is absent when no policy flagged the change.
+
+## Results
+
+`proposeEventChange` resolves with `{ status: "committed", change }` or
+`{ status: "rejected", reason, change?, error? }`. It never rejects. The
+[reasons](/docs/interactions#changing-events-from-your-own-ui) are listed on the Interactions page.
+`Root`'s `onEventChangeResult` gets the same result for every proposal, with the detail it was
+proposed with (`CalendarProposalDetail`): `{ input: "pointer" | "keyboard" | "api" | "agent" }`,
+`history: "undo" | "redo"` on an event history's inverse, and `fields` when the proposer asked
+for more than a placement. A detail that names no input reads `{ input: "api" }`. `"agent"` is an
+AI agent's change, made through the [agent bridge](/docs/agents). `onEventChange` gets the same
+detail as its second argument, and a policy as `context.detail`, so both can
+[refuse an agent's change](/docs/agents/changes).
+
+`fields` is what a change says beside where the event goes. The engine models placement only, so
+a title, a colour or anything else of your record travels there, as it came and unchecked. An
+agent's `createEvent` and `updateEvent` fill it, with the title as `fields.title`, and your
+`onEventChange` reads it to [save what the agent sent](/docs/agents/connect#save-what-the-agent-sent).
+Your own code can send fields the same way, as `proposeEventChange(proposal, { input: "api", fields })`.
+
+While a proposal is on its way, `useCalendarPendingChanges` lists it as a `CalendarPendingChange`,
+`{ change, phase }`, with `phase` one of `"validating"`, `"saving"` and `"awaiting-events"`. See
+[pending changes](/docs/interactions#across-the-calendar).
+
+## Event history
+
+`createEventHistory(options?)` records committed changes and undoes and redoes them through the
+pipeline. Its members are plain functions: `record(result, detail)` for `onEventChangeResult`,
+`undo(context)` and `redo(context)`, `clear()`, `getSnapshot()` and `subscribe(listener)`. The
+context is `{ getEvents, propose, input?, whenSettled? }`. See [Undo and redo](/docs/undo-redo)
+for the options, the steps (`EventHistoryStep`), the outcomes (`EventHistoryOutcome`) and the
+snapshot (`EventHistorySnapshot`), and `useCalendarHistory` binds a history to a `Root`.
+
+## Policies
+
+```ts
+type CalendarPolicy = (
+  change: CalendarEventChange,
+  context: {
+    events: EventSnapshot;
+    timeZone: string;
+    availability?: AvailabilitySnapshot;
+    detail?: CalendarProposalDetail;
+  },
+) => Decision | Promise<Decision>;
+
+type CalendarProposalDetail = {
+  input: "pointer" | "keyboard" | "api" | "agent";
+  history?: "undo" | "redo";
+  fields?: Readonly<Record<string, unknown>>;
+};
+
+type Decision =
+  | { type: "accept" }
+  | { type: "adjust"; proposed: Placement }
+  | { type: "reject"; reason: string }
+  | { type: "warn"; reason: string };
+```
+
+`warn` accepts the change and adds `reason` to its `warnings`. `context.availability` holds the
+root's working hours, for `availabilityPolicy`. `context.events` includes pending changes, so a
+policy sees the calendar as the user does. `context.detail` says who proposed the change, so a
+policy can [refuse an agent's change](/docs/agents/changes#refuse-an-agents-change) and allow a
+person's; it's absent when your own code calls a policy outside a proposal. A policy
+that throws rejects the change with the reason `policy-error`.
+
+| Policy                                      | Behaviour                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `snapPolicy(increment)`                     | Rounds timed and floating changes to a wall-clock grid in the calendar's time zone, such as `{ minutes: 15 }`. Moves keep their length; resizes snap only the dragged edge. All-day changes pass through. The increment must divide an hour or a day evenly.                                                                                                       |
+| `minimumDurationPolicy(minimum)`            | Lengthens timed and floating changes shorter than `minimum`. Resizing the start moves the start earlier; anything else moves the end later.                                                                                                                                                                                                                        |
+| `boundsPolicy({ start, end })`              | Rejects changes that reach outside `[start, end)`, with the reason `out-of-bounds`. Both bounds are optional instants.                                                                                                                                                                                                                                             |
+| `readOnlyPolicy()`                          | Rejects changes to events whose adapter `isReadOnly` returns `true`, with the reason `read-only`. `Root` runs it before your policies.                                                                                                                                                                                                                             |
+| `availabilityPolicy({ mode })`              | Rejects a change outside working hours, with the reason `outside-availability`, or with `mode: "warn"` saves it with that warning. See [Availability](/docs/availability#keep-changes-inside).                                                                                                                                                                     |
+| `conflictPolicy({ mode, getResourceMode })` | Rejects a change that makes a busy event overlap another busy event on one of its resources, with the reason `resource-conflict`; with `mode: "warn"` saves it with that warning, and with `"allow"` as it is. `getResourceMode` gives a resource its own mode; the strictest decides. Deletes always pass. See [Availability](/docs/availability#double-booking). |
+| `readOnlyResourcesPolicy(isReadOnly)`       | Rejects creating, deleting, or changing the time of an event on a resource `isReadOnly(resourceId)` marks, and adding or removing that resource, with the reason `read-only-resource`.                                                                                                                                                                             |
+
+## Placement helpers
+
+These build placements for proposals, with the same wall-clock rules the calendar's gestures use.
+
+| Function                                                                      | Returns                                                                                                                                           |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `eventPlacement(normalizedEvent)`                                             | The placement of an event from the snapshot                                                                                                       |
+| `moveEventPlacement(placement, delta, { timeZone })`                          | The placement moved by a wall-clock delta, such as `{ days: 1, minutes: -30 }`. A 09:00 event moved by a week stays at 09:00 across a DST change. |
+| `resizeEventPlacement(placement, edge, delta, { timeZone, minimumDuration })` | One edge moved, keeping at least `minimumDuration` (15 minutes by default; all-day events keep a day)                                             |
+| `createEventPlacement(anchor, focus, resourceIds)`                            | A placement covering two ranges of the same kind, such as the first and last slot of a drag                                                       |
+| `toAllDayPlacement(placement, { timeZone })`                                  | The dates a placement touches, as an all-day placement                                                                                            |
+| `toTimedPlacement(placement, start, duration)`                                | A timed placement starting at a `Temporal.ZonedDateTime`                                                                                          |
+
+For example, this moves an event to the same time on the next day:
+
+<React>
+
+<include meta='title="move-to-tomorrow.ts"'>../../examples/editing.tsx#placement</include>
+
+</React>
+
+<Solid>
+
+<include meta='title="move-to-tomorrow.ts"'>../../examples/solid/editing.tsx#placement</include>
+
+</Solid>
+
+`createEventTransactions` and `applyEventOverlay` are the engine `Root` uses to run proposals and
+draw pending changes. You only need them to handle changes <React>outside React</React><Solid>without a root</Solid>. The engine's
+`getPending()` returns the pending placements `applyEventOverlay` draws, and `getPendingChanges()`
+the changes `useCalendarPendingChanges` reads.
+
+## Pointer layer
+
+<React>
+
+`useCalendarPointer(options)` returns a ref for the element that contains a view's days, and turns
+drags inside it into proposals. `attachCalendarPointer(element, getOptions)` does the same without
+a framework and returns a cleanup function. `@moltenship/calendar` exports both: the hook comes from
+`@moltenship/calendar-react`, and the function from `@moltenship/calendar-dnd`, which imports no
+framework. `@moltenship/calendar-solid` exports a `useCalendarPointer` that takes the same options,
+or an accessor of them, and passes them on untouched.
+
+</React>
+
+<Solid>
+
+`useCalendarPointer(options)` returns a ref for the element that contains a view's days, and turns
+drags inside it into proposals. It takes the options below, or an accessor of them, which it reads
+when a gesture starts. `attachCalendarPointer(element, getOptions)` does the same without a
+framework and returns a cleanup function.
+
+</Solid>
+
+<TypeTable
+  type={{
+    events: {
+      type: "EventSnapshot",
+      description: (
+        <>
+          The events as rendered, pending changes included: the Renderer's <code>events</code> prop.
+        </>
+      ),
+      required: true,
+    },
+    onPropose: {
+      type: '(proposal, { input: "pointer" }) => void | PromiseLike<CalendarTransactionResult>',
+      description: (
+        <>
+          Receives one proposal per finished drag, and <code>{'{ input: "pointer" }'}</code>, and
+          one per item dropped in from outside the calendar, with that drag&apos;s input. Usually{" "}
+          <code>actions.proposeEventChange</code>, so <code>onEventChangeResult</code> hears the
+          drag as the pointer&apos;s. Return the result, as it does, so the announcer says whether
+          the change was saved.
+        </>
+      ),
+      required: true,
+    },
+    check: {
+      type: "(proposal) => CalendarPolicyResult | null",
+      description: (
+        <>
+          Asks the policies about the drop the preview shows, so the preview can mark it. Pass{" "}
+          <code>actions.checkEventChange</code>.
+        </>
+      ),
+    },
+    onPreview: {
+      type: "(draft: { eventId, proposed } | null) => void",
+      description: (
+        <>
+          Hears where a drop would land, once per change, and <code>null</code> when there&apos;s
+          nowhere to drop or the gesture ends. Pass <code>useCalendarDraftReporter()</code> so{" "}
+          <code>useCalendarDraft</code> and <code>useDraftBusy</code> follow pointer drags.
+        </>
+      ),
+    },
+    timeZone: { type: "string", description: "The calendar's time zone.", required: true },
+    columns: {
+      type: "readonly TimeGridColumn[]",
+      description: (
+        <>
+          The day columns of a time axis, a time grid&apos;s or an hour timeline&apos;s:{" "}
+          <code>projection.days.map((day) =&gt; day.column)</code> in a time grid,{" "}
+          <code>projection.columns</code> in resource columns or an hour timeline. Leave it out in a
+          month grid or a day timeline.
+        </>
+      ),
+    },
+    snap: {
+      type: "{ increment, smallestUnit, mode? }",
+      description: "The wall-clock grid for times.",
+      default: "15 minutes",
+    },
+    scrollContainer: {
+      type: "{ current: Element | null }",
+      description:
+        "An object whose current is the element to scroll while dragging near its edges. It's read when a drag starts.",
+      default: "the nearest scrollable ancestor",
+    },
+    sidewaysScrollContainer: {
+      type: "{ current: Element | null }",
+      description: (
+        <>
+          An object whose <code>current</code> is an element inside <code>scrollContainer</code> to
+          scroll in its place at the left and right edges, for a view that scrolls its two axes in
+          two elements. It&apos;s read when a drag starts.
+        </>
+      ),
+      default: "scrollContainer",
+    },
+    announcer: {
+      type: "CalendarAnnouncer",
+      description: (
+        <>
+          Speaks each drag through the root's <code>Announcer</code> and labels the drag preview's
+          range the same way. Pass <code>useCalendarAnnouncer()</code>. See{" "}
+          <a href="/docs/accessibility#pointer-gestures">pointer gestures</a>.
+        </>
+      ),
+      default: "silent; ranges in the runtime's locale",
+    },
+    ghostClassName: { type: "string", description: "Extra classes for the drag preview." },
+    preview: {
+      type: '"snapped" | "free"',
+      description: (
+        <>
+          How the drag preview moves. <code>"snapped"</code> draws the event where a drop would
+          land, slot by slot. <code>"free"</code> moves a copy of a moved event with the pointer
+          over a marker of where it would land, and slides the copy there on release; a resize or
+          create on a time axis keeps its edge under the pointer. Both propose, check and announce
+          the same snapped placement. See{" "}
+          <a href="/docs/interactions#snapped-and-free-drags">snapped and free drags</a>.
+        </>
+      ),
+      default: '"snapped"',
+    },
+    disabled: {
+      type: "boolean",
+      description: (
+        <>
+          Turns gestures off. Pass the Renderer's <code>isReadOnly</code>, so a calendar without{" "}
+          <code>onEventChange</code> starts none. <code>attachCalendarPointer</code> also reads it
+          when it attaches, to listen for touch moves only when enabled, so attach again when it
+          changes; <code>useCalendarPointer</code> does.
+        </>
+      ),
+      default: "false",
+    },
+  }}
+/>
+
+While a gesture runs, the region has `data-interaction="move"`, `"resize"`, or `"create"`, and the
+event being dragged has `data-dragging`. Preview elements have `data-calendar-ghost="event"` or
+`"range"`, and `data-invalid` or `data-warning` when `check` says a policy would reject or flag the
+drop. Range previews read `--calendar-ghost-background` and `--calendar-ghost-radius`, event
+previews `--calendar-ghost-shadow` and `--calendar-ghost-opacity`, and both
+`--calendar-ghost-z-index`.<React> The registry's themes put the surface's background under an event
+preview, so a chip of an app's without a background of its own stays readable while it moves; set
+`--calendar-ghost-event-background` to change it. A month's timed chip, see-through at rest, takes
+its event colour while it moves.</React>
+
+With `preview: "free"`, the copy that follows the pointer is an event preview too. The marker of
+where the drop would land has `data-calendar-ghost="landing"`, sits one layer below the copy, and
+takes `data-invalid` or `data-warning` like the other previews. It reads
+`--calendar-ghost-landing-background`, `--calendar-ghost-landing-shadow` and
+`--calendar-ghost-radius`. On release the copy has `data-settling` while it slides into place, over
+`--calendar-ghost-settle-duration` (150ms) with `--calendar-ghost-settle-easing` (`ease-out`). Under
+`prefers-reduced-motion: reduce` it doesn't slide, and a theme that sets the duration to `0s` turns
+the slide off too.
+
+### Drags from and to the rest of the page
+
+These connect the views to drags that start or end outside the calendar, such as tasks dragged in
+from a list or events dragged out to a bin. A drag-and-drop library's binding calls them with the
+points it tracks<React>; [dnd-kit's](/docs/api/dnd-kit) is
+`@moltenship/calendar-dnd-kit`</React>. Every view that uses
+`useCalendarPointer` takes part, through the options it passes, and read-only views take none.
+
+`startCalendarDrop(source, { input? })` follows one item dragged in:
+
+| Source field | Meaning                                                                                                                    |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `event`      | Your record the new event copies, such as a task mapped to your event type. The create change carries it as `change.event` |
+| `duration`   | How long it is over a time column. An hour by default                                                                      |
+| `days`       | How many days it covers over day cells, such as a month cell or the all-day row. 1 by default                              |
+| `eventId`    | An event the calendar shows, to move instead of creating one; its start lands where it's dropped. Not a read-only one      |
+| `title`      | What announcements call it                                                                                                 |
+
+`input` is `"pointer"` by default, or `"keyboard"` for a library's keyboard sensor. The result has
+three methods and a property:
+
+- `move(point)` takes a viewport point `{ x, y }`. It finds the view under it, previews the
+  placement a drop there would make as range boxes, checks it with the view's `check`, reports it
+  to `onPreview`, and announces it. Over a time column the item starts at the slot under the
+  point; in a resource view it books that resource. `move(null)` means the point is over a drop
+  zone of your own, which clears the preview.
+- `drop()` proposes once through the view's `onPropose`, with the `input`, and resolves with the
+  result. It resolves `null` when it proposed nothing, over no view or for a move that changes
+  nothing, and when `onPropose` returns no result.
+- `cancel()` ends it without proposing.
+- `placement` is where a drop would land now, or `null`, as it is once the drag has ended.
+
+The topmost element under the point decides which view it's over, so anything over a view, such
+as a sheet or a dialog, hides it. Give a drag image of your own `pointer-events: none`, as
+dnd-kit's has. From the first `move()` until `drop()` or `cancel()`, a frame loop scrolls the view
+under the point near its edges, once the point has been clear of them or has rested at one for a
+quarter of a second, so a drag that crosses an edge on its way in doesn't scroll the view.
+
+`monitorCalendarDrags(monitor)` offers each event a view starts to move to your drop zones, or to
+an animation that follows it, and returns a function that stops. The monitor gets
+`{ event, element, origin, refresh }` and returns a follower, or nothing to leave the drag alone:
+
+| Follower method         | Called                                                                                                                                                                                                                                                                                                                                       |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `move(point)`           | On every pointer move                                                                                                                                                                                                                                                                                                                        |
+| `preview(preview)`      | Whenever the view's preview changes, or moves as the view scrolls: `{ rects, label, validity }`, its boxes in viewport coordinates, the time range it shows (`null` for a plain box), and `"invalid"` or `"warning"` when a policy would reject or flag the drop. `null` when the view shows no preview                                      |
+| `claims()`              | Whenever the preview updates. Return `true` while one of your zones is under the pointer: the calendar then shows no preview, and a release there proposes and announces nothing                                                                                                                                                             |
+| `end(dropped, landing)` | When the drag ends: `dropped` is `true` if it was released while you claimed it, so handle the drop; `false` after a drop in the calendar, Escape, or a release over nowhere. `landing` is the preview a release in the view proposed the move at, policies still to run, or `null` when it proposed nothing. No `preview(null)` comes first |
+
+Call `refresh()` when your answer to `claims()` changes without the pointer moving. While a
+follower with `claims` is on a drag, the view counts only where it's the topmost thing under the
+pointer, as for drags in: over a sheet of your zones that covers it, it shows no preview and a
+release proposes nothing. Off the view, covered or claimed, a copy of the event follows the
+pointer, with `data-outside`. The view scrolls only while the pointer is over it, and once the
+pointer has left, only after it has been clear of the edges again or rested at one. A follower
+without `claims` only watches<React>, as the [Motion guide](/docs/guides/motion)'s card does,</React> and changes
+none of that: as without a follower, nothing shows off the view. Resizes and creates aren't
+offered.
+
+`observeCalendarRegions(observer)` hears the views on the page, `{ element, disabled }` each, now
+and whenever one attaches or detaches, so a binding can register them with its library.

@@ -10,9 +10,11 @@ import {
 } from "@/lib/frameworks";
 import { rememberFramework } from "@/lib/remembered-framework";
 import { usePathname } from "fumadocs-core/framework";
-import { SidebarTabsDropdown } from "fumadocs-ui/components/sidebar/tabs/dropdown";
+import Link from "fumadocs-core/link";
+import { Popover, PopoverContent, PopoverTrigger } from "fumadocs-ui/components/ui/popover";
 import type { LayoutTab } from "fumadocs-ui/layouts/shared";
-import { type ReactNode, useEffect, useMemo } from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 const logos: Record<Framework, ReactNode> = {
   react: <ReactLogo className="size-full" />,
@@ -49,9 +51,14 @@ export function frameworkOptions(
 }
 
 /**
- * Switches the docs between React and Solid, at the top of the sidebar and of the phone's drawer.
- * It is Fumadocs' own sidebar dropdown: a button that opens a list of links. The links are plain
- * ones, so they work with a keyboard, open in a new tab, and are prefetched like any other.
+ * Switches the docs between React and Solid, at the top of the sidebar and of the phone's drawer:
+ * a button that opens a list of links. The links are plain ones, so they work with a keyboard,
+ * open in a new tab, and are prefetched like any other.
+ *
+ * It looks like Fumadocs' sidebar dropdown and is built on the same popover. That dropdown gives
+ * its popover no name and takes none, and a popover is a dialog to a screen reader, so this one
+ * is written here, where it can be named. It also leaves the phone's drawer to close on a
+ * switch, as it does after any other link: the reader lands on the page they were reading.
  */
 export function FrameworkSelect({ framework, pages }: FrameworkSelectProps) {
   const pathname = usePathname();
@@ -60,6 +67,7 @@ export function FrameworkSelect({ framework, pages }: FrameworkSelectProps) {
     () => frameworkOptions(pathname, current, pages),
     [pathname, current, pages],
   );
+  const [open, setOpen] = useState(false);
 
   // Remember the framework being read, for the addresses that name none (`docs-redirects.mjs`).
   useEffect(() => {
@@ -67,6 +75,43 @@ export function FrameworkSelect({ framework, pages }: FrameworkSelectProps) {
   }, [current]);
 
   return (
-    <SidebarTabsDropdown aria-label={`Framework: ${frameworkNames[current]}`} options={options} />
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        aria-label={`Framework: ${frameworkNames[current]}`}
+        className="flex items-center gap-2 rounded-lg border bg-fd-secondary/50 p-2 text-start text-fd-secondary-foreground transition-colors hover:bg-fd-accent data-[state=open]:bg-fd-accent data-[state=open]:text-fd-accent-foreground"
+      >
+        <div className="size-9 shrink-0 md:size-5">{logos[current]}</div>
+        <p className="text-sm font-medium">{frameworkNames[current]}</p>
+        <ChevronsUpDown
+          aria-hidden="true"
+          className="ms-auto size-4 shrink-0 text-fd-muted-foreground"
+        />
+      </PopoverTrigger>
+      <PopoverContent
+        aria-label="Framework"
+        className="fd-scroll-container flex w-(--radix-popover-trigger-width) flex-col gap-1 p-1"
+      >
+        {options.map((option) => (
+          <Link
+            key={option.url}
+            href={option.url}
+            onClick={() => {
+              setOpen(false);
+            }}
+            {...option.props}
+            className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-fd-accent hover:text-fd-accent-foreground"
+          >
+            <div className="size-9 shrink-0 md:size-5">{option.icon}</div>
+            <p className="text-sm leading-none font-medium">{option.title}</p>
+            <Check
+              aria-hidden="true"
+              className={`ms-auto size-3.5 shrink-0 text-fd-primary ${
+                option.props?.["aria-current"] === "page" ? "" : "invisible"
+              }`}
+            />
+          </Link>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }

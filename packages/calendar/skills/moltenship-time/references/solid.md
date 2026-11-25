@@ -1,12 +1,12 @@
 # Solid
 
-`@moltenship/calendar-solid` is the SolidJS 2 integration, a preview. It renders the same primitive as React, so state, actions, event changes, policies and the agent surface are the same. It has every hook React has, and no ready-made views. Read the Solid docs before you write Solid code, and check the package's own types: the preview changes between releases. The docs in the package are React's. Solid's are on the site: `https://time.molten.sh/llms.txt` lists them, and `https://time.molten.sh/docs/solid/api/components.md` is the reference.
+`@moltenship/calendar-solid` is the SolidJS 2 integration, a preview. It renders the same primitive as React, so state, actions, event changes, policies and the agent surface are the same. It has every hook React has, and one ready-made view so far: the agenda, in the Solid registry, with a toolbar, a view switcher, a mini month and a kit of controls. Read the Solid docs before you write Solid code, and check the package's own types: the preview changes between releases. The docs in the package are React's. Solid's are on the site: `https://time.molten.sh/llms.txt` lists them, and `https://time.molten.sh/docs/solid/api/components.md` is the reference.
 
 ## What it has, and what it doesn't
 
 | Has                                                                                                   | Doesn't have yet                                                    |
 | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `createCalendar`, `defineCalendarView`, `Root` with the same props as React's                         | Ready-made views. The registry's views are React source             |
+| `createCalendar`, `defineCalendarView`, `Root` with the same props as React's                         | Ready-made views other than the agenda (`list-view`, see below)     |
 | Every part: the structural ones, `Event` and `Announcer`                                              | The registry's undo toast, `calendar-history-toast`                 |
 | The read hooks: state, selector, actions, meta, range, projection, pending changes                    | A testing package: `@moltenship/calendar-testing` is React only     |
 | `useCalendarKeyboard`, `useRovingFocus`, `useCalendarFocus`, `useCalendarSelection`                   | `@moltenship/calendar-dnd-kit`, which has React as a peer           |
@@ -21,12 +21,14 @@ Every hook React's integration exports has a Solid one with the same name. If th
 ## Install
 
 ```bash
-pnpm add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+pnpm add @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
-- The adapter and the view functions come from `@moltenship/calendar-core`. The Solid package doesn't re-export them.
+- `@moltenship/calendar-solid` is the one package to import. It re-exports the engine and the Temporal helpers, so the adapter and the view functions come from it too.
+- The agenda installs with the shadcn CLI from the Solid registry: `npx shadcn@latest add https://time.molten.sh/r/solid/list-view.json`. `https://time.molten.sh/docs/solid/installation.md` has the setup, and `https://time.molten.sh/docs/solid/views/agenda.md` the view.
+- The same registry's `calendar` item has the toolbar, the view switcher and the mini month (`https://time.molten.sh/docs/solid/views/toolbar.md`), and `calendar-ui` the controls they're built from (`https://time.molten.sh/docs/solid/views/controls.md`).
 - Don't install `@moltenship/calendar` in a Solid app. It's the React package.
 - With Vite, use `@solidjs/vite-plugin`, and set `"jsx": "preserve"` and `"jsxImportSource": "@solidjs/web"` in `tsconfig.json`. Exclude `@ui-sdk/core` from `optimizeDeps` so the dev server loads one copy.
 
@@ -36,19 +38,17 @@ A view is a strategy from the engine and a Solid component that draws its projec
 
 ```tsx title="calendar.tsx"
 import {
+  createCalendar,
+  defineCalendarView,
   defineEventAdapter,
   getListRange,
   getListTitle,
   navigateList,
   projectList,
   type CalendarEventInterval,
+  type CalendarViewRendererProps,
   type ListProjection,
   type ListViewOptions,
-} from "@moltenship/calendar-core";
-import {
-  createCalendar,
-  defineCalendarView,
-  type CalendarViewRendererProps,
 } from "@moltenship/calendar-solid";
 import { For } from "solid-js";
 
@@ -101,7 +101,7 @@ export const Calendar = createCalendar<Meeting>()({ eventAdapter, views: [listVi
 ```
 
 ```tsx title="app.tsx"
-import type { CalendarWeekRules } from "@moltenship/calendar-core";
+import type { CalendarWeekRules } from "@moltenship/calendar-solid";
 import { createSignal } from "solid-js";
 
 import { Calendar, type Meeting } from "./calendar";
@@ -200,10 +200,10 @@ Everything in `agent-ready.md` holds: `label` on `Root`, `Calendar.Frame` render
 
 ## Keyboard, dragging and undo
 
-`https://time.molten.sh/docs/solid/api/components.md` has a month view with both refs, and the undo buttons. In short:
+`https://time.molten.sh/docs/solid/accessibility.md` has a month view with the keyboard ref, `https://time.molten.sh/docs/solid/interactions.md` a week view with the pointer ref, and `https://time.molten.sh/docs/solid/undo-redo.md` the undo buttons. In short:
 
-- Give the strategy a `getSpatialNavigation`, such as `monthSpatialNavigation` from `@moltenship/calendar-core`, or the keys move nothing.
-- Pass `useCalendarPointer` the Renderer's `events`, `actions.proposeEventChange` as `onPropose`, `actions.checkEventChange` as `check`, `isReadOnly` as `disabled` and the environment's `timeZone`. Add `useCalendarAnnouncer()` and `useCalendarDraftReporter()` as `announcer` and `onPreview`. Render `data-date` on each day, `eventIdAttributes(id)` on each event and `data-resize="start"` or `"end"` on its handles.
+- Give the strategy a `getSpatialNavigation`, such as `monthSpatialNavigation`, or the keys move nothing.
+- Pass `useCalendarPointer` the Renderer's `events`, `actions.proposeEventChange` as `onPropose`, `isReadOnly` as `disabled` and the environment's `timeZone`. Three more options are optional: `actions.checkEventChange` as `check` marks a preview a policy would reject, `useCalendarAnnouncer()` as `announcer` says each drag to a screen reader, and `useCalendarDraftReporter()` as `onPreview` lets `useCalendarDraft` and `useDraftBusy` follow the drag. Render `data-date` on each day, `eventIdAttributes(id)` on each event and `data-resize="start"` or `"end"` on its handles.
 - Render `<Calendar.Announcer messages={...} />` inside `Root`. The registry's `calendar/announcements.ts` has English messages; the packages ship none.
 - Record results in `Root`'s `onEventChangeResult` with `history.record`, then bind `useCalendarHistory(history)` and `useCalendarHistoryShortcuts(controls, () => ({ scope: meta().refs.frame }))`. Pass `createdEventId` to `createEventHistory` so creates can be undone.
 

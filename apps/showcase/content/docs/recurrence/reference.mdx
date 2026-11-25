@@ -199,7 +199,7 @@ const { occurrences, issues } = expander.expand(events, {
 });
 ```
 
-Create one expander and keep it, in `useState` or at module scope. It reuses its work for events
+Create one expander and keep it<React>, in `useState` or at module scope</React><Solid>, at module scope or in a component's body, which runs once</Solid>. It reuses its work for events
 that are the same objects as last time: each series keeps its last four ranges and eight rule
 windows, and an occurrence that comes out the same keeps its object, so memoized views don't
 render again. Treat events as immutable.

@@ -1,6 +1,7 @@
 import { replaceSource } from "fumadocs-core/mdx-plugins/stringifier";
 
 import { type Framework, frameworkHref } from "./frameworks";
+import { installTag, withInstallTag } from "./install-tag";
 
 /**
  * Compiles a docs page for one framework. Every page is compiled twice, once for React's docs and
@@ -12,24 +13,40 @@ import { type Framework, frameworkHref } from "./frameworks";
  *   not the page, its table of contents, the search index or the Markdown for agents.
  * - Links name no framework in the source (`/docs/installation`). The plugin points each at its
  *   own framework's page (`/docs/solid/installation`).
+ * - Install commands name no npm tag in the source (`pnpm add @moltenship/calendar`). The plugin
+ *   adds the one in `lib/install-tag.ts` to each Time package, and keeps
+ *   `<PreRelease>…</PreRelease>`, which holds what is only true while there is a tag, such as the
+ *   sentence that explains it. With no tag it drops those blocks, as it drops the other
+ *   framework's.
  *
  * Fumadocs writes the search index and the Markdown for agents from the page's source text, not
- * from the tree, so the plugin edits that text as well: a dropped block's text is removed, and a
- * kept block's text loses its tags. The Markdown's links get their framework where the Markdown
- * is written (`pageMarkdown` in `lib/llms.ts`).
+ * from the tree, so the plugin edits that text as well: a dropped block's text is removed, a kept
+ * block's text loses its tags, and a command's text gains its tag. The Markdown's links get their
+ * framework where the Markdown is written (`pageMarkdown` in `lib/llms.ts`).
  *
  * It reports two things on the file, which `source.config.ts` exports from the page:
  * `frameworkSpecific`, whether the page had any such block, and `docLinks`, every link on the
  * page after the rewrite, which the link check reads.
  */
-export function remarkFramework(framework: Framework) {
+export function remarkFramework(framework: Framework, options: Options = { installTag }) {
   return () =>
     (tree: Node, file: SourceFile): void => {
-      const state: State = { framework, file, links: [], specific: false };
+      const state: State = {
+        framework,
+        tag: options.installTag,
+        file,
+        links: [],
+        specific: false,
+      };
       transform(tree, state);
       file.data.frameworkSpecific = state.specific;
       file.data.docLinks = state.links;
     };
+}
+
+interface Options {
+  /** The npm tag install commands name. The site passes none and takes `lib/install-tag.ts`'s. */
+  readonly installTag: string | undefined;
 }
 
 /** The file being compiled, which Fumadocs' source edits are kept by. */
@@ -57,6 +74,8 @@ interface Attribute {
 
 interface State {
   readonly framework: Framework;
+  /** The npm tag install commands name, if any. */
+  readonly tag: string | undefined;
   readonly file: SourceFile;
   readonly links: string[];
   specific: boolean;
@@ -76,11 +95,14 @@ const phrasing: ReadonlySet<string> = new Set([
   "mdxTextExpression",
 ]);
 
-function blockFramework(node: Node): Framework | undefined {
+/** Whether this page keeps a block's content, or `undefined` for a node that is no such block. */
+function blockKept(node: Node, state: State): boolean | undefined {
   if (!jsxElements.has(node.type)) return undefined;
-  if (node.name === "React") return "react";
-  if (node.name === "Solid") return "solid";
-  return undefined;
+  if (node.name === "PreRelease") return state.tag !== undefined;
+  const only = node.name === "React" ? "react" : node.name === "Solid" ? "solid" : undefined;
+  if (only === undefined) return undefined;
+  state.specific = true;
+  return only === state.framework;
 }
 
 function transform(parent: Node, state: State): void {
@@ -88,28 +110,28 @@ function transform(parent: Node, state: State): void {
   const children: Node[] = [];
 
   for (const node of parent.children) {
-    const only = blockFramework(node);
-    if (only === undefined) {
+    const kept = blockKept(node, state);
+    if (kept === undefined) {
       rewriteLinks(node, state);
+      tagInstallCommands(node, state);
       transform(node, state);
       children.push(node);
       continue;
     }
 
-    state.specific = true;
-    if (only !== state.framework) {
+    if (!kept) {
       editSource(state, node, "");
       continue;
     }
 
     transform(node, state);
     editSource(state, node, (source) => source.inner(node as SourceEdit[1]));
-    const kept = node.children ?? [];
+    const content = node.children ?? [];
     // `<Solid>one line</Solid>` alone on a line parses as a block that holds bare text.
-    if (node.type === "mdxJsxFlowElement" && kept.length > 0 && kept.every(isPhrasing)) {
-      children.push({ type: "paragraph", children: kept });
+    if (node.type === "mdxJsxFlowElement" && content.length > 0 && content.every(isPhrasing)) {
+      children.push({ type: "paragraph", children: content });
     } else {
-      children.push(...kept);
+      children.push(...content);
     }
   }
 
@@ -119,6 +141,17 @@ function transform(parent: Node, state: State): void {
 /** Replaces a block's text in the page's source, which has the tags the tree no longer has. */
 function editSource(state: State, node: Node, text: SourceEdit[2]): void {
   replaceSource(state.file as SourceEdit[0], node as SourceEdit[1], text);
+}
+
+/** Adds the npm tag to the install commands of a code block, in the tree and in its text. */
+function tagInstallCommands(node: Node, state: State): void {
+  if (node.type !== "code" || typeof node.value !== "string") return;
+  const tagged = withInstallTag(node.value, state.tag);
+  if (tagged === node.value) return;
+  node.value = tagged;
+  editSource(state, node, (source) =>
+    withInstallTag(source.stringify(node as SourceEdit[1]), state.tag),
+  );
 }
 
 function isPhrasing(node: Node): boolean {

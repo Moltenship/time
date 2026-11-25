@@ -1,0 +1,392 @@
+---
+title: Agents in your app
+description: What an AI agent sees of your calendar, what it can do to it, and where your app stays in charge.
+---
+
+<React>
+
+<AgentPreview />
+
+</React>
+
+An agent is an AI model with tools: the one built into a browser, or one you run and connect to
+your page. Since 2.0 a calendar describes itself to agents. An agent reads the calendar's state and
+the events in view, and changes them by calling named actions. It doesn't read your markup or
+simulate a pointer.
+
+The calendar is a [ui-sdk](https://ui-sdk.dev) component, and agents reach it through ui-sdk's
+agent bridge. Three things stay yours:
+
+- **The bridge.** Nothing is exposed until your app creates one. A calendar on a page without a
+  bridge can't be read or changed by an agent.
+- **What an agent may do.** The bridge asks your `allow` before every step.
+- **Saving.** An agent's change is a proposal, like a drag. Your policies check it, and your
+  `onEventChange` saves it or refuses it.
+
+<React>
+
+The example above is a real calendar next to what a real bridge lists for it. The buttons send the
+calls a model would send. No model runs on these pages.
+
+</React>
+
+## What an agent sees
+
+The bridge's `snapshot()` lists every ui-sdk component on the page. A calendar is one entry<React>, and
+the registry's toolbar adds one for each of its buttons and its view select</React>. A calendar on its own
+is the first, `c1`:
+
+```json
+{
+  "ref": "c1",
+  "component": "calendar",
+  "actions": [
+    "createEvent",
+    "describeCalendar",
+    "getChange",
+    "goToDate",
+    "listEvents",
+    "moveEvent",
+    "navigateNext",
+    "navigatePrevious",
+    "navigateToday",
+    "resizeEvent",
+    "selectEvent",
+    "setTimeZone",
+    "setView",
+    "updateEvent"
+  ],
+  "label": "Team calendar",
+  "anchorDate": "2026-10-08",
+  "view": "week",
+  "timeZone": "Europe/Berlin",
+  "selection": null,
+  "focus": null,
+  "expandedResourceIds": [],
+  "items": [
+    {
+      "value": "planning",
+      "label": "Sprint planning · 2026-10-05T10:00 to 2026-10-05T11:30 (Europe/Berlin)"
+    },
+    {
+      "value": "lunch",
+      "label": "Team lunch · 2026-10-07T12:30 to 2026-10-07T13:30 (Europe/Berlin)"
+    },
+    {
+      "value": "standup",
+      "label": "Standup · 2026-10-08T09:00 to 2026-10-08T09:15 (Europe/Berlin)"
+    },
+    {
+      "value": "review",
+      "label": "Design review · 2026-10-08T15:00 to 2026-10-08T16:00 (Europe/Berlin)"
+    },
+    {
+      "value": "one-on-one",
+      "label": "1:1 with Sam · 2026-10-09T14:00 to 2026-10-09T14:30 (Europe/Berlin)"
+    }
+  ],
+  "text": ["Oct 5 – 11, 2026"]
+}
+```
+
+| Field                            | Contents                                                                                            |
+| -------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `ref`                            | The bridge's handle for the calendar. A step can name the calendar by it                            |
+| `component`                      | Always `"calendar"`                                                                                 |
+| `label`                          | `Root`'s `label`, or the calendar's title when there's none. A step can name the calendar by it too |
+| `actions`                        | What the agent can call on this calendar now. See [what an agent can do](#what-an-agent-can-do)     |
+| `view`, `anchorDate`, `timeZone` | The calendar's [state](/docs/concepts/state): the active view, the date it shows, and its time zone |
+| `selection`, `focus`             | Your selection and focus values, or `null`                                                          |
+| `expandedResourceIds`            | The resource groups that are expanded                                                               |
+| `items`                          | The events in the visible range: `value` is the event's ID as a string, `label` its title and time  |
+| `text`                           | The calendar's text an agent can read: its title                                                    |
+
+`items` holds the events the active view shows, all-day events first and then by start. It's left
+out when the range has none. A label is the event's title, then its start and end as ISO date-times
+in the calendar's time zone, which it names. It doesn't follow `Root`'s `locale`, so a model reads
+the same label in every language. An all-day event reads `Offsite · 2026-10-06 (all day)`.
+
+The entry is enough to find the calendar. For anything it's going to act on, an agent asks the
+calendar itself, with the two reading actions below.
+
+The toolbar's buttons and the view switcher are parts of the calendar, not entries of their own.
+The agent navigates with actions and never presses "Next".
+
+## What an agent can do
+
+An agent calls `act` with steps. Each step names a component, one of its actions, and the action's
+input. An action takes nothing, or exactly one object:
+
+```json
+{
+  "steps": [
+    { "ref": "Team calendar", "action": "listEvents", "args": [] },
+    {
+      "ref": "Team calendar",
+      "action": "moveEvent",
+      "args": [{ "eventId": "review", "start": "2026-10-09T10:00" }]
+    }
+  ]
+}
+```
+
+| Action                                                                  | What it does                                                                                              |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `describeCalendar()`                                                    | Returns the calendar's facts: today, the time zone, the views, what's allowed                             |
+| `listEvents({ start?, end? })`                                          | Returns the events of a range of dates. Without one, the range in view                                    |
+| `getChange({ changeId })`                                               | Returns a change by its ID, with where it is now: one an agent proposed, or anyone's that's still pending |
+| `navigateNext()`                                                        | Shows the next range: the next week in a week view                                                        |
+| `navigatePrevious()`                                                    | Shows the previous range                                                                                  |
+| `navigateToday()`                                                       | Shows the range that holds today                                                                          |
+| `goToDate({ date })`                                                    | Shows the range that holds `date`                                                                         |
+| `setView({ view })`                                                     | Switches to one of your views by name                                                                     |
+| `setTimeZone({ timeZone })`                                             | Shows times in another IANA time zone                                                                     |
+| `selectEvent({ eventId })`                                              | Selects an event, or clears the selection with `null`                                                     |
+| `createEvent({ start, end, title?, resourceIds?, fields? })`            | Proposes a new event. Dates make an all-day event, date-times a timed one                                 |
+| `updateEvent({ eventId, title?, start?, end?, resourceIds?, fields? })` | Proposes new details for an event: a title, times, resources, or your own fields                          |
+| `moveEvent({ eventId, start, end?, resourceIds? })`                     | Proposes a new time for an event. It keeps its length unless `end` is given                               |
+| `resizeEvent({ eventId, start?, end? })`                                | Proposes a new start or a new end for an event                                                            |
+| `deleteEvent({ eventId })`                                              | Proposes deleting an event. Absent unless `Root` has `allowAgentDelete`                                   |
+
+Dates are ISO strings, such as `"2026-10-09"`. A time without an offset, such as
+`"2026-10-09T10:00"`, is wall-clock time in the calendar's time zone; with `Z` or an offset it's
+that exact moment. A date in another calendar, such as one that ends in `[u-ca=hebrew]`, fails
+with `calendar-agent-unsupported-calendar`. The [reference](/docs/agents/reference) has every
+argument and every error.
+
+The bridge's three tools are the same for every component, so their definitions don't say what a
+calendar's actions take. The calendar says it itself: `describeCalendar` returns each action it
+offers with its input, and an action called wrongly fails with the same text.
+
+## Reading the calendar
+
+A model starts with `describeCalendar`. Its result is what the model can't know or guess:
+
+```json
+{
+  "actions": {
+    "describeCalendar": "nothing",
+    "listEvents": "nothing, or { start?: ISO date, end?: ISO date }",
+    "getChange": "{ changeId: string }",
+    "navigateNext": "nothing",
+    "navigatePrevious": "nothing",
+    "navigateToday": "nothing",
+    "goToDate": "{ date: ISO date }",
+    "setView": "{ view: one of views }",
+    "setTimeZone": "{ timeZone: IANA name }",
+    "selectEvent": "{ eventId: ID or null }",
+    "createEvent": "{ start: ISO date or date-time, end: ISO date or date-time, title?: string, resourceIds?: ID[], fields?: object }",
+    "updateEvent": "{ eventId: ID, title?: string, start?: ISO date or date-time, end?: same, resourceIds?: ID[], fields?: object }",
+    "moveEvent": "{ eventId: ID, start: ISO date or date-time, end?: same, resourceIds?: ID[] }",
+    "resizeEvent": "{ eventId: ID, start?: ISO date or date-time, end?: same }, one of start and end"
+  },
+  "anchorDate": "2026-10-08",
+  "canDelete": false,
+  "conventions": "Dates are ISO 8601. A time without an offset is wall-clock time in timeZone; with an offset or Z it is that instant. Ranges include start and exclude end. Event IDs are listEvents' id values.",
+  "locale": "en-US",
+  "now": "2026-10-06T11:42:07.512+02:00",
+  "pendingChanges": [],
+  "readOnly": false,
+  "resources": [],
+  "selectedEventId": null,
+  "timeZone": "Europe/Berlin",
+  "today": "2026-10-06",
+  "view": "week",
+  "views": ["week", "day", "month", "agenda"],
+  "visibleRange": { "start": "2026-10-05", "end": "2026-10-12" }
+}
+```
+
+`today` and `now` are in the calendar's time zone, so "tomorrow at ten" needs nothing from your
+prompt. `views` is what `setView` takes: the names of the views this calendar was created with,
+four here. `resources` is what `resourceIds` takes, and `actions` what the calendar offers now, each
+with its input. On a calendar that has resources, a `resourceIds` entry that isn't one of them fails
+with `calendar-agent-unknown-resource`, which lists the ones there are.
+
+`listEvents` returns the events themselves, which is where event IDs come from:
+
+```json
+[
+  {
+    "id": "standup",
+    "title": "Standup",
+    "kind": "timed",
+    "start": "2026-10-08T09:00:00+02:00",
+    "end": "2026-10-08T09:15:00+02:00",
+    "resourceIds": []
+  },
+  {
+    "id": "review",
+    "title": "Design review",
+    "kind": "timed",
+    "start": "2026-10-08T15:00:00+02:00",
+    "end": "2026-10-08T16:00:00+02:00",
+    "resourceIds": []
+  }
+]
+```
+
+Without input it lists the range in view. With `{ "start": "2026-10-01", "end": "2026-11-01" }` it
+lists any dates, in view or not, so an agent doesn't navigate to read. `end` is exclusive, here and
+on every event. An all-day event has dates for `start` and `end`. An event being saved has
+`"pending": true` and shows where it's going; one that can't be changed has `"readOnly": true`.
+
+## What a step returns
+
+A step that changes the calendar's state reports the change:
+
+```json
+{
+  "ok": true,
+  "steps": [
+    {
+      "step": 0,
+      "ref": "c1",
+      "changes": [
+        {
+          "component": "calendar",
+          "label": "Team calendar",
+          "key": "anchorDate",
+          "value": "2026-10-15"
+        }
+      ]
+    }
+  ],
+  "appeared": [],
+  "values": {}
+}
+```
+
+A reading action's step has what it returned as `result`. So does a step that changes an event: its
+`result` is the change, with a `status`:
+
+```json
+{
+  "ok": true,
+  "steps": [
+    {
+      "step": 0,
+      "ref": "c1",
+      "result": {
+        "cause": "move",
+        "changeId": "change-1",
+        "eventId": "review",
+        "proposed": {
+          "start": "2026-10-09T10:00:00+02:00",
+          "end": "2026-10-09T11:00:00+02:00",
+          "kind": "timed",
+          "resourceIds": []
+        },
+        "status": "saved"
+      }
+    }
+  ],
+  "appeared": [],
+  "values": {}
+}
+```
+
+| `status`     | Meaning                                                                          |
+| ------------ | -------------------------------------------------------------------------------- |
+| `saved`      | Your `onEventChange` took the change, at once or once its promise resolved       |
+| `saving`     | Your `onEventChange` returned a promise that hasn't settled                      |
+| `validating` | A policy that returns a promise hasn't answered                                  |
+| `rejected`   | A policy or your handler refused it after the step returned. `reason` says which |
+
+`proposed` is where the event lands, after your policies adjusted it. A change that's `saving` or
+`validating` isn't done: the agent calls `getChange` with its `changeId` to read how it ended, as
+[Saves that take a while](/docs/agents/changes#saves-that-take-a-while) shows. A `createEvent` has
+`"eventId": null`, since your app makes the event; the agent finds it with `listEvents`.
+
+A step that fails stops the call and says why, in words the model can act on:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "step": 0,
+    "message": "calendar-agent-unknown-event: no event has the ID \"nope\". Events: \"standup\", \"review\", \"planning\", \"lunch\", \"one-on-one\""
+  },
+  "steps": [],
+  "appeared": [],
+  "values": {}
+}
+```
+
+A change your policies or your handler refuse at once fails its step the same way, with
+`calendar-event-change-rejected:` and the reason. Earlier steps of the same call stay applied.
+
+## What your app writes
+
+The calendar holds no events, so three parts of an agent's change are your code:
+
+- **Saving.** `onEventChange` gets an agent's change as it gets a drag, with `detail.input` of
+  `"agent"`. That holds for anything a step causes, a press on a button of yours included, as
+  long as the button's handler makes the change before it returns.
+- **Titles and your own fields.** `createEvent` and `updateEvent` take a `title` and a `fields`
+  object. The calendar doesn't know your event's shape, so it hands them to your handler as
+  `detail.fields` without checking what's in them, and your handler stores what it accepts.
+- **Rules.** Your policies see every change before it's saved, and `detail.fields` with it.
+
+[Connect an agent](/docs/agents/connect#name-the-calendar) has the handler.
+
+## What an agent can't do
+
+- **Learn an action's input from the bridge's tools.** `act`'s definition says a step has `args`,
+  not what `moveEvent` takes. The calendar's own `describeCalendar` says it, so tell your model to
+  call it first.
+- **Ask whether a change would be accepted.** There's no dry run. An agent proposes the change, and
+  a refusal fails the step with the reason.
+- **Delete, unless you say so.** A calendar has no `deleteEvent` action until `Root` has
+  `allowAgentDelete`, and until then it refuses a delete an agent causes any other way, such as
+  by pressing a delete button of yours whose handler deletes at once. See
+  [Deleting](/docs/agents/deleting) for a button that waits first.
+- **Skip your rules.** Policies and `onEventChange` run for an agent as they do for a person, and
+  they hear `input: "agent"` for every change a step causes, so a policy that refuses agents
+  can't be stepped around through a button whose handler changes the calendar at once. A button
+  that waits first is [yours to keep from agents](/docs/agents/changes#two-kinds-of-change). A calendar without `onEventChange` is read-only for
+  agents too, and offers no action that changes an event.
+- **Write a field your handler doesn't store.** `fields` reaches your `onEventChange` and goes no
+  further unless your code puts it somewhere.
+- **See what isn't a ui-sdk component.** A dialog or a form you build with another library isn't in
+  the snapshot. ui-sdk's own components are.
+
+## In this section
+
+<Cards>
+  <Card
+    title="Connect an agent"
+    href="/docs/agents/connect"
+    description="Create the bridge, name the calendar, and decide what an agent may do."
+  />
+  <Card
+    title="Who made a change"
+    href="/docs/agents/changes"
+    description="Tell an agent's change from a person's, refuse it with a policy, and undo it."
+  />
+  <Card
+    title="Deleting"
+    href="/docs/agents/deleting"
+    description="Let an agent delete only after the person says yes."
+  />
+  <Card
+    title="WebMCP"
+    href="/docs/agents/webmcp"
+    description="Hand the calendar's tools to the agent built into a browser."
+  />
+  <Card
+    title="A model on your server"
+    href="/docs/agents/server"
+    description="Give a model the bridge's tools and run its calls on the page."
+  />
+  <Card
+    title="Reference"
+    href="/docs/agents/reference"
+    description="Every action, argument, error and snapshot field."
+  />
+  <Card
+    title="Build with a coding agent"
+    href="/docs/agents/coding-agents"
+    description="The docs as Markdown, llms.txt, and a skill for coding agents."
+  />
+</Cards>

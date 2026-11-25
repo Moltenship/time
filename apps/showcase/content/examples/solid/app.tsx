@@ -8,7 +8,7 @@ const timeZone = "Europe/Berlin";
 const at = (value: string) =>
   Temporal.PlainDateTime.from(value).toZonedDateTime(timeZone).toInstant();
 
-const seed: readonly Meeting[] = [
+export const seed: readonly Meeting[] = [
   {
     id: "standup",
     title: "Standup",
@@ -16,7 +16,7 @@ const seed: readonly Meeting[] = [
   },
 ];
 
-const weekRules: CalendarWeekRules = { firstDay: 1, minimalDays: 4, weekend: [6, 7] };
+export const weekRules: CalendarWeekRules = { firstDay: 1, minimalDays: 4, weekend: [6, 7] };
 
 // A title an agent sent with `createEvent` or `updateEvent`. A person's gesture sends none.
 function titleFrom(detail: CalendarProposalDetail): string | undefined {

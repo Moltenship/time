@@ -37,39 +37,39 @@ integrations bind all of them, so a key or a drag does the same thing in both.
 
 These work the same in both frameworks, because they run below the integration:
 
-| Topic             | What both frameworks share                                                                                 | Read                                                                                                                                                                    |
-| ----------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Events            | `defineEventAdapter`, validation, snapshots and queries                                                    | <React>[Events and adapters](/docs/concepts/events)</React><Solid>[Create the calendar](/docs/quick-start#create-the-calendar)</Solid>                                  |
-| Time              | `Temporal` values, timed, all-day and floating events, time zones and daylight saving time                 | <React>[Time and time zones](/docs/concepts/time)</React><Solid>[Temporal helpers](/docs/temporal)</Solid>                                                              |
-| State             | The six state values, controlled and uncontrolled props, change handlers, and `createCalendarStore`        | <React>[State](/docs/concepts/state)</React><Solid>[Hooks](/docs/api/components#hooks)</Solid>                                                                          |
-| Recurrence        | `@moltenship/calendar-recurrence` turns series into ordinary events before the calendar sees them          | [Series and occurrences](/docs/recurrence/model)                                                                                                                        |
-| Changes           | Proposals, `onEventChange`, `onEventChangeResult`, policies and pending changes                            | <React>[Interactions](/docs/interactions#saving-changes)</React><Solid>[Render it](/docs/quick-start#render-it)</Solid>                                                 |
-| Undo history      | `createEventHistory` records results, and `useCalendarHistory` takes them back                             | <React>[Undo and redo](/docs/undo-redo)</React><Solid>[Undo and redo](/docs/api/components#undo-and-redo)</Solid>                                                       |
-| Keyboard          | The keys, roving focus and keyboard move, resize and create, through `useCalendarKeyboard`                 | <React>[Keyboard](/docs/accessibility#keyboard)</React><Solid>[Keyboard and dragging in a view](/docs/api/components#keyboard-and-dragging-in-a-view)</Solid>           |
-| Pointer gestures  | Drag, resize and create with a mouse, a pen or touch, through `useCalendarPointer`                         | <React>[Pointer layer](/docs/api/changes#pointer-layer)</React><Solid>[Keyboard and dragging in a view](/docs/api/components#keyboard-and-dragging-in-a-view)</Solid>   |
-| Announcements     | `Announcer` and the messages a screen reader hears                                                         | <React>[Announcements](/docs/accessibility#announcements)</React><Solid>[Keyboard and dragging in a view](/docs/api/components#keyboard-and-dragging-in-a-view)</Solid> |
-| Agents            | The actions an agent can call, with the same names, inputs, results and errors                             | <React>[Agents in your app](/docs/agents)</React><Solid>[Agents](/docs/api/components#agents)</Solid>                                                                   |
-| `Root`            | Its props have the same names, types and defaults                                                          | <React>[`Root`](/docs/api/components#root)</React><Solid>[Parts](/docs/api/components#parts)</Solid>                                                                    |
-| A view's strategy | `getRange`, `navigate`, `getTitle` and `project`, and the engine's projections, such as `projectMonth`     | <React>[Custom views](/docs/views/custom-views#strategy)</React><Solid>[Create the calendar](/docs/quick-start#create-the-calendar)</Solid>                             |
-| CSS hooks         | Each part renders the same `data-calendar-part` attribute, so a selector written for one matches the other | <React>[Components](/docs/api/components#components)</React><Solid>[Parts](/docs/api/components#parts)</Solid>                                                          |
+| Topic             | What both frameworks share                                                                                 | Read                                               |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Events            | `defineEventAdapter`, validation, snapshots and queries                                                    | [Events and adapters](/docs/concepts/events)       |
+| Time              | `Temporal` values, timed, all-day and floating events, time zones and daylight saving time                 | [Time and time zones](/docs/concepts/time)         |
+| State             | The six state values, controlled and uncontrolled props, change handlers, and `createCalendarStore`        | [State](/docs/concepts/state)                      |
+| Recurrence        | `@moltenship/calendar-recurrence` turns series into ordinary events before the calendar sees them          | [Series and occurrences](/docs/recurrence/model)   |
+| Changes           | Proposals, `onEventChange`, `onEventChangeResult`, policies and pending changes                            | [Interactions](/docs/interactions#saving-changes)  |
+| Undo history      | `createEventHistory` records results, and `useCalendarHistory` takes them back                             | [Undo and redo](/docs/undo-redo)                   |
+| Keyboard          | The keys, roving focus and keyboard move, resize and create, through `useCalendarKeyboard`                 | [Keyboard](/docs/accessibility#keyboard)           |
+| Pointer gestures  | Drag, resize and create with a mouse, a pen or touch, through `useCalendarPointer`                         | [Pointer layer](/docs/api/changes#pointer-layer)   |
+| Announcements     | `Announcer` and the messages a screen reader hears                                                         | [Announcements](/docs/accessibility#announcements) |
+| Agents            | The actions an agent can call, with the same names, inputs, results and errors                             | [Agents in your app](/docs/agents)                 |
+| `Root`            | Its props have the same names, types and defaults                                                          | [`Root`](/docs/api/components#root)                |
+| A view's strategy | `getRange`, `navigate`, `getTitle` and `project`, and the engine's projections, such as `projectMonth`     | [Custom views](/docs/views/custom-views#strategy)  |
+| CSS hooks         | Each part renders the same `data-calendar-part` attribute, so a selector written for one matches the other | [Components](/docs/api/components#components)      |
 
 ## What differs
 
-|                               | React                                                             | Solid                                                                                           |
-| ----------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Status                        | Complete                                                          | Preview                                                                                         |
-| Framework version             | React 19                                                          | SolidJS 2.0                                                                                     |
-| Packages you install          | `@moltenship/calendar`, `@ui-sdk/core`, `@ui-sdk/react`           | `@moltenship/calendar-solid`, `@ui-sdk/core`, `@ui-sdk/solid`                                   |
-| Parts                         | `Root`, the structural parts, `Event` and `Announcer`             | The same parts                                                                                  |
-| Hooks                         | Every hook, returning values                                      | The same hooks, returning accessors. `useCalendarKeyboard` and `useCalendarPointer` return refs |
-| Ready-made views              | The registry's views, in shadcn/ui with Tailwind CSS or in StyleX | The agenda, in Tailwind CSS. You write the other views' `Renderer`                              |
-| Keyboard navigation in a view | Yes                                                               | Yes, in a view you write                                                                        |
-| Drag, resize and create       | Yes, with a mouse, a pen or touch                                 | Yes, in a view you write                                                                        |
-| Undo and redo                 | `useCalendarHistory`, its shortcuts and the registry's toast      | `useCalendarHistory` and its shortcuts. No toast                                                |
-| Screen reader announcements   | `Calendar.Announcer`                                              | `Calendar.Announcer`                                                                            |
-| Server rendering              | Yes                                                               | Yes, with `renderToString` and `hydrate`                                                        |
-| Testing package               | `@moltenship/calendar-testing`                                    | None. That package has React as a peer dependency                                               |
-| Agent bridge                  | `@ui-sdk/react/agent`                                             | `@ui-sdk/solid/agent`                                                                           |
+|                               | React                                                             | Solid                                                                                         |
+| ----------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Status                        | Complete                                                          | Preview                                                                                       |
+| Framework version             | React 19                                                          | SolidJS 2.0                                                                                   |
+| Packages you install          | `@moltenship/calendar`, `@ui-sdk/core`, `@ui-sdk/react`           | `@moltenship/calendar-solid`, `@ui-sdk/core`, `@ui-sdk/solid`                                 |
+| Parts                         | `Root`, the structural parts, `Event` and `Announcer`             | The same parts                                                                                |
+| Hooks                         | Every hook, returning values                                      | The same hooks: accessors for state, refs from `useCalendarKeyboard` and `useCalendarPointer` |
+| Ready-made views              | The registry's views, in shadcn/ui with Tailwind CSS or in StyleX | The agenda, toolbar and mini month, in Tailwind CSS. You write the other views' `Renderer`    |
+| Keyboard navigation in a view | Yes                                                               | Yes, in a view you write                                                                      |
+| Drag, resize and create       | Yes, with a mouse, a pen or touch                                 | Yes, in a view you write                                                                      |
+| Undo and redo                 | `useCalendarHistory`, its shortcuts and the registry's toast      | `useCalendarHistory` and its shortcuts. No toast                                              |
+| Screen reader announcements   | `Calendar.Announcer`                                              | `Calendar.Announcer`                                                                          |
+| Server rendering              | Yes                                                               | Yes, with `renderToString` and `hydrate`                                                      |
+| Testing package               | `@moltenship/calendar-testing`                                    | None. That package has React as a peer dependency                                             |
+| Agent bridge                  | `@ui-sdk/react/agent`                                             | `@ui-sdk/solid/agent`                                                                         |
 
 ## What's coming
 
@@ -92,26 +92,34 @@ Until the registry has a view in Solid, you write its `Renderer` with the packag
 keyboard navigation, dragging and undo, beside the registry's agenda. Its source is the
 repository's [`apps/demo-solid`](https://github.com/Moltenship/time/tree/main/apps/demo-solid).
 
-The Solid docs have no page on something Solid lacks. That is why the only view they have a page on
-is the agenda, beside the toolbar and the controls, and they have none on theming, StyleX or
-testing.
+The Solid docs have no page on something Solid lacks. That is why the only ready-made view they
+have a page on is the agenda, beside the toolbar and the controls, and they have none on theming,
+StyleX, testing or the dnd-kit adapter.
 
-<Solid>
+## From React to Solid
 
-Some pages on things Solid does have aren't written yet: the concepts, custom views, interactions,
-availability, annotations, accessibility and the agent guides. Until they are,
-[Components and hooks](/docs/api/components) covers those subjects in Solid, and it links to the React
-page where the rest of a subject is the same in both frameworks.
+The same calendar reads differently in the two frameworks in these places:
 
-</Solid>
+| In React                                     | In Solid                                                                                          |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Hooks return values                          | Hooks that read state return accessors: `state().view`, not `state.view`                          |
+| `useCalendar()` returns plain objects        | `meta` and `state` are getters. Read them in JSX, a memo or an effect, and don't destructure them |
+| A `Renderer` gets props you can destructure  | A `Renderer`'s props are getters: `props.projection`, read where it's used                        |
+| `meta.refs` holds React refs                 | `meta.refs` holds accessors: `meta().refs.viewport()`                                             |
+| `useCalendarKeyboard()` returns handlers     | It returns a ref, which binds `keydown` and `focusout` on the element itself                      |
+| A cell's `onKeyDown` runs before the view's  | It runs after, since Solid delegates it. Listen natively from a ref to take a key first           |
+| `useRovingFocus` listens for `focusin`       | It listens for `focus`, so a focus handler of yours hears `"focus"`                               |
+| `Calendar.Event`'s children get a value      | They get an accessor, and stay rendered while the event changes                                   |
+| A state change is visible on the next render | An accessor has the new value once Solid flushes: a microtask later, or after `flush()`           |
+| `@moltenship/calendar` is the one package    | `@moltenship/calendar-solid` is the one package too: it re-exports the engine                     |
+| The bridge is `@ui-sdk/react/agent`          | The bridge is `@ui-sdk/solid/agent`                                                               |
+
+The state model, controlled and uncontrolled props, change handlers, `onEventChange` and
+`onEventChangeResult`, policies, pending changes and every agent action are the same.
 
 ## Other frameworks
 
 Time has no integration for Vue, Svelte, Angular or any framework other than these two. You'd write
 one on `@moltenship/calendar-primitives`, and its API can still change.
 
-<React>
-
 See [Primitives](/docs/api/primitives).
-
-</React>

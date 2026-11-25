@@ -26,8 +26,9 @@ Google Calendar-style app built from the same views.
 
 These are the Solid docs. `@moltenship/calendar-solid` renders the engine in SolidJS 2: the parts,
 the hooks, keyboard navigation, dragging, undo and the actions an agent calls. It is a preview.
-The registry has one styled Solid view so far, the [agenda](/docs/views/agenda), and you write the
-others as Solid components that draw a layout the engine computes.
+The registry has one styled Solid view so far, the [agenda](/docs/views/agenda), with a
+[toolbar and a mini month](/docs/views/toolbar), and you write the other views as Solid components
+that draw a layout the engine computes.
 [What's coming](/docs/frameworks#whats-coming) says what Solid doesn't have yet.
 The select at the top of the sidebar switches to the React docs.
 
@@ -63,7 +64,7 @@ source is the repository's
   <Card
     title="Build with a coding agent"
     href="/docs/agents/coding-agents"
-    description="These docs as Markdown, llms.txt, and a skill that ships in @moltenship/calendar@next."
+    description="These docs as Markdown, llms.txt, and a skill that ships in @moltenship/calendar."
   />
   <Card
     title="Parse an ICS feed"
@@ -83,14 +84,14 @@ source is the repository's
     description="Install the packages, set up the Solid compiler, and render a calendar with an agenda you write."
   />
   <Card
-    title="Components and hooks"
-    href="/docs/api/components"
-    description="Every part and hook, keyboard navigation and dragging in a view, undo, server rendering and agents."
+    title="Write a view"
+    href="/docs/views/custom-views"
+    description="A strategy picks the dates and lays out the events, and your component draws them."
   />
   <Card
-    title="React and Solid"
-    href="/docs/frameworks"
-    description="What the two integrations share, what Solid has today, and what's coming."
+    title="Let an agent use it"
+    href="/docs/agents"
+    description="Actions an AI agent can call, permissions, and a record of what it did."
   />
   <Card
     title="Parse an ICS feed"
@@ -150,14 +151,14 @@ only.
 - **Three kinds of time.** Timed events use `Temporal.Instant`, all-day events use
   `Temporal.PlainDate`, and floating events use `Temporal.PlainDateTime`. No `Date` objects.
 - **Time zones and daylight saving time.** The engine lays out days that are 23 or 25 hours long,
-  and hours that a clock change skips or repeats. <React>See
-  [Time and time zones](/docs/concepts/time).</React>
+  and hours that a clock change skips or repeats. See
+  [Time and time zones](/docs/concepts/time).
 - **Recurrence and iCalendar.** [`@moltenship/calendar-recurrence`](/docs/recurrence) expands
   RRULE series inside the dates on screen, and [`@moltenship/ics`](/docs/ics) parses ICS feeds.
   Neither imports a framework.
 - **Changes you save.** A move, a resize, a create or a delete arrives as a change in
   `onEventChange`. It shows as pending while it saves, rolls back if saving fails, and passes
-  through policies you choose. <React>See [Interactions](/docs/interactions).</React>
+  through policies you choose. See [Interactions](/docs/interactions).
 - **Controlled or uncontrolled state.** The calendar or your app can own the visible date, the
   view, the time zone, the selection and the focus, one value at a time.
 - **Headless parts.** `Root`, the previous, next and today buttons, `Title` and `ActiveView` render
@@ -167,33 +168,32 @@ only.
     built on these parts, and [Customization](/docs/customization) shows how to restyle it, edit it
     or build your own.
   </React>
-  <Solid>The [Quick start](/docs/quick-start) writes one.</Solid>
+  <Solid>
+    [Custom views](/docs/views/custom-views) shows how to write one, and
+    [Customization](/docs/customization) what the parts leave to you.
+  </Solid>
 - **Actions for agents.** A calendar gives an AI agent fourteen actions, and a fifteenth, deleting,
   when you allow it. They describe the calendar, list its events, navigate, switch view, and
   create, rename, move and resize events. An agent sees nothing until your app creates ui-sdk's
   agent bridge. An agent's change goes through your policies and your `onEventChange`, marked as an
   agent's, and the agent gets back how it ended. A browser's built-in agent reaches them through
   WebMCP, an experimental browser API, and a model you run reaches them through `agentTools`.
-  <React>See [Agents in your app](/docs/agents).</React>
-  <Solid>See [Agents](/docs/api/components#agents).</Solid>
+  See [Agents in your app](/docs/agents).
 - **Editing by pointer and keyboard.** `useCalendarPointer` turns drags into moves, resizes and
   creates, with a mouse, a pen or touch, and `useCalendarKeyboard` moves focus through a view and
   moves and resizes events from the keyboard. The `Announcer` says each step to a screen reader.
-  <React>See [Changing events](/docs/accessibility#changing-events).</React>
-  <Solid>
-    See [Keyboard and dragging in a view](/docs/api/components#keyboard-and-dragging-in-a-view).
-  </Solid>
+  See [Changing events](/docs/accessibility#changing-events).
 - **Undo and redo.** `createEventHistory` records changes, and `useCalendarHistory` and its
-  keyboard shortcuts take them back. <React>See [Undo and redo](/docs/undo-redo).</React>
-  <Solid>See [Undo and redo](/docs/api/components#undo-and-redo).</Solid>
+  keyboard shortcuts take them back. See [Undo and redo](/docs/undo-redo).
 - **Server rendering.** During server rendering, Time doesn't read the clock, the host time zone or
   `window`, so the server and the browser render the same markup from the same props.
 - **Docs your coding agent can read.** Every page has a Markdown version, at its own address with
   `.md` added, and [`/llms.txt`](/llms.txt) lists them.
   <React>
-    The docs ship inside `@moltenship/calendar@next`, and a skill teaches a coding agent the
-    library. See [Build with a coding agent](/docs/agents/coding-agents).
+    The docs ship inside `@moltenship/calendar`, and a skill teaches a coding agent the library.
   </React>
+  <Solid>A skill teaches a coding agent the library.</Solid> See [Build with a coding
+  agent](/docs/agents/coding-agents).
 
 <React>
 
@@ -251,6 +251,11 @@ work.
     title="Quick start"
     href="/docs/quick-start"
     description="A calendar with an agenda you write."
+  />
+  <Card
+    title="Concepts"
+    href="/docs/concepts/how-it-works"
+    description="The packages, events, time and state."
   />
   <Card
     title="Components and hooks"

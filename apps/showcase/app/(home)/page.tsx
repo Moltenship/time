@@ -12,6 +12,7 @@ import InstallCommand from "@/components/install-command";
 import { CalendarPreview } from "@/components/calendar-preview";
 import { ReactLogo, SolidLogo } from "@/components/framework-logos";
 import { codeThemes } from "@/lib/code-themes";
+import { installTag, tagged, withInstallTag } from "@/lib/install-tag";
 import {
   demoUrl,
   githubUrl,
@@ -210,7 +211,10 @@ export default async function HomePage() {
           </div>
           <div className="mt-6 max-w-full">
             <InstallCommand
-              command="pnpm add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom"
+              command={withInstallTag(
+                "pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom",
+                installTag,
+              )}
               label="Copy the React install command"
             />
           </div>
@@ -428,8 +432,9 @@ export default async function HomePage() {
               label="Copy the skill install command"
             />
             <p className="mt-3 text-sm leading-relaxed text-fd-muted-foreground">
-              The skill has seven reference files. <code>@moltenship/calendar@next</code> ships it
-              under <code>skills/</code>.
+              The skill has seven reference files.{" "}
+              <code>{tagged("@moltenship/calendar", installTag)}</code> ships it under{" "}
+              <code>skills/</code>.
             </p>
           </div>
         </div>
