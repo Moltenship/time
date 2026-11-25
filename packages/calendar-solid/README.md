@@ -2,8 +2,8 @@
 
 > **2.0 preview.** This package is new and its API isn't settled. It can change in any release
 > before 2.0. The Solid registry has ready-made views for the week and day, the
-> month, the year and the agenda (`npx shadcn@latest add https://time.molten.sh/r/solid/time-grid-view.json`,
-> `…/month-view.json`, `…/year-view.json` and `…/list-view.json`). For the others you
+> month, the year, the agenda and the resource columns (`npx shadcn@latest add https://time.molten.sh/r/solid/time-grid-view.json`,
+> `…/month-view.json`, `…/year-view.json`, `…/list-view.json` and `…/resource-columns-view.json`). For the others you
 > define a view with `defineCalendarView`, over the engine's projections, and bind keyboard
 > navigation, dragging, drafts and undo to it with this package's hooks.
 

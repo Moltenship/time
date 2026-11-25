@@ -20,6 +20,9 @@
         "../../../../../registry/solid/recurrence-scope-dialog/*"
       ],
       "@/components/calendar/month-view/*": ["../../../../../registry/solid/month-view/*"],
+      "@/components/calendar/resource-columns-view/*": [
+        "../../../../../registry/solid/resource-columns-view/*"
+      ],
       "@/components/calendar/scrolling-list-view/*": [
         "../../../../../registry/solid/scrolling-list-view/*"
       ],

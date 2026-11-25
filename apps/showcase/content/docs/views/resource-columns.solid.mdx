@@ -1,0 +1,298 @@
+---
+title: Resource columns
+description: The Solid resource columns, a day or a few days of rooms or people side by side, grouped by team, with hundreds of columns, from the Solid registry.
+---
+
+<SolidExample
+  name="resource-columns"
+  title="The resource columns view"
+  size="h-[38rem]"
+  caption="Live. The page that Add it builds: two rooms and the Design team on October 8, 2026. Drag Design review to another column, or Tab in and press Space on it, then the arrow keys."
+/>
+
+The [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=resources) opens on the
+resource columns with three rooms and two teams, each with whether it's free now.
+
+`createResourceColumnsView` shows one time-grid column for each resource, such as a room or a
+person, for the anchor date. Pass a number of days to give each resource that many day columns.
+Resources with children appear as groups that collapse. Only the columns in view are rendered, so
+the view stays fast with hundreds of resources.
+
+## Add it
+
+Add the `resource-columns-view` item to your app with the shadcn CLI, as
+[UI source](/docs/installation#ui-source-optional) describes. It brings `time-grid-view`, whose
+columns, events and all-day row it reuses, the theme, the shared `calendar` parts, and
+`@tanstack/virtual-core`:
+
+```bash
+npx shadcn@latest add @moltenship/resource-columns-view
+```
+
+Then register the view. This one draws a person's initial before their name and stacks a room's
+bookings:
+
+<include meta='title="calendar.tsx"'>../../examples/solid/resource-columns-page.tsx#view</include>
+
+The view is named `resources`. Previous and Next move by its number of days:
+`createResourceColumnsView<Event>(options, 3)` shows three days for each resource. The columns
+scroll both ways inside the height they're given, so give `Calendar.Viewport` a height:
+
+<include meta='title="resource-columns-page.tsx"'>
+  ../../examples/solid/resource-columns-page.tsx#page
+</include>
+
+## Resources
+
+Pass the resources to `Root`. Each one has an `id`, a `title`, and optionally a `parentId`, which
+puts it in a group under that resource. Events list the resources they book in `resourceIds`, read
+through your event adapter's `getResourceIds`. An event that books several resources shows in each
+of their columns.
+
+<include meta='title="resources.ts"'>
+  ../../examples/solid/resource-columns-page.tsx#resources
+</include>
+
+A group's children show while its ID is in `expandedResourceIds`. The chevron on a group's header
+toggles it. To control expansion yourself, pass `expandedResourceIds` and
+`onExpandedResourceIdsChange`. Groups start collapsed unless you list them in
+`defaultExpandedResourceIds`.
+
+A change that moves an event to another resource proposes its new `resourceIds`, so saving
+`change.proposed`, as the page above does, keeps the event in the column it was dropped on.
+
+## Avatars and icons
+
+Columns often mix people and rooms, and a bare name doesn't say which is which. To show it, pass
+your own `ResourceHeader`, as the calendar above does. It draws each header's name row from small
+parts, so you can put a person's avatar or a room's icon before the name. Keep what the header
+needs in each resource's `data`, and give it a type: the view takes it as its second type
+parameter, so the component reads it from `props.resource`.
+
+The parts live in `resource-header.tsx`:
+
+- `ResourceHeaderToggle` is a group's chevron. It renders nothing for a resource without children.
+- `ResourceHeaderIcon` wraps anything you draw before the name. Screen readers skip it, because the
+  name beside it already says who or what the column is.
+- `ResourceHeaderTitle` is the name, cut short with an ellipsis. Children replace it.
+- `ResourceHeaderTime` is the resource's local time, while its `timeZone` keeps another clock than
+  the calendar's.
+- `ResourceHeaderStatus` is its status, with the view's `resourceStatus`, such as "Busy until 3:00
+  PM".
+- `useResourceHeader()` gives your own parts the resource, its name, its groups and its status.
+  `DefaultResourceHeader` is the toggle, the title, and the time or the status under it.
+
+`resource` is `null` for the Unassigned column. The view keeps the rest of the header: the group
+bands, the row heights and the group names screen readers hear. A row is 2rem tall, so keep
+icons at 24px (`size-6`) or smaller.
+
+## Rooms and people
+
+Rooms and people often want different layouts. A room's bookings can stack, so a busy room reads
+at a glance, while a person's meetings sit side by side. `getResourceOverlapLayout` gives each
+resource's columns a layout of its own; it takes the resource with your `data` type, so it can read
+what kind it is, as the calendar above does.
+
+The most specific layout wins, and each `undefined` falls through to the next:
+
+1. An event's own layout, from `getEventOverlapLayout`, such as its calendar's. A group of
+   overlapping events takes it only when they all agree, as in the
+   [week and day views](/docs/views/week-and-day).
+2. The column's resource, from `getResourceOverlapLayout`.
+3. The view's `overlapLayout`, then `"columns"`.
+
+A group whose events disagree takes its column's layout, from 2 or 3. The Unassigned column isn't
+a resource, so it follows `overlapLayout`. An event that books a room and a person is laid out in
+each column by that column's layout, and a move to another resource redraws it there by the new
+one's.
+
+Whether a room may be double-booked at all is a separate rule, with a mode per resource too: see
+[double booking](/docs/availability#double-booking).
+
+## Options
+
+Pass them to `createResourceColumnsView`, or per root in `viewOptions`, such as
+`viewOptions={{ resources: { unassigned: "bucket" } }}`:
+
+<TypeTable
+  type={{
+    describeEvent: {
+      type: "(event: TEvent) => string | undefined",
+      description: (
+        <>
+          Extra words for each event's <a href="/docs/accessibility#event-names">accessible name</a>
+          , such as its calendar.
+        </>
+      ),
+    },
+    dragPreview: {
+      type: '"snapped" | "free"',
+      default: '"snapped"',
+      description:
+        "How a drag's preview moves: from slot to slot, or with the pointer over a marker of where it would land, snapping there on release.",
+    },
+    getEventColor: {
+      type: "(event: TEvent) => CalendarEventColor | undefined",
+      description: (
+        <>
+          The color for each event, one of <code>calendarEventColors</code> in{" "}
+          <code>event-colors.ts</code>, which <code>calendar-theme</code> installs.
+        </>
+      ),
+    },
+    getEventIcon: {
+      type: "(event: TEvent) => JSX.Element",
+      description:
+        "A small icon before each event's title, such as a repeat mark on recurring events, or nothing. It's decorative and hidden from screen readers: say the same in describeEvent, which adds to the event's accessible name.",
+    },
+    getEventOverlapLayout: {
+      type: '(event: TEvent) => "columns" | "equal" | "stack" | undefined',
+      description:
+        "An event's own layout, such as its calendar's. A group that disagrees takes its column's.",
+    },
+    getResourceOverlapLayout: {
+      type: '(resource: TResource) => "columns" | "equal" | "stack" | undefined',
+      description: (
+        <>
+          A resource's layout in its columns, such as <code>"stack"</code> for rooms;{" "}
+          <code>undefined</code> keeps <code>overlapLayout</code>. See{" "}
+          <a href="#rooms-and-people">rooms and people</a>.
+        </>
+      ),
+    },
+    overlapLayout: {
+      type: '"columns" | "equal" | "stack"',
+      default: '"columns"',
+      description:
+        "How overlapping events share a resource's column, as in the week and day views, unless getResourceOverlapLayout gives the resource its own.",
+    },
+    ResourceHeader: {
+      type: "Component<ResourceHeaderProps<TResource>>",
+      default: "DefaultResourceHeader",
+      description: (
+        <>
+          Draws each header's name row from the <code>resource-header.tsx</code> parts. See{" "}
+          <a href="#avatars-and-icons">avatars and icons</a>.
+        </>
+      ),
+    },
+    stackIndent: {
+      type: "number",
+      default: "0.15",
+      description:
+        "How far each level of a stack is indented, as a fraction of the column width, the same for every stacked group. A value that isn't positive throws, whatever the layout.",
+    },
+    unassigned: {
+      type: '"hide" | "bucket"',
+      default: '"hide"',
+      description:
+        'Events that book no resources: hidden, or shown in an "Unassigned" column after the resources.',
+    },
+    renderUnavailable: {
+      type: "UnavailableTimeRender",
+      description: (
+        <>
+          Replaces the shading of closed time: a function of its props and its state. See{" "}
+          <a href="/docs/availability">Availability</a>.
+        </>
+      ),
+    },
+    resourceStatus: {
+      type: "boolean | ResourceStatusOptions",
+      description: (
+        <>
+          Shows each resource's status, such as "Busy until 3:00 PM", and while an event is being
+          placed, whether it's busy or outside its hours then. See{" "}
+          <a href="/docs/availability">Availability</a>.
+        </>
+      ),
+    },
+  }}
+/>
+
+## What it shows
+
+- **Header:** each resource's name, or what your `ResourceHeader` draws. An expanded group's band
+  names it across its own column and its children's columns. Over several days, a row under the
+  names shows each day's weekday and date.
+- **All-day row:** each resource's all-day events, and timed events of 24 hours or more. Busy days
+  collapse to three rows with "+N more" in every column at once, so the row keeps one height.
+- **Columns:** the same hours, events, daylight-saving bands and now line as the
+  [day view](/docs/views/week-and-day). With [availability](/docs/availability), each column shades
+  its own resource's closed time.
+- **Scrolling:** columns share the width until they are 128px per day, then the view scrolls
+  sideways. The header, the all-day row and the hour gutter follow the body's scroll.
+- **Editing:** with `onEventChange` on `Root`, drag an event within its column to move or resize it,
+  or into another resource's column to move it there. A move swaps the resource you dragged from
+  for the one you dropped on and keeps the event's other resources. Drag across empty time or
+  all-day cells to create an event in that resource.
+- **Accessible names:** events, slots and all-day cells include their resource, as in "Design
+  review, Thursday, October 8, 10:00 – 11:30 AM, Orchid". Announcements name it too.
+- **On a phone** every event and button is at least 24 px wide, a long press doesn't select text,
+  and the columns keep their 128px, so the view scrolls sideways.
+- **Right to left** mirrors the columns, the header and the gutter when the page or
+  `Calendar.Frame` has `dir="rtl"`.
+- **Reduced motion** moves the drag preview without its glide.
+
+## Anatomy
+
+`ResourceColumnsView` renders the parts below. The view builds them itself from its projection, so
+they're not parts you compose: to change one, edit its file under
+`components/calendar/resource-columns-view`. The exception is each header's name row, which you
+can replace with [`ResourceHeader`](#avatars-and-icons).
+
+```txt title="Rendered by ResourceColumnsView"
+ResourceColumnsView              resource-columns-view.tsx
+├── ResourceColumnsHeader        resource-columns-header.tsx
+│   └── Resource header          one per rendered resource
+│       └── ResourceHeader       resource-header.tsx, or your own composition
+├── ResourceColumnsDates         resource-columns-dates.tsx, over N days
+├── ResourceColumnsAllDay        resource-columns-all-day.tsx
+│   └── TimeGridAllDayCells      one set per rendered resource
+└── ResourceColumnsBody          resource-columns-body.tsx, scrolls both ways
+    ├── Time gutter              --calendar-gutter-width, with secondary time zones
+    └── Resource column          data-resource-id
+        └── TimeGridColumn       time-grid-column.tsx, one per day
+            ├── TimeGridEvent    time-grid-event.tsx
+            └── Now line         data-slot="time-grid-now"
+```
+
+The `.tsx` files are Solid components. What they do comes from plain TypeScript beside them, the
+same files React's resource columns read:
+
+| File                         | Holds                                                                 |
+| ---------------------------- | --------------------------------------------------------------------- |
+| `column-virtualizer.ts`      | Which columns render, which `use-column-virtualizer.ts` binds         |
+| `axis-sync.ts`               | How the header and gutter follow the body, bound by `use-axis-sync`   |
+| `focused-column.ts`          | Scrolling a focused resource into view, bound by `use-focused-column` |
+| `resource-columns-labels.ts` | Words such as "Unassigned"                                            |
+| `resource-columns-layout.ts` | Sizes and the snap                                                    |
+| `resource-columns.styles.ts` | Every class the parts set, so a restyle is one file                   |
+
+## Keyboard
+
+Tab into the example above, or click a slot, and try these keys. Columns run resource by resource:
+each resource's days, then the next resource. Inside a column the keys are the
+[day view's](/docs/views/week-and-day#keyboard). The
+[Accessibility](/docs/accessibility#keyboard) page has the full map.
+
+| Focus         | Key                | Effect                                                                                       |
+| ------------- | ------------------ | -------------------------------------------------------------------------------------------- |
+| A day or slot | ← →                | Same slot in the previous or next column, crossing into the next resource                    |
+| A day or slot | ← → past the ends  | On to the day before or after the range, in the last or first resource                       |
+| A day or slot | Home, End          | First or last column                                                                         |
+| A day or slot | Page Up, Page Down | Same resource, a whole day (or range) earlier or later                                       |
+| A day or slot | ↑ ↓, Enter         | As in the day view: slots, the all-day cell, and the events covering a slot                  |
+| A day or slot | Space              | Start an event there, in that column's resource                                              |
+| An event      | Space              | Pick it up. ← → move it across columns, and into another resource it swaps that one resource |
+
+Focus can move to a resource that's scrolled out of view: its column renders and scrolls in, and
+it stays rendered while you scroll away, so focus is never lost.
+
+## Build your own
+
+The strategy is exported from `@moltenship/calendar-solid`: `resourceColumnsStrategy`, with
+`resourceColumnsSpatialNavigation` for the keys. Its projection has the visible resources, each
+with its days, its all-day rows and its timed columns. See [Custom views](/docs/views/custom-views).
+Each resource's cells sit inside an element with `resourceIdAttributes(id)`, which sets
+`data-resource-id`: a drop or create inside it lands in that resource.
