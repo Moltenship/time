@@ -135,8 +135,14 @@ function TimeGridSlot(props: {
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   readonly slotMinutes: number;
 }) {
-  const roving = useRovingFocus(() => props.focus);
-  const offscreen = untrack(() => props.offscreen);
+  let element: HTMLElement | undefined;
+  // A slot in a column scrolled away releases the view's tab stop, yet keeps focus it has.
+  const roving = createMemo(() => {
+    if (props.offscreen) return null;
+    const own = useRovingFocus(() => props.focus);
+    if (element !== undefined) own.ref(element);
+    return own;
+  });
   // Native, so it runs before the view's keyboard, which listens on the grid.
   const openDayKey = (element: HTMLElement) => {
     element.addEventListener("keydown", (event) => {
@@ -152,9 +158,15 @@ function TimeGridSlot(props: {
     <div
       role="button"
       aria-label={props.label}
-      ref={offscreen ? openDayKey : [roving.ref, openDayKey]}
-      onFocus={offscreen ? undefined : roving.onFocus}
-      tabindex={offscreen ? -1 : roving.tabindex}
+      ref={[
+        (node: HTMLElement) => {
+          element = node;
+          untrack(roving)?.ref(node);
+        },
+        openDayKey,
+      ]}
+      onFocus={(event: FocusEvent) => untrack(roving)?.onFocus(event)}
+      tabindex={roving()?.tabindex ?? -1}
       class={timeGridSlotClass}
       style={bandBox(slotBand(props.focus, props.slotMinutes))}
     />
