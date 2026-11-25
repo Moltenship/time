@@ -1,8 +1,8 @@
 # @moltenship/calendar-solid
 
-> **New in 2.0.** The Solid registry has every ready-made view but the resource timeline:
+> **New in 2.0.** The Solid registry has every ready-made view:
 > `npx shadcn@latest add https://time.molten.sh/r/solid/calendar-full.json` installs them all.
-> For a view it doesn't have, you define one with `defineCalendarView`, over the engine's
+> For a view of your own, you define one with `defineCalendarView`, over the engine's
 > projections, and bind keyboard navigation, dragging, drafts and undo to it with this package's
 > hooks.
 

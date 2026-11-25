@@ -272,8 +272,8 @@ The registry is not a second package manager. It distributes the source users ar
   `/r/solid/<item>.json` and installed by the same `shadcn` CLI into a Solid 2.0 app. Files with no
   framework in them, such as the theme, the agenda's rows, words and class strings, and its
   virtualizer on TanStack's framework-free engine, live once in `registry/shared` and install from
-  both registries at the same targets. The Solid registry has every item but the resource timeline
-  and the StyleX flavour, and its own `calendar-full`. The React items' controls come
+  both registries at the same targets. The Solid registry has every item but the StyleX flavour,
+  and its own `calendar-full`. The React items' controls come
   from one kit on ui-sdk per flavour, `calendar-ui` and `stylex-calendar-ui`, with no stock shadcn
   components or Base UI in the items. Rules 5, 14 and 15 above describe what is enforced.
 

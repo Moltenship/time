@@ -339,9 +339,8 @@ The package renders plain, unstyled elements. The registry has styled Solid view
 [recurring-event dialog](/docs/recurrence/calendar), the [undo toast](/docs/undo-redo#undo-toast)
 and the [controls](/docs/views/controls) they're built from, as source files that you add to your app and
 then own, the way shadcn/ui works. They install with the shadcn CLI from this site's Solid registry,
-at `https://time.molten.sh/r/solid`. The resource timeline isn't in it yet: a view it doesn't have
-is one you write, as [Custom views](/docs/views/custom-views) shows, and
-[What Solid doesn't have](/docs/frameworks#what-solid-doesnt-have) lists the rest.
+at `https://time.molten.sh/r/solid`. A view it doesn't have is one you write, as
+[Custom views](/docs/views/custom-views) shows.
 
 | Item                       | What it adds                                                                                                                                   |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -426,7 +425,7 @@ npx shadcn@latest add @moltenship/base-tokens @moltenship/list-view
 Without `registries` in `components.json`, give the item's full address instead:
 
 ```bash
-npx shadcn@latest add https://time.molten.sh/r/solid/calendar-full.json
+npx shadcn@latest add https://time.molten.sh/r/solid/base-tokens.json https://time.molten.sh/r/solid/calendar-full.json
 ```
 
 For the agenda, the CLI writes the tokens into `src/app.css` and these files under

@@ -57,7 +57,7 @@ These work the same in both frameworks, because they run below the integration:
 | Packages you install          | `@moltenship/calendar`, `@ui-sdk/core`, `@ui-sdk/react`           | `@moltenship/calendar-solid`, `@ui-sdk/core`, `@ui-sdk/solid`                                 |
 | Parts                         | `Root`, the structural parts, `Event` and `Announcer`             | The same parts                                                                                |
 | Hooks                         | Every hook, returning values                                      | The same hooks: accessors for state, refs from `useCalendarKeyboard` and `useCalendarPointer` |
-| Ready-made views              | The registry's views, in shadcn/ui with Tailwind CSS or in StyleX | The registry's views, in Tailwind CSS; none in StyleX                               |
+| Ready-made views              | The registry's views, in shadcn/ui with Tailwind CSS or in StyleX | The registry's views, in Tailwind CSS; none in StyleX                                         |
 | Keyboard navigation in a view | Yes                                                               | Yes                                                                                           |
 | Drag, resize and create       | Yes, with a mouse, a pen or touch                                 | Yes, with a mouse, a pen or touch                                                             |
 | Undo and redo                 | `useCalendarHistory`, its shortcuts and the registry's toast      | The same, with the registry's toast                                                           |
@@ -68,11 +68,11 @@ These work the same in both frameworks, because they run below the integration:
 
 ## What Solid doesn't have
 
-| Missing               | In React it's                                                                                |
-| --------------------- | -------------------------------------------------------------------------------------------- |
-| StyleX views          | The registry's `stylex-` items, which are React source                                       |
-| A testing package     | `@moltenship/calendar-testing`, which is React only                                          |
-| A dnd-kit adapter     | `@moltenship/calendar-dnd-kit`, which has React as a peer dependency                         |
+| Missing           | In React it's                                                        |
+| ----------------- | -------------------------------------------------------------------- |
+| StyleX views      | The registry's `stylex-` items, which are React source               |
+| A testing package | `@moltenship/calendar-testing`, which is React only                  |
+| A dnd-kit adapter | `@moltenship/calendar-dnd-kit`, which has React as a peer dependency |
 
 The registry's Solid items install with the same `shadcn add` command as React's, from the Solid
 registry, and `calendar-full` installs all of them. [Issue #279](https://github.com/Moltenship/time/issues/279)

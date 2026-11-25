@@ -60,7 +60,7 @@ Coming from 1.x? See [Migrating to 2.0](https://time.molten.sh/docs/react/migrat
   records. TypeScript keeps your record and ID types.
 - **Views you own.** Week, day, month, year, agenda, resource columns and resource timeline are
   React source files built on shadcn/ui. The shadcn CLI copies them into your app, in Tailwind CSS
-  or StyleX. The Solid registry has every one of them but the resource timeline, in Tailwind CSS.
+  or StyleX. The Solid registry has every one of them, in Tailwind CSS.
 - **Headless underneath.** The packages ship no styles, and the registry's views are one UI on top
   of them. Restyle it with tokens, edit the files, swap its controls, or build your own UI with
   MUI or any other library. See [Customization](https://time.molten.sh/docs/react/customization).
@@ -81,8 +81,8 @@ Coming from 1.x? See [Migrating to 2.0](https://time.molten.sh/docs/react/migrat
 - **React and Solid.** One package holds the calendar's state and actions, and it imports no
   framework. The React and
   [SolidJS 2](https://time.molten.sh/docs/solid) integrations have the same parts and hooks,
-  keyboard navigation, dragging and undo, and the registry has every view in Solid but the
-  resource timeline. [React and Solid](https://time.molten.sh/docs/react/frameworks) lists what the two
+  keyboard navigation, dragging and undo, and the registry has every view in Solid
+  too. [React and Solid](https://time.molten.sh/docs/react/frameworks) lists what the two
   share.
 
 [Comparison](https://time.molten.sh/docs/react/comparison) sets Time beside FullCalendar and

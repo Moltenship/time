@@ -140,12 +140,8 @@ const frameworkRows = [
   ["Keyboard navigation in a view", "Yes", "Yes"],
   ["Drag, resize and create", "Yes", "Yes"],
   ["Undo and redo", "A hook and shortcuts", "A hook and shortcuts"],
-  [
-    "Ready-made views",
-    "shadcn/ui or StyleX source",
-    "Tailwind CSS source: every view but the resource timeline",
-  ],
-  ["Testing package", "Yes", "Not yet"],
+  ["Ready-made views", "shadcn/ui or StyleX source", "Every view, as Tailwind CSS source"],
+  ["Testing package", "Yes", "No"],
 ] as const;
 
 const agentDocs = [
@@ -321,7 +317,7 @@ export default async function HomePage() {
             </a>
             . React and Solid each have a package that renders that state. The Solid package has the
             parts and hooks React has, keyboard navigation, dragging and undo included, and its
-            registry has every view but the resource timeline, in Tailwind CSS.
+            registry has every view, in Tailwind CSS.
           </p>
           <p className="mt-4 text-fd-muted-foreground">
             {installTag === undefined
@@ -366,9 +362,7 @@ export default async function HomePage() {
                     {feature}
                   </th>
                   <td className="px-4 py-3">{react}</td>
-                  <td
-                    className={`px-4 py-3 ${solid === "Not yet" ? "text-fd-muted-foreground" : ""}`}
-                  >
+                  <td className={`px-4 py-3 ${solid === "No" ? "text-fd-muted-foreground" : ""}`}>
                     {solid}
                   </td>
                 </tr>

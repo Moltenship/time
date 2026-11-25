@@ -217,8 +217,8 @@ calendar that renders `Frame`, whatever draws its views. You write the rest:
 
 <React>
 
-A Solid app is at this level today, since the registry has no Solid views yet. The
-[Solid docs](/docs/solid/quick-start) build a calendar this way.
+A Solid app can start at any level: the Solid registry has every view, and the
+[Solid quick start](/docs/solid/quick-start) builds a calendar at this one.
 
 </React>
 
@@ -237,8 +237,8 @@ A Solid app is at this level today, since the registry has no Solid views yet. T
   navigates and changes the view with the calendar's own actions.
 - **A React control needs a Solid twin.** ui-sdk has the same components in React and Solid, so a
   control built on it behaves alike in both. A control built on a React library exists in React
-  only, so a Solid app needs its own version of it. Today that matters only for a Solid UI you
-  write yourself, since the registry has no Solid files yet.
+  only, so a Solid app needs its own version of it. The Solid registry's views use its own
+  kit, so that matters only for a control of yours.
 - **At level 4, the views are yours to write and test.** That includes laying out overlapping
   events, keyboard navigation, dragging and screen reader announcements. The packages give you the
   functions and hooks for each, and the registry's views are source you can read while you write
