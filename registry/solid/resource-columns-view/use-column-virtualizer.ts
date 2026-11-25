@@ -1,11 +1,4 @@
-import {
-  createMemo,
-  createSignal,
-  onCleanup,
-  onSettled,
-  untrack,
-  type Accessor,
-} from "solid-js";
+import { createMemo, createSignal, onCleanup, onSettled, untrack, type Accessor } from "solid-js";
 
 import {
   createColumnVirtualizer,
