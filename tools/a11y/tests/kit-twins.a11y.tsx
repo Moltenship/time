@@ -4,6 +4,13 @@ import { server, userEvent } from "vite-plus/test/browser";
 import { Badge } from "@registry/calendar-ui/badge";
 import { Button } from "@registry/calendar-ui/button";
 import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@registry/calendar-ui/popover";
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -86,6 +93,29 @@ describe.runIf(server.browser === "chromium")("kit twins", () => {
     await until(() => expect(opened(document.querySelector('[role="listbox"]'))).toBe(true));
     await expect(describeTree(root(), ...popups(container()))).toMatchFileSnapshot(
       "./kit-twins/select-open.txt",
+    );
+  });
+
+  test("the popover, closed and open", async () => {
+    await render(
+      <div data-testid="kit">
+        <Popover>
+          <PopoverTrigger aria-label="3 more events">3 more</PopoverTrigger>
+          <PopoverContent align="start">
+            <PopoverTitle>Thursday</PopoverTitle>
+            <PopoverClose>Close</PopoverClose>
+          </PopoverContent>
+        </Popover>
+      </div>,
+    );
+    await expect(describeTree(root())).toMatchFileSnapshot("./kit-twins/popover-closed.txt");
+
+    await userEvent.click(root().querySelector("button")!);
+    await until(() =>
+      expect(opened(document.querySelector('[data-slot="popover-content"]'))).toBe(true),
+    );
+    await expect(describeTree(root(), ...popups(container()))).toMatchFileSnapshot(
+      "./kit-twins/popover-open.txt",
     );
   });
 });

@@ -30,6 +30,7 @@ test("the Solid registry has the items ported so far", () => {
     "calendar-theme",
     "calendar-ui",
     "list-view",
+    "month-view",
   ]);
 });
 
@@ -40,8 +41,8 @@ describe.each(solidItems.filter((name) => existsSync(join(registry, name, "regis
     const own = manifestOf(join(solid, name));
 
     test("lists every shared file its React twin lists, at the same target", () => {
-      // The kit's popover, dialog and toast come with the views that use them (ADR 0279, S3, S6).
-      const pending = name === "calendar-ui" ? /\/(?:dialog|popover|toast)\.styles\.ts$/u : null;
+      // The kit's dialog and toast come with the views that use them (ADR 0279, S6).
+      const pending = name === "calendar-ui" ? /\/(?:dialog|toast)\.styles\.ts$/u : null;
       expect(shared(own)).toEqual(
         shared(react).filter(({ path }) => pending === null || !pending.test(path)),
       );

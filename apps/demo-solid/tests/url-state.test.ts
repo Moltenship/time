@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, test } from "vite-plus/test";
 
-import { readSolidLocation, writeSolidLocation } from "../src/url-state";
+import { nearestSolidView, readSolidLocation, writeSolidLocation } from "../src/url-state";
 
 /**
  * The React demo's view names, read from its source rather than imported: its module brings the
@@ -90,5 +90,12 @@ describe("the Solid demo's view and date in the URL", () => {
     expect(write("?view=year", "month")).toBe("year");
     expect(write("?view=week", "month")).toBe("month");
     expect(write("?view=year", "agenda")).toBe("agenda");
+  });
+
+  test("a view a part asks for that this demo lacks shows as its nearest", () => {
+    // The month's date number asks for `day`.
+    expect(nearestSolidView("day", "month")).toBe("agenda");
+    expect(nearestSolidView("agenda", "month")).toBe("agenda");
+    expect(nearestSolidView("no-such-view", "month")).toBe("month");
   });
 });

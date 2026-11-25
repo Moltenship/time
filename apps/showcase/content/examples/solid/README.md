@@ -15,6 +15,9 @@ have a reader write for the Solid registry. `calendar-page.tsx` imports the regi
 and `registry/shared`. The registry's install test (`vp run registry:e2e`) copies the three files
 into a clean Solid app, so what the docs show is what it installs and builds.
 
+`month-page.tsx` is the Month page's calendar and page, after `shadcn add` of the Solid month. The
+install test copies it into the same app, beside `calendar-page.tsx`.
+
 `own-button.tsx` is the Controls page's own button, an app's `components/calendar/ui/button.tsx`
 in place of the kit's. It checks below its region that it takes every prop of the kit's button.
 

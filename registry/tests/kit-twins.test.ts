@@ -13,8 +13,8 @@ const registry = join(import.meta.dirname, "..");
 const reactKit = join(registry, "calendar-ui");
 const solidKit = join(registry, "solid", "calendar-ui");
 
-/** The kit's controls that come to Solid with the views that use them (ADR 0279, S3 and S6). */
-const pending = ["dialog", "popover", "toast"];
+/** The kit's controls that come to Solid with the views that use them (ADR 0279, S6). */
+const pending = ["dialog", "toast"];
 
 /** The icons are the Solid kit's own until lucide-solid supports Solid 2.0. */
 const solidOnly = ["icons"];

@@ -21,6 +21,16 @@
       "path": "registry/stylex-month-view/month-event.tsx",
       "type": "registry:component",
       "target": "@components/calendar-stylex/month-view/month-event.tsx"
+    },
+    {
+      "path": "registry/shared/month-view/month-layout.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/month-view/month-layout.ts"
+    },
+    {
+      "path": "registry/shared/month-view/month-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/month-view/month-labels.ts"
     }
   ]
 }

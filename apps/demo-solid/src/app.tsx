@@ -1,17 +1,35 @@
 import { createEventHistory, type CalendarWeekRules } from "@moltenship/calendar-core";
 import { useCalendarHistory, useCalendarHistoryShortcuts } from "@moltenship/calendar-solid";
-import { createEffect, createSignal } from "solid-js";
+import { createEffect, createSignal, For } from "solid-js";
 
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import { MiniMonth } from "@registry/calendar/mini-month";
 import { ViewSwitcher } from "@registry/calendar/view-switcher";
 import { Button } from "@registry/calendar-ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@registry/calendar-ui/select";
 
 import { AgentPanel } from "./agent-panel";
 import { announcements, historyAnnouncements } from "./announcements";
 import { Calendar, type Meeting } from "./calendar";
+import {
+  dragPreviewOptions,
+  readDragPreview,
+  writeDragPreview,
+  type DragPreview,
+} from "./drag-preview";
 import { FrameworkSwitch } from "./framework-switch";
-import { readSolidLocation, writeSolidLocation, type SolidView } from "./url-state";
+import {
+  nearestSolidView,
+  readSolidLocation,
+  writeSolidLocation,
+  type SolidView,
+} from "./url-state";
 
 const timeZone = Temporal.Now.timeZoneId();
 const today = Temporal.Now.plainDateISO(timeZone);
@@ -111,6 +129,36 @@ const viewOptions = [
   { label: "Agenda", value: "agenda" },
 ] as const satisfies readonly { readonly label: string; readonly value: SolidView }[];
 
+/** How a pointer drag previews where it lands, as the React demo's settings choose it. */
+function DragPreviewSelect(props: {
+  readonly onValueChange: (preview: DragPreview) => void;
+  readonly value: DragPreview;
+}) {
+  return (
+    <Select
+      items={dragPreviewOptions}
+      value={props.value}
+      onValueChange={(next) => {
+        const option = dragPreviewOptions.find((candidate) => candidate.value === next);
+        if (option !== undefined) props.onValueChange(option.value);
+      }}
+    >
+      <SelectTrigger aria-label="Dragging">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent align="end" alignItemWithTrigger={false}>
+        <For each={dragPreviewOptions} keyed={(option) => option.value}>
+          {(option) => (
+            <SelectItem label={option().label} value={option().value}>
+              {option().label}
+            </SelectItem>
+          )}
+        </For>
+      </SelectContent>
+    </Select>
+  );
+}
+
 /** The registry's mini month, following the calendar: it shows the range the view shows. */
 function Sidebar(props: {
   readonly date: Temporal.PlainDate;
@@ -135,8 +183,10 @@ export function App() {
   const [location, setLocation] = createSignal(
     readSolidLocation(window.location.search, { date: today, view: "month" }),
   );
+  const [dragPreview, setDragPreview] = createSignal(readDragPreview(window.location.search));
   // What the URL says for them, which the effect writes and the framework switch's links carry.
-  const href = () => writeSolidLocation(window.location.href, location());
+  const href = () =>
+    writeDragPreview(writeSolidLocation(window.location.href, location()), dragPreview());
   createEffect(href, (next) => {
     history.replaceState(history.state, "", next);
   });
@@ -152,12 +202,12 @@ export function App() {
       </header>
       <p class="preview">
         This page runs <code>@moltenship/calendar-solid</code>, a preview. The toolbar, the view
-        switcher, the mini month and the agenda are the registry's Solid items, the files{" "}
-        <code>shadcn add</code> installs into a Solid app: in the agenda, up and down move between
-        events, Page Up and Page Down between days. The month grid is this page's own view on the
-        package's hooks: arrow keys move through days and events, Space picks an event up or starts
-        a new one, a pointer drags an event to move it, its ends to resize it, or across days to
-        create one, and Undo and Redo take changes back. <a href={docsUrl}>The Solid docs</a>
+        switcher, the mini month, the month and the agenda are the registry's Solid items, the files{" "}
+        <code>shadcn add</code> installs into a Solid app. In the month, arrow keys move through
+        days and Enter into a day's events, Space picks an event up or starts a new one, and a
+        pointer drags an event to another day or across days to create one; in the agenda, up and
+        down move between events, Page Up and Page Down between days. Undo and Redo take changes
+        back. <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's month and list projections, with an agent driving it
@@ -192,7 +242,9 @@ export function App() {
         }}
         onEventChangeResult={(result, detail) => changes.record(result, detail)}
         onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
-        onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
+        onViewChange={(view) =>
+          setLocation((current) => ({ ...current, view: nearestSolidView(view, current.view) }))
+        }
         policies={[
           // A locked event stays where it is: the change fails, and an agent hears the reason.
           (change) =>
@@ -201,12 +253,14 @@ export function App() {
               : { type: "accept" },
         ]}
         view={location().view}
+        viewOptions={{ month: { dragPreview: dragPreview() } }}
         weekRules={weekRules}
       >
         <div class="layout">
           <Calendar.Frame class="calendar">
             <CalendarToolbar calendar={Calendar} class="toolbar">
               <HistoryControls />
+              <DragPreviewSelect onValueChange={setDragPreview} value={dragPreview()} />
               <ViewSwitcher
                 onValueChange={(view) => setLocation((current) => ({ ...current, view }))}
                 options={viewOptions}

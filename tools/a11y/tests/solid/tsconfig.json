@@ -11,5 +11,12 @@
     },
     "types": ["vite-plus/client", "@vitest/browser-playwright"]
   },
-  "include": ["**/*.ts", "**/*.tsx", "../axe.ts", "../kit-twins.ts", "../waits.ts"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../axe.ts",
+    "../kit-twins.ts",
+    "../month-fixture.ts",
+    "../waits.ts"
+  ]
 }

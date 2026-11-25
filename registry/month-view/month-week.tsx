@@ -4,17 +4,14 @@ import {
   useCalendarInteraction,
   useClosedDates,
   useRovingFocus,
-  type ClosedDate,
-  type ClosedTime,
   type DayGridOverflow,
   type DayGridSegment,
-  type EventDayFragment,
   type EventId,
   type MonthDay,
   type MonthWeek,
   type ResourceId,
 } from "@moltenship/calendar";
-import type { CSSProperties, ReactNode, Ref } from "react";
+import type { ReactNode, Ref } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import {
@@ -24,61 +21,66 @@ import {
 } from "@registry/calendar/preview-check";
 import { UnavailableTime, type UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
-import { cn } from "cn";
+import {
+  closedDaysOf,
+  eventKey,
+  fragmentOn,
+  inAllDayDraft,
+  isBarFragment,
+  isBarSegment,
+  laneBox,
+  segmentsOn,
+  segmentsStartingOn,
+  type ClosedDay,
+} from "@registry/shared/month-view/month-layout";
+import {
+  dateButtonLabel,
+  dateButtonText,
+  dayCellLabel,
+  dayEventsLabel,
+  moreEventsLabel,
+  moreEventsText,
+  startTime,
+  type MonthFormats,
+} from "@registry/shared/month-view/month-labels";
+import {
+  laneProbeClass,
+  monthCellDateClass,
+  monthClosedClass,
+  monthDateButtonClass,
+  monthDateLayerClass,
+  monthDayCellClass,
+  monthListDateClass,
+  monthSegmentClass,
+  monthWeekClass,
+  moreEventsContentClass,
+  moreEventsHeaderClass,
+  moreEventsItemClass,
+  moreEventsListClass,
+  moreEventsLongClass,
+  moreEventsShortClass,
+  moreEventsTriggerClass,
+  moreEventsWeekdayClass,
+} from "@registry/shared/month-view/month.styles";
 import { Popover, PopoverContent, PopoverTrigger } from "@registry/calendar-ui/popover";
 
 import { MonthEvent } from "./month-event";
 
-/**
- * Pixel height of a cell's date row and of one event lane; lanes are derived from these. A view
- * sets the lane's height as `--calendar-month-lane` on its root: 22 px, and 26 px where the pointer
- * is coarse, so on a touch screen events and "+N more" are 24 px tall, as WCAG 2.5.8 asks.
- */
-export const DATE_ROW_HEIGHT = 28;
-export const LANE_HEIGHT = 22;
-
-/**
- * How many lanes fit in a week row `rowHeight` px tall, with lanes `laneHeight` px apart. Lanes
- * start 1 px below the date row and each event ends 1 px before its lane does, so the last lane's
- * spare pixel holds the row's bottom border.
- */
-export function lanesIn(rowHeight: number, laneHeight: number): number {
-  return Math.max(1, Math.floor((rowHeight - DATE_ROW_HEIGHT) / laneHeight));
-}
+export {
+  DATE_ROW_HEIGHT,
+  LANE_HEIGHT,
+  laneHeightOf,
+  lanesIn,
+  weekHeight,
+} from "@registry/shared/month-view/month-layout";
+export type { MonthFormats } from "@registry/shared/month-view/month-labels";
 
 /**
  * An invisible element one lane tall, for measuring `--calendar-month-lane` in any unit. Observe
  * it with the rows: it resizes when the pointer changes, and the lanes with it.
  */
 export function LaneProbe({ ref }: { readonly ref: Ref<HTMLDivElement> }) {
-  return (
-    <div
-      ref={ref}
-      aria-hidden
-      className="pointer-events-none invisible absolute h-(--calendar-month-lane) w-0"
-    />
-  );
-}
-
-/** The lane height a probe measures; 0 where nothing lays out, as on the server. */
-export function laneHeightOf(probe: HTMLElement | null): number {
-  return probe?.offsetHeight || LANE_HEIGHT;
-}
-
-/** The height a week needs to show `laneCount` lanes, as a CSS length. */
-export function weekHeight(laneCount: number): string {
-  // One pixel for the row's bottom border.
-  return `calc(${DATE_ROW_HEIGHT + 1}px + ${laneCount} * var(--calendar-month-lane, ${LANE_HEIGHT}px))`;
-}
-
-export interface MonthFormats {
-  readonly date: Intl.DateTimeFormat;
-  /** A month's first date, named with the short month it shows: "Thursday, Oct 1, 2026". */
-  readonly firstDate: Intl.DateTimeFormat;
-  readonly monthDay: Intl.DateTimeFormat;
-  readonly time: (time: Temporal.PlainTime) => string;
-  readonly weekday: Intl.DateTimeFormat;
-  readonly weekdayName: Intl.DateTimeFormat;
+  return <div ref={ref} aria-hidden className={laneProbeClass} />;
 }
 
 interface MonthWeekRowProps<TEvent> {
@@ -106,40 +108,6 @@ interface MonthWeekRowProps<TEvent> {
 
 type Segment<TEvent> = DayGridSegment<TEvent, EventId, ResourceId>;
 
-/**
- * Places an item in a lane of its first day's cell. A span reaches across the following cells:
- * `100%` is one cell without its 1px grid line.
- */
-function laneStyle(lane: number, span = 1): CSSProperties {
-  const height = `var(--calendar-month-lane, ${LANE_HEIGHT}px)`;
-  return {
-    height: `calc(${height} - 2px)`,
-    insetInlineEnd: `calc(${1 - span} * (100% + 1px))`,
-    top: `calc(${DATE_ROW_HEIGHT + 1}px + ${lane} * ${height})`,
-  };
-}
-
-function startTime(
-  fragment: EventDayFragment<unknown, EventId, ResourceId>,
-  formats: MonthFormats,
-) {
-  return fragment.event.kind === "all-day" || fragment.startsBeforeDay
-    ? undefined
-    : formats.time(fragment.start.toPlainTime());
-}
-
-/** The segments that show something on a week's `column`, top to bottom. */
-function segmentsOn<TEvent>(segments: readonly Segment<TEvent>[], column: number) {
-  // Lanes are assigned in display order, so the day's events read top to bottom by lane.
-  return segments
-    .filter((segment) => segment.column <= column && column < segment.column + segment.span)
-    .toSorted((left, right) => left.lane - right.lane);
-}
-
-function eventCount(count: number): string {
-  return count === 0 ? "no events" : count === 1 ? "1 event" : `${count} events`;
-}
-
 function DateButton({
   className,
   day,
@@ -153,24 +121,16 @@ function DateButton({
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
   readonly tabIndex?: number;
 }) {
-  const first = day.date.day === 1;
   return (
     <button
       type="button"
       aria-current={day.isToday ? "date" : undefined}
-      aria-label={(first ? formats.firstDate : formats.date).format(day.date)}
+      aria-label={dateButtonLabel(formats, day.date)}
       onClick={() => onOpenDay(day.date)}
       tabIndex={tabIndex}
-      className={cn(
-        "flex items-center justify-center rounded-full font-medium tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
-        // Muted on the hover fill falls short of 4.5:1. Today keeps its own colours.
-        !day.inMonth && !day.isToday && "text-muted-foreground hover:text-accent-foreground",
-        day.isToday &&
-          "bg-calendar-today text-calendar-today-foreground hover:bg-calendar-today/90",
-        className,
-      )}
+      className={monthDateButtonClass(day, className)}
     >
-      {first ? formats.monthDay.format(day.date) : day.date.day}
+      {dateButtonText(formats, day)}
     </button>
   );
 }
@@ -203,46 +163,41 @@ function MoreEvents<TEvent>({
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
   readonly segments: readonly Segment<TEvent>[];
 }) {
+  const text = moreEventsText(count);
   return (
     <Popover>
       <PopoverTrigger
-        aria-label={`${count} more events on ${formats.date.format(day.date)}`}
+        aria-label={moreEventsLabel(formats, day.date, count)}
         // The view keeps one tab stop; arrow keys reach these events in the grid.
         tabIndex={-1}
-        style={laneStyle(lane)}
-        className="absolute start-0 z-1 mx-0.5 truncate rounded-sm px-1.5 text-start text-xs font-medium max-sm:px-1 max-sm:text-[0.625rem] text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+        style={laneBox(lane)}
+        className={moreEventsTriggerClass}
       >
-        <span className="max-sm:hidden">{count} more</span>
-        <span className="sm:hidden">+{count}</span>
+        <span className={moreEventsLongClass}>{text.long}</span>
+        <span className={moreEventsShortClass}>{text.short}</span>
       </PopoverTrigger>
       <PopoverContent
         align="center"
-        aria-label={`Events on ${formats.date.format(day.date)}`}
-        className="w-64 gap-0 p-2"
+        aria-label={dayEventsLabel(formats, day.date)}
+        className={moreEventsContentClass}
       >
-        <div className="flex flex-col items-center gap-0.5 pb-2">
-          <span className="text-[0.6875rem] font-medium text-muted-foreground uppercase">
-            {formats.weekday.format(day.date)}
-          </span>
+        <div className={moreEventsHeaderClass}>
+          <span className={moreEventsWeekdayClass}>{formats.weekday.format(day.date)}</span>
           <DateButton
-            className="size-10 text-xl font-normal"
+            className={monthListDateClass}
             day={{ ...day, inMonth: true }}
             formats={formats}
             onOpenDay={onOpenDay}
           />
         </div>
-        <div className="-mx-2 flex min-h-0 flex-col gap-0.5 overflow-y-auto px-2 py-1">
+        <div className={moreEventsListClass}>
           {segmentsOn(segments, column).map((segment) => {
-            const fragment = segment.fragments[column - segment.column]!;
+            const fragment = fragmentOn(segment, column);
             return (
               <MonthEvent
-                key={`${typeof segment.event.id}:${segment.event.id}`}
-                bar={
-                  segment.event.kind === "all-day" ||
-                  fragment.startsBeforeDay ||
-                  fragment.endsAfterDay
-                }
-                className="h-6 shrink-0"
+                key={eventKey(segment)}
+                bar={isBarFragment(fragment)}
+                className={moreEventsItemClass}
                 color={getEventColor?.(segment.event.event)}
                 icon={getEventIcon?.(segment.event.event)}
                 date={day.date}
@@ -278,7 +233,7 @@ function MonthDayCell({
 }: {
   readonly children: ReactNode;
   /** Set when the day has no working hours, with whether the days beside it in the week do. */
-  readonly closed: (ClosedDate & ClosedTime) | undefined;
+  readonly closed: ClosedDay | undefined;
   /** Events on the day, including those behind "+N more". */
   readonly count: number;
   readonly day: MonthDay;
@@ -289,26 +244,13 @@ function MonthDayCell({
   readonly renderUnavailable?: UnavailableTimeRender;
 }) {
   const roving = useRovingFocus({ date: day.date, kind: "day" });
-  const inDraft = useCalendarInteraction(
-    (session) =>
-      session?.eventId === null &&
-      session.proposed.kind === "all-day" &&
-      Temporal.PlainDate.compare(session.proposed.start, day.date) <= 0 &&
-      Temporal.PlainDate.compare(day.date, session.proposed.end) < 0,
-  );
+  const inDraft = useCalendarInteraction((session) => inAllDayDraft(session, day.date));
   const draftCheck = useDraftCheck();
 
   return (
     <div
       role="gridcell"
-      aria-label={[
-        formats.date.format(day.date),
-        closed?.label,
-        closed === undefined ? undefined : "closed",
-        eventCount(count),
-      ]
-        .filter((part) => part !== undefined)
-        .join(", ")}
+      aria-label={dayCellLabel(formats, day.date, closed, count)}
       // Out of the tab order, yet focusable, so focus on it survives a scroll that moves it away.
       {...(offscreen ? { tabIndex: -1 } : roving)}
       onKeyDown={(event) => {
@@ -318,12 +260,12 @@ function MonthDayCell({
           onOpenDay(day.date);
         }
       }}
-      className="relative min-w-0 border-e border-calendar-grid last:border-e-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+      className={monthDayCellClass}
     >
       {closed !== undefined && (
         <UnavailableTime
           band={closed}
-          className="inset-0 bg-calendar-closed"
+          className={monthClosedClass}
           date={day.date}
           end={1}
           render={renderUnavailable}
@@ -338,14 +280,10 @@ function MonthDayCell({
         data-date={day.date.toString()}
         data-draft={inDraft ? "" : undefined}
         {...previewCheckAttributes(inDraft ? draftCheck : undefined)}
-        className={cn(
-          "absolute inset-0 flex justify-center data-draft:bg-calendar-selection",
-          draftCheckClassName,
-          !day.inMonth && closed === undefined && "bg-muted/50",
-        )}
+        className={monthDateLayerClass(day.inMonth, closed !== undefined, draftCheckClassName)}
       >
         <DateButton
-          className="mt-1 h-6 min-w-6 px-1.5 text-xs"
+          className={monthCellDateClass}
           day={day}
           formats={formats}
           onOpenDay={onOpenDay}
@@ -375,29 +313,15 @@ export function MonthWeekRow<TEvent>({
   week,
 }: MonthWeekRowProps<TEvent>) {
   const segments = expanded ? week.segments : overflow.segments;
-  const closed = useClosedDates(week.range);
-  const isClosed = (column: number) => closed.has(week.days[column]?.date.toString() ?? "");
-  /** A closed day, opening on a side where the week has an open day beside it. */
-  const closedDay = (column: number) => {
-    const day = closed.get(week.days[column]!.date.toString());
-    return (
-      day && {
-        ...day,
-        opensAfter: column < week.days.length - 1 && !isClosed(column + 1),
-        opensBefore: column > 0 && !isClosed(column - 1),
-      }
-    );
-  };
+  const closedDates = useClosedDates(week.range);
+  const closed = closedDaysOf(week, closedDates);
 
   return (
-    <div
-      role="row"
-      className="grid min-h-0 grid-cols-7 border-b border-calendar-grid last:border-b-0"
-    >
+    <div role="row" className={monthWeekClass}>
       {week.days.map((day, column) => (
         <MonthDayCell
           key={day.date.toString()}
-          closed={closedDay(column)}
+          closed={closed[column]}
           count={segmentsOn(week.segments, column).length}
           day={day}
           formats={formats}
@@ -405,36 +329,24 @@ export function MonthWeekRow<TEvent>({
           onOpenDay={onOpenDay}
           renderUnavailable={renderUnavailable}
         >
-          {segments
-            .filter((segment) => segment.column === column)
-            .map((segment) => (
-              <MonthEvent
-                // `typeof` keeps numeric 1 and string "1" apart; they are distinct event IDs.
-                key={`${typeof segment.event.id}:${segment.event.id}`}
-                bar={
-                  segment.event.kind === "all-day" ||
-                  segment.span > 1 ||
-                  segment.startsBefore ||
-                  segment.endsAfter
-                }
-                className={cn(
-                  "absolute start-0 z-1 mx-0.5",
-                  segment.startsBefore && "ms-0",
-                  segment.endsAfter && "me-0",
-                )}
-                color={getEventColor?.(segment.event.event)}
-                icon={getEventIcon?.(segment.event.event)}
-                date={day.date}
-                days={segment.span}
-                endsAfter={segment.endsAfter}
-                event={segment.event}
-                labelEvent={labelEvent}
-                offscreen={offscreen}
-                startsBefore={segment.startsBefore}
-                style={laneStyle(segment.lane, segment.span)}
-                time={startTime(segment.fragments[0]!, formats)}
-              />
-            ))}
+          {segmentsStartingOn(segments, column).map((segment) => (
+            <MonthEvent
+              key={eventKey(segment)}
+              bar={isBarSegment(segment)}
+              className={monthSegmentClass(segment.startsBefore, segment.endsAfter)}
+              color={getEventColor?.(segment.event.event)}
+              icon={getEventIcon?.(segment.event.event)}
+              date={day.date}
+              days={segment.span}
+              endsAfter={segment.endsAfter}
+              event={segment.event}
+              labelEvent={labelEvent}
+              offscreen={offscreen}
+              startsBefore={segment.startsBefore}
+              style={laneBox(segment.lane, segment.span)}
+              time={startTime(segment.fragments[0]!, formats)}
+            />
+          ))}
           {!expanded && overflow.hiddenCounts[column]! > 0 && (
             <MoreEvents
               column={column}

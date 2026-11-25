@@ -1,0 +1,45 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "month-view",
+  "type": "registry:component",
+  "title": "Month view",
+  "description": "Google Calendar-style month grid: multi-day bars with continuation ends, timed events as dot, time, and title, lane counts that follow the cell height, and a \"+N more\" popover per day. The same month as the React registry's, in Solid.",
+  "dependencies": ["@moltenship/calendar-solid", "cn"],
+  "registryDependencies": [
+    "@moltenship/calendar",
+    "@moltenship/calendar-theme",
+    "@moltenship/calendar-ui"
+  ],
+  "files": [
+    {
+      "path": "registry/solid/month-view/month-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/month-view/month-view.tsx"
+    },
+    {
+      "path": "registry/solid/month-view/month-week.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/month-view/month-week.tsx"
+    },
+    {
+      "path": "registry/solid/month-view/month-event.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/month-view/month-event.tsx"
+    },
+    {
+      "path": "registry/shared/month-view/month-layout.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/month-view/month-layout.ts"
+    },
+    {
+      "path": "registry/shared/month-view/month-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/month-view/month-labels.ts"
+    },
+    {
+      "path": "registry/shared/month-view/month.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/month-view/month.styles.ts"
+    }
+  ]
+}

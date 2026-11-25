@@ -18,7 +18,6 @@
   --demo-accent: #2563eb;
   /* The accent for text, lighter on a dark page, where #2563eb has too little contrast. */
   --accent-text: light-dark(var(--demo-accent), #60a5fa);
-  --chip: color-mix(in srgb, var(--demo-accent) 18%, Canvas);
   --refused: #b91c1c;
 }
 
@@ -136,77 +135,10 @@ a {
   border-top: 1px solid var(--line);
 }
 
-.weekdays,
-.week {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-}
-
-.weekdays span {
-  padding: 0.25rem;
-  font-size: 0.8rem;
-  color: var(--demo-muted);
-}
-
-.week {
+/* The month shares the viewport's height between its weeks, as many event lanes as fit. */
+.viewport:has([data-slot="month-view"]) {
+  height: min(42rem, 75dvh);
   border-top: 1px solid var(--line);
-  min-height: 5.5rem;
-}
-
-/* A button: the keyboard's target for its date, which sits at its top, above the events. */
-.day {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  grid-row: 1 / -1;
-  margin: 0;
-  padding: 0.25rem;
-  border: 0;
-  border-left: 1px solid var(--line);
-  border-radius: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: start;
-}
-
-.day[data-outside] .day-number {
-  color: var(--demo-muted);
-}
-
-.day[data-today] .day-number {
-  display: inline-block;
-  min-width: 1.5rem;
-  border-radius: 1rem;
-  background: var(--demo-accent);
-  color: white;
-  text-align: center;
-}
-
-.chip {
-  position: relative;
-  z-index: 1;
-  margin: 0.1rem 0.2rem;
-  padding: 0 0.4rem;
-  overflow: hidden;
-  border: 0;
-  border-radius: 0.3rem;
-  background: var(--chip);
-  color: inherit;
-  font: inherit;
-  font-size: 0.8rem;
-  line-height: 1.3rem;
-  text-align: start;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  cursor: grab;
-  /* A long-press on a touch screen picks the event up instead of selecting its text. */
-  user-select: none;
-  -webkit-touch-callout: none;
-}
-
-.chip[data-pending] {
-  opacity: 0.6;
 }
 
 .agent {
@@ -261,43 +193,4 @@ a {
   border-radius: 0.4rem;
   background: color-mix(in srgb, CanvasText 6%, Canvas);
   font-size: 0.75rem;
-}
-
-/* The month's focus targets and what a drag shows. */
-.month {
-  --calendar-ghost-background: color-mix(in srgb, var(--demo-accent) 30%, Canvas);
-}
-
-.day[data-draft] {
-  background: var(--chip);
-}
-
-.day:focus-visible,
-.chip:focus-visible {
-  outline: 2px solid var(--demo-accent);
-  outline-offset: -2px;
-}
-
-.chip[data-locked] {
-  cursor: default;
-}
-
-.resize {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 0.4rem;
-  cursor: ew-resize;
-}
-
-.resize[data-resize="start"] {
-  inset-inline-start: 0;
-}
-
-.resize[data-resize="end"] {
-  inset-inline-end: 0;
-}
-
-[data-calendar-ghost][data-invalid] {
-  --calendar-ghost-background: color-mix(in srgb, var(--refused) 30%, Canvas);
 }

@@ -50,6 +50,7 @@ describe("Solid registry build", () => {
       "calendar-theme",
       "calendar-ui",
       "list-view",
+      "month-view",
     ]);
     expect(await checkBuiltRegistry({ outDir, manifest, framework: solidRegistry })).toEqual([]);
     const registry = JSON.parse(await readFile(join(outDir, "registry.json"), "utf8")) as {
