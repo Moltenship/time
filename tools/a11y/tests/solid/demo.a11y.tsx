@@ -4,6 +4,7 @@ import { cdp, commands, page, server, userEvent } from "vite-plus/test/browser";
 import { App } from "../../../../apps/demo-solid/src/app";
 import type { MouseStep } from "../../mouse";
 import { seriousViolations, setTheme, themes } from "../axe";
+import { pressWithoutFocus } from "../clicks";
 import { nextFrame } from "../waits";
 import { render, settled, tab, until } from "./render";
 
@@ -239,9 +240,13 @@ describe("the Solid demo from the keyboard", () => {
     await renderDemo("week");
     const card = taskCard("Call the dentist")!;
     card.focus();
+    // The card sticks out below the sidebar, and WebKit scrolls a focused element into view on a
+    // later frame, not in `focus()`: picked up before that, the drag starts below the hours.
+    await until(() => expect(inView(card)).toBe(true));
     await userEvent.keyboard(" ");
     // From the sidebar, rightwards into the week's columns.
     await userEvent.keyboard("{Shift>}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{/Shift}");
+    await until(() => expect(document.querySelector("[data-calendar-ghost]")).not.toBeNull());
     await userEvent.keyboard(" ");
 
     await until(() => expect(eventOf("task-dentist")).not.toBeNull());
@@ -293,6 +298,12 @@ const taskCard = (title: string) =>
     card.textContent?.startsWith(title),
   ) ?? null;
 const taskList = () => document.querySelector<HTMLElement>("aside ul[aria-describedby]")!;
+/** Whether `element` shows within the sidebar, which scrolls by whole pixels, so to within one. */
+const inView = (element: Element) => {
+  const box = element.getBoundingClientRect();
+  const aside = element.closest("aside")!.getBoundingClientRect();
+  return box.top > aside.top - 1 && box.bottom < aside.bottom + 1;
+};
 const eventOf = (id: string) =>
   document.querySelector<HTMLElement>(`[data-slot="time-grid-body"] [data-event-id="${id}"]`);
 
@@ -325,6 +336,19 @@ describe("the Solid demo's top bar", () => {
     await mouse({ type: "up" });
 
     await until(() => expect(shownTooltip()).toBeNull());
+  });
+
+  // Safari doesn't focus a clicked button, so there the dialog once gave focus back to the page.
+  // The sheet's test on a phone covers the menu button.
+  test("Escape after a press on Keyboard shortcuts gives focus back to it", async () => {
+    await renderDemo("week");
+    const shortcuts = find("header button", "Keyboard shortcuts")!;
+    pressWithoutFocus(shortcuts);
+    await click(shortcuts);
+    expect(find('[role="dialog"] h2', "Keyboard shortcuts")).toBeDefined();
+
+    await userEvent.keyboard("{Escape}");
+    await until(() => expect(document.activeElement).toBe(shortcuts));
   });
 });
 
@@ -459,6 +483,8 @@ describe("the Solid demo on a phone", () => {
     setTheme(theme);
     await renderDemo("week");
     const menu = find("header button", "Open sidebar")!;
+    // As in Safari, which doesn't focus the button: the sheet still gives focus back to it.
+    pressWithoutFocus(menu);
     await click(menu);
 
     const sheet = document.querySelector<HTMLElement>('[role="dialog"]')!;

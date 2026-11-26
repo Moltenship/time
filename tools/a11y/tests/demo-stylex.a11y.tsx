@@ -1,9 +1,10 @@
-import { describe, expect, test } from "vite-plus/test";
-import { userEvent } from "vite-plus/test/browser";
+import { afterEach, describe, expect, test } from "vite-plus/test";
+import { page, userEvent } from "vite-plus/test/browser";
 
 import { demoViewNames } from "../../../apps/demo/src/demo-model";
 import { StylexDemoCalendar } from "../../../apps/demo/src/stylex/calendar";
 import { setTheme, themes } from "./axe";
+import { pressWithoutFocus } from "./clicks";
 import { button, events, renderDemo } from "./demo-stylex-screen";
 import { click, until } from "./render";
 
@@ -52,6 +53,29 @@ describe("StyleX demo", () => {
     await until(() => {
       expect(document.querySelector('[role="dialog"]')).toBeNull();
       expect(events().some((event) => event.textContent?.includes("Planning poker"))).toBe(true);
+    });
+  });
+
+  // Safari doesn't focus a clicked button, so there the dialog it opens once gave focus back to
+  // the page.
+  describe("a dialog a top bar button opens gives focus back to it", () => {
+    afterEach(async () => {
+      await page.viewport(1280, 800);
+    });
+
+    test.each([
+      ["Open sidebar", 390],
+      ["Keyboard shortcuts", 1280],
+    ] as const)("%s", async (name, width) => {
+      await page.viewport(width, 800);
+      await renderDemo("week");
+      const opener = button(name, document.querySelector("header") ?? document)!;
+      pressWithoutFocus(opener);
+      await userEvent.click(opener);
+      await until(() => expect(document.querySelector('[role="dialog"]')).not.toBeNull());
+
+      await userEvent.keyboard("{Escape}");
+      await until(() => expect(document.activeElement).toBe(opener));
     });
   });
 

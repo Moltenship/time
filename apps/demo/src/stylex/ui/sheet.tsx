@@ -79,19 +79,22 @@ const styles = stylex.create({
 
 export interface SheetProps {
   readonly children?: ReactNode;
+  /** Where focus goes when the sheet closes: by default, where it was before it opened. */
+  readonly finalFocus?: () => HTMLElement | null | undefined;
   /** Where focus goes as it opens: the sheet itself, so the first control's tooltip stays shut. */
   readonly initialFocus?: RefObject<HTMLDivElement | null>;
   readonly onOpenChange: (open: boolean) => void;
   readonly open: boolean;
 }
 
-export function Sheet({ children, initialFocus, onOpenChange, open }: SheetProps) {
+export function Sheet({ children, finalFocus, initialFocus, onOpenChange, open }: SheetProps) {
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogBackdrop {...xprops({}, styles.backdrop)} />
       <DialogContent
         ref={initialFocus}
         data-side="left"
+        finalFocus={finalFocus}
         initialFocus={initialFocus === undefined ? undefined : () => initialFocus.current}
         {...xprops({}, styles.content)}
       >

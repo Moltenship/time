@@ -83,15 +83,18 @@ function KeyList({
 }
 
 export function ShortcutsDialog({
+  finalFocus,
   onOpenChange,
   open,
 }: {
+  /** Where focus goes when the dialog closes: by default, where it was before it opened. */
+  readonly finalFocus?: () => HTMLElement | null | undefined;
   readonly onOpenChange: (open: boolean) => void;
   readonly open: boolean;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent xstyle={styles.content}>
+      <DialogContent finalFocus={finalFocus} xstyle={styles.content}>
         <DialogHeader>
           <DialogTitle>Keyboard shortcuts</DialogTitle>
         </DialogHeader>
