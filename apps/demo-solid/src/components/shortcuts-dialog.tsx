@@ -40,12 +40,17 @@ function KeyList(props: { readonly items: readonly KeyListItem[]; readonly title
 const sections = shortcutSectionsFor(hasView);
 
 export function ShortcutsDialog(props: {
+  /** Where focus goes when the dialog closes: by default, where it was before it opened. */
+  readonly finalFocus?: () => HTMLElement | null | undefined;
   readonly onOpenChange: (open: boolean) => void;
   readonly open: boolean;
 }) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent class="max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto sm:max-w-md">
+      <DialogContent
+        class="max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto sm:max-w-md"
+        finalFocus={props.finalFocus}
+      >
         <DialogHeader>
           <DialogTitle>Keyboard shortcuts</DialogTitle>
         </DialogHeader>

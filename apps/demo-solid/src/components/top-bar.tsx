@@ -25,8 +25,10 @@ function switcherOptions(scrolling: boolean) {
 }
 
 export function TopBar(props: {
-  readonly onOpenSidebar: () => void;
-  readonly onShowShortcuts: () => void;
+  /** Opens the sidebar's sheet from `from`, the button pressed. */
+  readonly onOpenSidebar: (from: HTMLElement) => void;
+  /** Opens the shortcuts dialog from `from`, the button pressed. */
+  readonly onShowShortcuts: (from: HTMLElement) => void;
   /** Whether the views are their scrolling versions. */
   readonly scrolling: boolean;
 }) {
@@ -40,7 +42,7 @@ export function TopBar(props: {
           <Button
             aria-label="Open sidebar"
             class="rounded-full lg:hidden"
-            onClick={() => props.onOpenSidebar()}
+            onClick={(event) => props.onOpenSidebar(event.currentTarget)}
             size="icon"
             variant="ghost"
           >
@@ -69,7 +71,9 @@ export function TopBar(props: {
               {...trigger}
               aria-label="Keyboard shortcuts"
               class="rounded-full max-sm:hidden"
-              onClick={withPartClick(trigger, () => props.onShowShortcuts())}
+              onClick={withPartClick(trigger, (event) =>
+                props.onShowShortcuts(event.currentTarget as HTMLElement),
+              )}
               size="icon"
               variant="ghost"
             />

@@ -57,8 +57,10 @@ const styles = stylex.create({
 const selectView = (state: { readonly view: DemoView }) => state.view;
 
 export interface TopBarProps {
-  readonly onOpenSidebar: () => void;
-  readonly onShowShortcuts: () => void;
+  /** Opens the sidebar's sheet from `from`, the button pressed. */
+  readonly onOpenSidebar: (from: HTMLElement) => void;
+  /** Opens the shortcuts dialog from `from`, the button pressed. */
+  readonly onShowShortcuts: (from: HTMLElement) => void;
   /** Whether day, 3 days, week, month, and agenda are their scrolling versions. */
   readonly scrolling: boolean;
 }
@@ -74,7 +76,7 @@ export function TopBar({ onOpenSidebar, onShowShortcuts, scrolling }: TopBarProp
         <>
           <Button
             aria-label="Open sidebar"
-            onClick={onOpenSidebar}
+            onClick={(event) => onOpenSidebar(event.currentTarget)}
             size="icon"
             variant="ghost"
             xstyle={styles.menu}
@@ -101,7 +103,7 @@ export function TopBar({ onOpenSidebar, onShowShortcuts, scrolling }: TopBarProp
           render={
             <Button
               aria-label="Keyboard shortcuts"
-              onClick={onShowShortcuts}
+              onClick={(event) => onShowShortcuts(event.currentTarget)}
               size="icon"
               variant="ghost"
               xstyle={styles.roundFromSmall}

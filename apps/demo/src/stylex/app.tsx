@@ -2,7 +2,7 @@ import { DragDropProvider } from "@dnd-kit/react";
 import { CalendarDndKit } from "@moltenship/calendar-dnd-kit";
 import * as stylex from "@stylexjs/stylex";
 import { PlusIcon } from "lucide-react";
-import { useRef } from "react";
+import { type RefObject, useRef } from "react";
 
 import { calendarAnnouncements } from "@registry/shared/calendar/announcements";
 import { CalendarHistoryToast } from "@registry/stylex-calendar-history-toast/calendar-history-toast";
@@ -127,6 +127,12 @@ export function StylexApp() {
   const { openCreate, openEvent, scheduleTask, scrolling, settings, shownEvent } = workspace;
   const { showShortcuts, sidebarOpen, tasks, timeZone, today } = workspace;
   const sheetRef = useRef<HTMLDivElement>(null);
+  // WebKit doesn't focus a button it clicks, so a dialog a button opens gives focus back to it,
+  // not to the page, as the Tailwind page's Base UI buttons, which focus themselves, have it.
+  const sidebarOpener = useRef<HTMLElement | null>(null);
+  const shortcutsOpener = useRef<HTMLElement | null>(null);
+  const connected = (opener: RefObject<HTMLElement | null>) => () =>
+    opener.current?.isConnected === true ? opener.current : undefined;
   const sidebar = (onNavigate?: () => void) => (
     <Sidebar
       hiddenCalendars={hiddenCalendars}
@@ -152,14 +158,27 @@ export function StylexApp() {
 
   return (
     <StylexDemoCalendar.Root {...workspace.calendarProps}>
-      <KeyboardShortcuts onCreate={openCreate} onHelp={showShortcuts} scrolling={scrolling} />
+      <KeyboardShortcuts
+        onCreate={openCreate}
+        onHelp={() => {
+          shortcutsOpener.current = null;
+          showShortcuts();
+        }}
+        scrolling={scrolling}
+      />
       {/* Tasks drag into the calendar, and one-off events out to the tasks, through dnd-kit. */}
       <DragDropProvider plugins={withDragAnnouncements}>
         <CalendarDndKit />
         <StylexDemoCalendar.Frame {...stylex.props(styles.frame)}>
           <TopBar
-            onOpenSidebar={() => workspace.setSidebarOpen(true)}
-            onShowShortcuts={showShortcuts}
+            onOpenSidebar={(from) => {
+              sidebarOpener.current = from;
+              workspace.setSidebarOpen(true);
+            }}
+            onShowShortcuts={(from) => {
+              shortcutsOpener.current = from;
+              showShortcuts();
+            }}
             scrolling={scrolling}
           />
           <div {...stylex.props(styles.body)}>
@@ -177,7 +196,12 @@ export function StylexApp() {
           <Button aria-label="Create event" onClick={openCreate} xstyle={styles.create}>
             <PlusIcon aria-hidden {...stylex.props(styles.createIcon)} />
           </Button>
-          <Sheet initialFocus={sheetRef} onOpenChange={workspace.setSidebarOpen} open={sidebarOpen}>
+          <Sheet
+            finalFocus={connected(sidebarOpener)}
+            initialFocus={sheetRef}
+            onOpenChange={workspace.setSidebarOpen}
+            open={sidebarOpen}
+          >
             <div {...stylex.props(styles.sheetBar)}>
               <BrandMark />
               <SheetTitle>Calendar</SheetTitle>
@@ -213,6 +237,7 @@ export function StylexApp() {
           {/* Asks "this, this and following, or all" for changes to a repeating event. */}
           {scopeDialog}
           <ShortcutsDialog
+            finalFocus={connected(shortcutsOpener)}
             open={workspace.shortcutsOpen}
             onOpenChange={workspace.setShortcutsOpen}
           />

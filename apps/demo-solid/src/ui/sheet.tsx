@@ -18,6 +18,8 @@ import { XIcon } from "../icons";
 export interface SheetProps {
   readonly children?: JSX.Element;
   readonly class?: string;
+  /** Where focus goes when the sheet closes: by default, where it was before it opened. */
+  readonly finalFocus?: () => HTMLElement | null | undefined;
   readonly onOpenChange: (open: boolean) => void;
   readonly open: boolean;
 }
@@ -32,6 +34,7 @@ export function Sheet(props: SheetProps) {
         data-side="left"
         // The sheet itself, so the first control's tooltip doesn't pop open.
         initialFocus={() => content}
+        finalFocus={props.finalFocus}
         class={cn(
           "fixed inset-y-0 left-0 z-50 m-0 flex h-full max-h-none w-3/4 max-w-none flex-col gap-4 border-0 border-r bg-popover bg-clip-padding p-0 text-sm text-popover-foreground shadow-lg transition duration-200 ease-in-out data-ending-style:translate-x-[-2.5rem] data-ending-style:opacity-0 data-starting-style:translate-x-[-2.5rem] data-starting-style:opacity-0 sm:max-w-sm",
           props.class,
