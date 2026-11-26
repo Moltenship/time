@@ -2,7 +2,7 @@ import axe from "axe-core";
 
 import { expect } from "vite-plus/test";
 
-import { until } from "./waits";
+import { nextFrame, until } from "./waits";
 
 export type Theme = "light" | "dark";
 export const themes: readonly Theme[] = ["light", "dark"];
@@ -76,8 +76,14 @@ export async function seriousViolations(context: axe.ElementContext = document) 
  * popup opens in its starting style, and its fade starts a frame later, so the fades running when
  * the popup appears don't include its own: axe ran on a dialog mid-fade once those had ended.
  * Animations a scroll drives, as the scrolling time grid's header, never finish.
+ *
+ * Done means a frame with nothing running. WebKit reads an animation's time from the clock but
+ * puts its value on the page only in a frame, so on a loaded machine a fade can be past its end,
+ * `finished`, while the page still shows an earlier frame: axe found a dialog 173 ms into a
+ * 100 ms fade at 0.94 opacity.
  */
 async function entered() {
+  let quiet = false;
   for (;;) {
     await until(() => expect(document.querySelector("[data-starting-style]")).toBeNull());
     const running = document
@@ -85,7 +91,14 @@ async function entered() {
       .filter(
         ({ playState, timeline }) => timeline === document.timeline && playState === "running",
       );
-    if (running.length === 0) return;
-    await Promise.allSettled(running.map(({ finished }) => finished));
+    if (running.length > 0) {
+      quiet = false;
+      await Promise.allSettled(running.map(({ finished }) => finished));
+    } else if (quiet) {
+      return;
+    } else {
+      quiet = true;
+      await nextFrame();
+    }
   }
 }
