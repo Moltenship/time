@@ -5,7 +5,7 @@ React app installs and imports. It has the React components and hooks, the event
 Temporal helpers and the pointer interactions. Its parts are [ui-sdk](https://ui-sdk.dev)
 components, so an AI agent can read a calendar and act on it once your app creates ui-sdk's agent
 bridge. A SolidJS 2 app installs
-[`@moltenship/calendar-solid`](https://time.molten.sh/docs/solid), a preview, instead.
+[`@moltenship/calendar-solid`](https://time.molten.sh/docs/solid) instead.
 
 <!-- pre-release -->
 
