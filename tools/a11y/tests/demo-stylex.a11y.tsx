@@ -4,6 +4,7 @@ import { page, userEvent } from "vite-plus/test/browser";
 import { demoViewNames } from "../../../apps/demo/src/demo-model";
 import { StylexDemoCalendar } from "../../../apps/demo/src/stylex/calendar";
 import { setTheme, themes } from "./axe";
+import { pressWithoutFocus } from "./clicks";
 import { button, events, renderDemo } from "./demo-stylex-screen";
 import { click, until } from "./render";
 
@@ -55,8 +56,8 @@ describe("StyleX demo", () => {
     });
   });
 
-  // WebKit, like Safari, doesn't focus a button it clicks, so there the dialog it opens once gave
-  // focus back to the page.
+  // Safari doesn't focus a clicked button, so there the dialog it opens once gave focus back to
+  // the page.
   describe("a dialog a top bar button opens gives focus back to it", () => {
     afterEach(async () => {
       await page.viewport(1280, 800);
@@ -67,9 +68,9 @@ describe("StyleX demo", () => {
       ["Keyboard shortcuts", 1280],
     ] as const)("%s", async (name, width) => {
       await page.viewport(width, 800);
-      setTheme("light");
       await renderDemo("week");
       const opener = button(name, document.querySelector("header") ?? document)!;
+      pressWithoutFocus(opener);
       await userEvent.click(opener);
       await until(() => expect(document.querySelector('[role="dialog"]')).not.toBeNull());
 

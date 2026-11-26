@@ -29,12 +29,10 @@ export function App() {
   const { ask, dialog: scopeDialog } = useRecurrenceScopePrompt();
   const workspace = createDemoWorkspace(ask);
   const [allowAgentDelete, setAllowAgentDelete] = createSignal(false);
-  // WebKit doesn't focus a button it clicks, so a dialog a button opens gives focus back to it,
-  // not to the page, as the Tailwind page's Base UI buttons, which focus themselves, have it.
+  // WebKit doesn't focus a clicked button, so these dialogs return focus to the button that
+  // opened them, as on the Tailwind page.
   let sidebarOpener: HTMLElement | undefined;
   let shortcutsOpener: HTMLElement | undefined;
-  const connected = (element: HTMLElement | undefined) =>
-    element?.isConnected === true ? element : undefined;
   const showShortcuts = (from?: HTMLElement) => {
     shortcutsOpener = from;
     workspace.setShortcutsOpen(true);
@@ -106,7 +104,7 @@ export function App() {
         </Button>
         <Sheet
           class="w-80 gap-2 outline-none"
-          finalFocus={() => connected(sidebarOpener)}
+          finalFocus={() => sidebarOpener}
           onOpenChange={workspace.setSidebarOpen}
           open={workspace.sidebarOpen()}
         >
@@ -144,7 +142,7 @@ export function App() {
         {/* Asks "this, this and following, or all" for changes to a repeating event. */}
         {scopeDialog}
         <ShortcutsDialog
-          finalFocus={() => connected(shortcutsOpener)}
+          finalFocus={() => shortcutsOpener}
           onOpenChange={workspace.setShortcutsOpen}
           open={workspace.shortcutsOpen()}
         />

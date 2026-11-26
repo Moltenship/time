@@ -4,6 +4,7 @@ import { cdp, commands, page, server, userEvent } from "vite-plus/test/browser";
 import { App } from "../../../../apps/demo-solid/src/app";
 import type { MouseStep } from "../../mouse";
 import { seriousViolations, setTheme, themes } from "../axe";
+import { pressWithoutFocus } from "../clicks";
 import { nextFrame } from "../waits";
 import { render, settled, tab, until } from "./render";
 
@@ -337,11 +338,12 @@ describe("the Solid demo's top bar", () => {
     await until(() => expect(shownTooltip()).toBeNull());
   });
 
-  // WebKit, like Safari, doesn't focus a button it clicks, so there the dialog once gave focus
-  // back to the page. The sheet's test on a phone covers the menu button.
+  // Safari doesn't focus a clicked button, so there the dialog once gave focus back to the page.
+  // The sheet's test on a phone covers the menu button.
   test("Escape after a press on Keyboard shortcuts gives focus back to it", async () => {
     await renderDemo("week");
     const shortcuts = find("header button", "Keyboard shortcuts")!;
+    pressWithoutFocus(shortcuts);
     await click(shortcuts);
     expect(find('[role="dialog"] h2', "Keyboard shortcuts")).toBeDefined();
 
@@ -481,6 +483,8 @@ describe("the Solid demo on a phone", () => {
     setTheme(theme);
     await renderDemo("week");
     const menu = find("header button", "Open sidebar")!;
+    // As in Safari, which doesn't focus the button: the sheet still gives focus back to it.
+    pressWithoutFocus(menu);
     await click(menu);
 
     const sheet = document.querySelector<HTMLElement>('[role="dialog"]')!;

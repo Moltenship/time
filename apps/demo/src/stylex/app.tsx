@@ -2,7 +2,7 @@ import { DragDropProvider } from "@dnd-kit/react";
 import { CalendarDndKit } from "@moltenship/calendar-dnd-kit";
 import * as stylex from "@stylexjs/stylex";
 import { PlusIcon } from "lucide-react";
-import { type RefObject, useRef } from "react";
+import { useRef } from "react";
 
 import { calendarAnnouncements } from "@registry/shared/calendar/announcements";
 import { CalendarHistoryToast } from "@registry/stylex-calendar-history-toast/calendar-history-toast";
@@ -127,12 +127,10 @@ export function StylexApp() {
   const { openCreate, openEvent, scheduleTask, scrolling, settings, shownEvent } = workspace;
   const { showShortcuts, sidebarOpen, tasks, timeZone, today } = workspace;
   const sheetRef = useRef<HTMLDivElement>(null);
-  // WebKit doesn't focus a button it clicks, so a dialog a button opens gives focus back to it,
-  // not to the page, as the Tailwind page's Base UI buttons, which focus themselves, have it.
+  // WebKit doesn't focus a clicked button, so these dialogs return focus to the button that
+  // opened them, as on the Tailwind page.
   const sidebarOpener = useRef<HTMLElement | null>(null);
   const shortcutsOpener = useRef<HTMLElement | null>(null);
-  const connected = (opener: RefObject<HTMLElement | null>) => () =>
-    opener.current?.isConnected === true ? opener.current : undefined;
   const sidebar = (onNavigate?: () => void) => (
     <Sidebar
       hiddenCalendars={hiddenCalendars}
@@ -197,7 +195,7 @@ export function StylexApp() {
             <PlusIcon aria-hidden {...stylex.props(styles.createIcon)} />
           </Button>
           <Sheet
-            finalFocus={connected(sidebarOpener)}
+            finalFocus={() => sidebarOpener.current}
             initialFocus={sheetRef}
             onOpenChange={workspace.setSidebarOpen}
             open={sidebarOpen}
@@ -237,7 +235,7 @@ export function StylexApp() {
           {/* Asks "this, this and following, or all" for changes to a repeating event. */}
           {scopeDialog}
           <ShortcutsDialog
-            finalFocus={connected(shortcutsOpener)}
+            finalFocus={() => shortcutsOpener.current}
             open={workspace.shortcutsOpen}
             onOpenChange={workspace.setShortcutsOpen}
           />
