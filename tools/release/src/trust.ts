@@ -6,17 +6,47 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { gte } from "semver";
 
 import { npmRegistry as registry } from "./config";
+import { pinnedNpm } from "./npm";
 import { parseArguments, readPublishedPackages, run, runMain, runOrThrow } from "./workspace";
 
 /** The trusted publisher every package gets: this repository's release workflow, no environment. */
 export const trustedPublisher = { repository: "Moltenship/time", workflow: "release.yml" } as const;
 
-/** `npm trust` came in npm 11.15. */
+/** `npm trust` came in npm 11.15. The pinned npm (`npm.ts`) is later. */
 const npmTrust = "11.15.0";
 
 /** Whether `npm trust list --json` already shows this repository's release workflow. */
 export function trustsRelease(listed: string): boolean {
   return listed.includes(trustedPublisher.repository) && listed.includes(trustedPublisher.workflow);
+}
+
+/**
+ * Whether the trusted publisher `npm trust list --json` shows lets the workflow move dist-tags:
+ * "Allow npm dist-tag" on npmjs.com, `manageDistTags` among its permissions. Undefined when the
+ * output lists no permissions, as from an npm that doesn't print them.
+ */
+export function allowsDistTag(listed: string): boolean | undefined {
+  if (/"manageDistTags"/u.test(listed)) return true;
+  return /"permissions"/u.test(listed) ? false : undefined;
+}
+
+/** What the owner reads about the dist-tag setting, given the packages without it. */
+export function distTagReport(
+  missing: readonly string[],
+  unknown: readonly string[],
+): readonly string[] {
+  const lines: string[] = [];
+  if (missing.length > 0) {
+    lines.push(
+      `"Allow npm dist-tag" is off on ${missing.join(", ")}. npm trust can't turn it on: on npmjs.com, each package's Settings → Trusted publishing → the GitHub Actions configuration → "Allow npm dist-tag". Until then a stable release leaves moving next on them to you, with the command to run.`,
+    );
+  }
+  if (unknown.length > 0) {
+    lines.push(
+      `npm didn't say whether ${unknown.join(", ")} allow npm dist-tag; look on npmjs.com.`,
+    );
+  }
+  return lines;
 }
 
 /**
@@ -29,29 +59,32 @@ export function trustsRelease(listed: string): boolean {
 async function setUp(options: { readonly disallowTokens: boolean; readonly dryRun: boolean }) {
   // Outside the workspace, whose devEngines pins pnpm, which npm refuses to run under.
   const cwd = await mkdtemp(join(tmpdir(), "moltenship-trust-"));
-  const npm = (args: readonly string[]) =>
-    runOrThrow("npm", [...args, "--registry", registry], { cwd, inherit: true });
+  const [node, ...cli] = pinnedNpm.command;
+  const npmArgs = (args: readonly string[]) => [...cli, ...args, "--registry", registry];
+  const npm = (args: readonly string[]) => runOrThrow(node, npmArgs(args), { cwd, inherit: true });
   try {
-    const version = (await runOrThrow("npm", ["--version"], { cwd })).stdout.trim();
-    if (!gte(version, npmTrust)) {
-      throw new Error(
-        `npm ${version} has no npm trust; it needs ${npmTrust}: npm install -g npm@latest`,
-      );
+    if (!gte(pinnedNpm.version, npmTrust)) {
+      throw new Error(`npm ${pinnedNpm.version} has no npm trust; it needs ${npmTrust}.`);
     }
-    if ((await run("npm", ["whoami", "--registry", registry], { cwd })).code !== 0) {
+    if ((await run(node, npmArgs(["whoami"]), { cwd })).code !== 0) {
       await npm(["login", "--auth-type", "web"]);
     }
     const names = (await readPublishedPackages()).map(({ manifest }) => manifest.name);
+    const noDistTag: string[] = [];
+    const unknownDistTag: string[] = [];
     for (const name of names) {
-      const listed = await run("npm", ["trust", "list", name, "--json", "--registry", registry], {
-        cwd,
-      });
+      const listed = await run(node, npmArgs(["trust", "list", name, "--json"]), { cwd });
       if (trustsRelease(listed.stdout)) {
         console.log(
           `${name} trusts ${trustedPublisher.repository}'s ${trustedPublisher.workflow} already.`,
         );
+        const allows = allowsDistTag(listed.stdout);
+        if (allows === false) noDistTag.push(name);
+        if (allows === undefined) unknownDistTag.push(name);
         continue;
       }
+      // A configuration npm trust adds publishes only.
+      noDistTag.push(name);
       const args = [
         "trust",
         "github",
@@ -68,7 +101,7 @@ async function setUp(options: { readonly disallowTokens: boolean; readonly dryRu
         console.log(`Would run: npm ${args.join(" ")}`);
         continue;
       }
-      const added = await run("npm", [...args, "--registry", registry], { cwd, inherit: true });
+      const added = await run(node, npmArgs(args), { cwd, inherit: true });
       if (added.code !== 0) {
         throw new Error(
           `npm trust github failed for ${name}. If it has another trusted publisher, npm allows one: list it (npm trust list ${name}), revoke it (npm trust revoke ${name} --id <id>), and run this again.`,
@@ -83,6 +116,7 @@ async function setUp(options: { readonly disallowTokens: boolean; readonly dryRu
         else await npm(["access", "set", "mfa=publish", name]);
       }
     }
+    for (const line of distTagReport(noDistTag, unknownDistTag)) console.log(`\n${line}`);
     console.log(
       `\nDone. npm drops a trusted publisher that hasn't published within 48 hours, so release within two days: vp run release.`,
     );

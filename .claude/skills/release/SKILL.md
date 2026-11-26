@@ -40,7 +40,8 @@ vp run release $ARGUMENTS
 Without a version, it takes the one the commits since the last tag suggest and says which. It
 checks the checkout and CI (waiting while CI runs), starts the release workflow on `main`, waits
 for GitHub to list the run, watches it to its end with `gh run watch`, and reports. The workflow takes about 15 minutes: its check, the release
-gate on a fresh runner, the publish through npm trusted publishing, the push and the GitHub
+gate on a fresh runner, the publish through npm trusted publishing (with the npm the lockfile
+pins, not the runner's), the push once npm serves every package and its tarball, and the GitHub
 release, then an install from npm. Tell the owner the run's link when it prints `Started:`, and
 wait for the command to end.
 
@@ -48,9 +49,15 @@ wait for the command to end.
   If it also printed a line that starts with `Left to do by hand:`, the release is out and one
   step is the owner's: after a stable version, npm's `next` tag still names the last pre-release
   on the packages it lists. Give the owner that line with its command, word for word, in your
-  report. Don't run it: it needs the owner's npm login.
+  report. Don't run it: it needs the owner's npm login. When it says their trusted publisher may
+  not allow npm dist-tag, also tell the owner about "Allow npm dist-tag" on each package's trusted
+  publisher (`docs/internal/releasing.md`, "One-time setup", step 4). The workflow can't read that
+  setting; `vp run release:trust --dry-run`, with the owner's npm login, lists the packages that
+  have it off.
 - **A dry run** (`--dry-run` in `$ARGUMENTS`) ends with `The dry run of <version> passed` and what
-  a release would stop at. Report that, with the run's link, and stop: nothing was published.
+  a release would stop at. Report that, with the run's link, and stop: nothing was published. A
+  dry run of a stable version can't tell whether npm will let the release move `next`: say so,
+  with the one-time setup's step 4.
 - **It failed:** report what it printed, the failed jobs and their logs' end, and what it says to
   do. A missing trusted publisher on npm needs the owner's one-time setup
   (`docs/internal/releasing.md`, "One-time setup"): say so and stop. A gate failure needs a fix on

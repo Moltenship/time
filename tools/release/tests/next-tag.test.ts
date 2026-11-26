@@ -270,7 +270,12 @@ describe("the publish job's step that moves it", () => {
         names: async () => ["@x/a", "@x/b"],
         npm: async (action) => {
           try {
-            return await action({ cwd: "/npm", env: { PATH: "/bin" }, version: distTagNpm });
+            return await action({
+              cwd: "/npm",
+              env: { PATH: "/bin" },
+              command: ["npm"],
+              version: distTagNpm,
+            });
           } finally {
             cleaned = true;
           }

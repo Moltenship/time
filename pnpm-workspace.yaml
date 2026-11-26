@@ -42,6 +42,9 @@ catalog:
   tsx: ^4.23.15
   # Release notes from Conventional Commits, for `vp run release`.
   changelogithub: 15.0.5
+  # The npm the release workflow publishes and moves dist-tags with: 11.21.0 is the first that
+  # moves one through trusted publishing, and the runner's Node.js may bring an older npm.
+  npm: 11.21.3
   # Bundles the built packages the way an app's bundler does, for the tree-shaking check.
   esbuild: 0.28.2
   fumadocs-core: 16.17.9

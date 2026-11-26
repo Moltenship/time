@@ -9,9 +9,10 @@ import type { RunResult } from "./workspace";
  * at itself, on every package where `next` names an older version.
  *
  * `npm publish` sets one tag, so this is `npm dist-tag add`, which a step of the publish job runs
- * through npm trusted publishing, as it publishes: no token. npm allows that from 11.21.0, and
- * only for a trusted publisher with "Allow npm dist-tag" on, which is off unless the owner turns
- * it on (docs/internal/releasing.md). Where npm is older, refuses or stops answering, nothing
+ * through npm trusted publishing, as it publishes: no token. npm allows that from 11.21.0, which
+ * the release pins (`npm.ts`), and only for a trusted publisher with "Allow npm dist-tag" on,
+ * which is off unless the owner turns it on (docs/internal/releasing.md). npm shows that setting
+ * to a maintainer's login, not to the workflow, so only `vp run release:trust` can report it. Where npm is older, refuses or stops answering, nothing
  * fails: the release is out, and what is left is one command for the owner, which the run reports.
  * The whole move has a few minutes (`nextTagLimits`), well inside its step's and its job's.
  */
@@ -45,7 +46,7 @@ export function nextTagCommand(names: readonly string[], version: string): strin
 }
 
 export interface NextTagContext {
-  /** The runner's npm version. */
+  /** The version of the npm that moves the tag. */
   readonly npm: string;
   /** The version a package's `next` names on npm, or undefined when it has none. */
   readonly tagged: (name: string) => Promise<string | undefined>;
@@ -122,7 +123,7 @@ export async function pointNext(
       `A release would point next at ${version} on ${moves.length} packages, with npm ${context.npm} through trusted publishing: ${moves.join(", ")}.`,
     );
     log(
-      'npm takes that only from a trusted publisher with "Allow npm dist-tag" on. Where it refuses, the release says so and prints the command to run by hand.',
+      'npm takes that only from a trusted publisher with "Allow npm dist-tag" on, and shows that setting to a maintainer\'s login alone, not to this workflow: vp run release:trust --dry-run lists the packages that have it off. Where npm refuses, the release says so and prints the command to run by hand.',
     );
     return undefined;
   }
