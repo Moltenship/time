@@ -6,7 +6,7 @@ description: How Time compares with FullCalendar and react-big-calendar, as of O
 This page compares Time in a React app with two React calendars that many teams already use:
 [FullCalendar](https://fullcalendar.io) 7.1, through `@fullcalendar/react` and its premium
 plugins, and [react-big-calendar](https://github.com/bigcalendar/react-big-calendar) 1.20. It's
-accurate as of **October 2026**, and Time's rows under [Maturity](#maturity) as of November 25, 2026. Claims about Time come from these docs and the code on `main`.
+accurate as of **October 2026**, and Time's rows under [Maturity](#maturity) as of November 26, 2026. Claims about Time come from these docs and the code on `main`.
 Claims about the other two link their sources in the notes at the end of the page; a ✗ without a
 note means we found no such feature in their docs or code. If something here is wrong or out of
 date, [open an issue](https://github.com/Moltenship/time/issues).
@@ -153,8 +153,8 @@ polyfill, which only browsers without Temporal need.
 |                                | Time                                                                                           | FullCalendar                                                             | react-big-calendar                                |
 | ------------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------- |
 | Since                          | August 2026                                                                                    | 2009[^fc-maturity]                                                       | 2015[^rbc-maturity]                               |
-| Latest release                 | 2.0.0-beta.1, a pre-release, November 25, 2026                                                 | 7.1.2, October 12, 2026[^fc-maturity]                                    | 1.20.0, June 1, 2026[^rbc-maturity]               |
-| Releases in the last 12 months | 3: two release candidates and one beta                                                         | 8[^fc-maturity]                                                          | 2[^rbc-maturity]                                  |
+| Latest release                 | 2.0.0, November 26, 2026                                                                       | 7.1.2, October 12, 2026[^fc-maturity]                                    | 1.20.0, June 1, 2026[^rbc-maturity]               |
+| Releases in the last 12 months | 4: two release candidates, one beta and 2.0.0, the first stable release                        | 8[^fc-maturity]                                                          | 2[^rbc-maturity]                                  |
 | Weekly npm downloads           | 9 for `@moltenship/calendar` in the week of November 17, 2026. First published in October 2026 | 1.8 million for `@fullcalendar/react`[^fc-downloads]                     | 1.17 million[^rbc-downloads]                      |
 | GitHub                         | 1 contributor                                                                                  | 20.7k stars, about 130 contributors[^fc-maturity]                        | 8.8k stars, about 240 contributors[^rbc-maturity] |
 | Support                        | GitHub issues                                                                                  | Community support, and email support with a premium license[^fc-license] | GitHub issues[^rbc-maturity]                      |
@@ -179,7 +179,7 @@ fixes to come slowly.
 end, view components you own as source, editing by keyboard with screen reader announcements,
 edits to recurring series, availability and conflict rules, resource views under the MIT license,
 or a calendar an [AI agent](/docs/agents) can read and change under your app's rules. Don't choose
-it yet if you need a stable release with a track record, or styled views for a framework other
+it yet if you need a library with a track record, or styled views for a framework other
 than React and Solid.
 
 [^fc-license]: FullCalendar's [pricing](https://fullcalendar.io/pricing), [purchase](https://fullcalendar.io/purchase) and [license](https://fullcalendar.io/license) pages, its [premium](https://fullcalendar.io/docs/premium) docs, and the [plugin index](https://fullcalendar.io/docs/plugin-index), which marks the premium plugins.
