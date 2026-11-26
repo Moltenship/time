@@ -12,7 +12,9 @@ name: Release
 # gate holds no credentials at all.
 #
 # The jobs that hold credentials pin their actions to commits and use no cache, and run the
-# release's own steps with node, not through Vite Task.
+# release's own steps with node, not through Vite Task. npm too is pinned, not the runner's: the
+# lockfile has tools/release's npm with its integrity, and the release's steps run that one
+# (tools/release/src/npm.ts), which can move a dist-tag through trusted publishing.
 run-name: Release v${{ inputs.version }}${{ inputs.dry-run && ' (dry run)' || '' }}
 
 on:
@@ -161,7 +163,8 @@ jobs:
           node-version: "26"
           cache: false
 
-      # No install scripts while this job can mint an OIDC token. Publishing needs none.
+      # No install scripts while this job can mint an OIDC token. Publishing needs none. This
+      # brings in the npm that publishes, at the lockfile's version and integrity.
       - name: Install locked dependencies
         run: vp install --frozen-lockfile --ignore-scripts
 
@@ -194,7 +197,7 @@ jobs:
     needs: publish
     if: ${{ !inputs.dry-run }}
     runs-on: ubuntu-latest
-    # npm can take minutes to list a new package; the check waits up to 15.
+    # npm can take minutes to list a new package and serve its tarball; the check waits up to 15.
     timeout-minutes: 30
     permissions:
       # The tag, main and the GitHub release: the only job that writes to the repository.
@@ -223,7 +226,9 @@ jobs:
           name: release
           path: .release
 
-      # npm first; then the tag, and main (merged if main moved meanwhile); then the release.
+      # npm first, until every package's document and tarball are as the gate checked them; then
+      # the tag, and main (merged if main moved meanwhile); then the release. The install job
+      # downloads the tarballs only after this.
       - name: Check npm, push the tag and main, write the GitHub release
         working-directory: tools/release
         env:
@@ -259,7 +264,8 @@ jobs:
           name: release
           path: .release
 
-      # What the publish job would publish, from a job that can't.
+      # What the publish job would publish, from a job that can't: the same npm runs each publish
+      # with --dry-run, and stops before it uploads.
       - name: Check what publishing would do
         working-directory: tools/release
         env:

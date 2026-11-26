@@ -1,8 +1,13 @@
 import { describe, expect, test } from "vite-plus/test";
 
+import { satisfies } from "semver";
+
 import { checkProblems, type CheckFacts } from "../src/ci";
 import { trustFromResponse, type Trust } from "../src/oidc";
-import { trustsRelease } from "../src/trust";
+import { distTagNpmRange } from "../src/next-tag";
+import { pinnedNpm } from "../src/npm";
+import { trustedPublishingNpm } from "../src/publish";
+import { allowsDistTag, distTagReport, trustsRelease } from "../src/trust";
 
 const trusted: Trust = { verdict: "trusted" };
 
@@ -127,5 +132,32 @@ describe("the owner's one-time setup", () => {
       trustsRelease('[{"type":"github","repository":"Moltenship/time","file":"ci.yml"}]'),
     ).toBe(false);
     expect(trustsRelease("")).toBe(false);
+  });
+
+  test("reads whether the trusted publisher allows npm dist-tag from npm trust list --json", () => {
+    const listed = (permissions: readonly string[]) =>
+      JSON.stringify({
+        type: "github",
+        repository: "Moltenship/time",
+        file: "release.yml",
+        permissions,
+      });
+
+    expect(allowsDistTag(listed(["createPackage", "manageDistTags"]))).toBe(true);
+    expect(allowsDistTag(listed(["createPackage"]))).toBe(false);
+    expect(allowsDistTag('{"type":"github","repository":"Moltenship/time"}')).toBeUndefined();
+    expect(distTagReport(["@x/a", "@x/b"], [])).toEqual([
+      expect.stringContaining('"Allow npm dist-tag" is off on @x/a, @x/b.'),
+    ]);
+    expect(distTagReport([], [])).toEqual([]);
+  });
+});
+
+describe("the npm a release runs", () => {
+  test("is the one the lockfile pins, and publishes and moves dist-tags through trusted publishing", () => {
+    expect(pinnedNpm.command[0]).toBe(process.execPath);
+    expect(pinnedNpm.command[1]).toMatch(/[/\\]npm[/\\]bin[/\\]npm-cli\.js$/u);
+    expect(satisfies(pinnedNpm.version, `>=${trustedPublishingNpm}`)).toBe(true);
+    expect(satisfies(pinnedNpm.version, distTagNpmRange)).toBe(true);
   });
 });

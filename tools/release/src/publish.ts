@@ -8,24 +8,38 @@ import { gte } from "semver";
 import { npmRegistry as registry } from "./config";
 import { distTag, manifestPath, publishProblems, readManifest, tarballIntegrity } from "./manifest";
 import { tarballDirectory } from "./pack";
-import { nextTagCommand, pointNext } from "./next-tag";
+import { lastLine, nextTagCommand, pointNext } from "./next-tag";
+import { pinnedNpm } from "./npm";
 import { fetchPackument } from "./published";
 import { gitState, isOnMain, readPublishedPackages, run, runOrThrow } from "./workspace";
 
 /** The first npm that publishes through trusted publishing (docs.npmjs.com/trusted-publishers). */
-const trustedPublishingNpm = "11.5.1";
+export const trustedPublishingNpm = "11.5.1";
+
+/** Where and how a release runs npm, as `withNpm` gives it. */
+export interface NpmPlace {
+  readonly cwd: string;
+  readonly env: NodeJS.ProcessEnv;
+  /** The command that starts npm, before npm's own arguments: the pinned npm (`npm.ts`). */
+  readonly command: readonly [string, ...string[]];
+  readonly version: string;
+}
+
+/** The command and arguments that run `npm <args>` in `place`. */
+export function npmCall(
+  place: Pick<NpmPlace, "command">,
+  args: readonly string[],
+): readonly [string, readonly string[]] {
+  const [command, ...prefix] = place.command;
+  return [command, [...prefix, ...args]];
+}
 
 /**
- * Runs `action` with a place to run npm in. npm runs outside the workspace, whose devEngines pins
- * pnpm, and reads an empty npmrc: no token, no project or user config, and the public registry.
+ * Runs `action` with a place to run the pinned npm in. npm runs outside the workspace, whose
+ * devEngines pins pnpm, and reads an empty npmrc: no token, no project or user config, and the
+ * public registry.
  */
-async function withNpm<T>(
-  action: (npm: {
-    readonly cwd: string;
-    readonly env: NodeJS.ProcessEnv;
-    readonly version: string;
-  }) => Promise<T>,
-): Promise<T> {
+async function withNpm<T>(action: (npm: NpmPlace) => Promise<T>): Promise<T> {
   const cwd = await mkdtemp(join(tmpdir(), "moltenship-publish-"));
   const userconfig = join(cwd, ".npmrc");
   await writeFile(userconfig, "");
@@ -37,8 +51,11 @@ async function withNpm<T>(
   delete env.NODE_AUTH_TOKEN;
   delete env.NPM_TOKEN;
   try {
-    const version = (await runOrThrow("npm", ["--version"], { cwd, env })).stdout.trim();
-    return await action({ cwd, env, version });
+    const { command } = pinnedNpm;
+    const version = (
+      await runOrThrow(...npmCall({ command }, ["--version"]), { cwd, env })
+    ).stdout.trim();
+    return await action({ cwd, env, command, version });
   } finally {
     await rm(cwd, { force: true, recursive: true });
   }
@@ -79,7 +96,8 @@ export async function publish(options: {
   }
   const tag = distTag(version);
 
-  return withNpm(async ({ cwd, env, version: npm }) => {
+  return withNpm(async (place) => {
+    const { cwd, env, version: npm } = place;
     if (!gte(npm, trustedPublishingNpm)) {
       throw new Error(
         `npm ${npm} can't publish through trusted publishing; it needs ${trustedPublishingNpm}.`,
@@ -105,26 +123,43 @@ export async function publish(options: {
     const summary = `${pending.length} packages at ${version} with the "${tag}" tag`;
     log(`Ready to publish ${summary}, through trusted publishing, with provenance:`);
     for (const { file } of pending) log(`  ${file}`);
+    const publishArgs = (file: string) => [
+      "publish",
+      join(tarballDirectory, file),
+      "--access",
+      "public",
+      "--tag",
+      tag,
+      "--provenance",
+      "--registry",
+      registry,
+    ];
     if (options.dryRun) {
-      log(`A release would publish them now, with npm ${npm}.`);
-      return problems;
+      // The release's own command, with npm's --dry-run: npm reads each tarball, checks the tag
+      // and the version against the registry, and stops before it uploads. Where the job can mint
+      // an OIDC token it trades it too; the dry-run job can't, and the check job asked npm for
+      // each package's trusted publisher instead. What npm refuses is a problem to report.
+      const refused: string[] = [];
+      for (const { name, file } of pending) {
+        const result = await run(...npmCall(place, [...publishArgs(file), "--dry-run"]), {
+          cwd,
+          env,
+        });
+        if (result.code !== 0) {
+          refused.push(
+            `npm publish --dry-run refused ${name}@${version}: ${lastLine(`${result.stdout}\n${result.stderr}`)}`,
+          );
+        }
+      }
+      if (refused.length === 0) {
+        log(
+          `npm ${npm} took all ${pending.length} for npm publish --dry-run. A release would publish them now, with that npm.`,
+        );
+      }
+      return [...problems, ...refused];
     }
     for (const { name, file } of pending) {
-      await runOrThrow(
-        "npm",
-        [
-          "publish",
-          join(tarballDirectory, file),
-          "--access",
-          "public",
-          "--tag",
-          tag,
-          "--provenance",
-          "--registry",
-          registry,
-        ],
-        { cwd, env, inherit: true },
-      );
+      await runOrThrow(...npmCall(place, publishArgs(file)), { cwd, env, inherit: true });
       log(`Published ${name}@${version}.`);
     }
     log(`Published ${summary}.`);
@@ -136,7 +171,7 @@ export async function publish(options: {
 export interface NextTagParts {
   /** The published packages' names. */
   readonly names: () => Promise<readonly string[]>;
-  /** A place to run npm in, and its version, as `withNpm` gives them. */
+  /** A place to run npm in, the command that starts it, and its version, as `withNpm` gives them. */
   readonly npm: typeof withNpm;
   readonly run: typeof run;
   readonly tagged: (name: string) => Promise<string | undefined>;
@@ -169,19 +204,25 @@ export async function moveNextTag(
   try {
     const published = await parts.names();
     names = published;
-    return await parts.npm(({ cwd, env, version: npm }) =>
+    return await parts.npm((place) =>
       pointNext(
         { version, names: published, dryRun },
         {
-          npm,
+          npm: place.version,
           tagged: parts.tagged,
           // Without a credential npm could wait for a login nobody gives, so each call is cut off.
           add: (name, to, timeout) =>
-            parts.run("npm", ["dist-tag", "add", `${name}@${to}`, "next", "--registry", registry], {
-              cwd,
-              env,
-              signal: AbortSignal.timeout(timeout),
-            }),
+            parts.run(
+              ...npmCall(place, [
+                "dist-tag",
+                "add",
+                `${name}@${to}`,
+                "next",
+                "--registry",
+                registry,
+              ]),
+              { cwd: place.cwd, env: place.env, signal: AbortSignal.timeout(timeout) },
+            ),
           sleep: (milliseconds) => sleep(milliseconds),
           log,
           now: Date.now,

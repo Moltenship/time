@@ -40,7 +40,8 @@ import {
  *   jobs after it;
  * - `publish`: the tarballs the gate checked, with npm trusted publishing, then the `next` tag
  *   for a stable version;
- * - `finish`: waits for npm to serve them, pushes main and the tag, writes the GitHub release.
+ * - `finish`: waits for npm to serve them, package documents and tarballs, pushes main and the
+ *   tag, writes the GitHub release.
  *
  * Each reads VERSION and DRY_RUN from the environment. A dry run does everything but publish,
  * push and write the release, and reports what a release would stop at instead of stopping.
@@ -327,6 +328,9 @@ async function finish(version: string, dryRun: boolean): Promise<void> {
     return;
   }
   await runOrThrow("git", ["fetch", "--quiet", "origin", "main"]);
+  console.log(
+    "A release would first wait, up to 15 minutes, until npm lists every package as the dry run checked it and each tarball downloads with the dry run's integrity.",
+  );
   console.log(
     (await isAncestor("origin/main", commit))
       ? `A release would push ${tag} and fast-forward main to the release commit.`

@@ -24,7 +24,7 @@ and then it must be set up again.
    vp run release:trust                     # add --disallow-tokens for step 3 too
    ```
 
-   It needs npm 11.15 or later (`npm install -g npm@latest`), logs in to npm in the browser if
+   It runs the npm the release pins (`tools/release/src/npm.ts`), logs in to npm in the browser if
    needed, and runs `npm trust github <package> --file release.yml --repo Moltenship/time
    --allow-publish --yes` for each package that doesn't trust the workflow yet. npm asks for 2FA
    on the first; tick "skip 2FA for the next 5 minutes" in the browser and the other ten go
@@ -54,11 +54,16 @@ and then it must be set up again.
    GitHub Actions configuration → "Allow npm dist-tag"
    ([npm's docs](https://docs.npmjs.com/trusted-publishers),
    [its announcement](https://github.blog/changelog/2026-09-30-opt-in-dist-tag-permissions-for-npm-trusted-publishing/)).
-   It can be turned on for a configuration a package already has, and `vp run release:trust` sets
-   up publishing alone. The setting lets this workflow move any tag of the package, `latest`
-   included, from either job that holds an OIDC token (check and publish). It also needs npm
-   11.21.0 in the runner, or 12.2.0 of npm 12, and Node.js 26 came with npm 11.20.0 when this was
-   written. Without either, the release still goes out, and ends with the command to run by hand.
+   It can be turned on for a configuration a package already has. `npm trust` can't turn it on, so
+   `vp run release:trust` sets up publishing alone, and then lists the packages that have the
+   setting off. npm shows the setting only to a maintainer's login, with 2FA, never to the
+   workflow: to see it before a release, run `vp run release:trust --dry-run`, which changes
+   nothing. The release can't tell, and its dry run says so. The setting lets this workflow move
+   any tag of the package, `latest` included, from either job that holds an OIDC token (check and
+   publish). It also needs npm 11.21.0, or 12.2.0 of npm 12: the release runs npm 11.21.3, pinned
+   in the lockfile as a dependency of `tools/release`, and not the runner's (Node.js 26 brought
+   npm 11.20.0). Without the setting, the release still goes out, and ends with the command to run
+   by hand.
 
 The release workflow's first job checks the trusted publisher on every package, and a release
 without one stops there, before anything else runs.
@@ -118,11 +123,15 @@ The workflow, one release at a time (a second waits; dry runs queue apart):
    and keeps `.release/`, with a git bundle of the release commit and tag, for the jobs after it.
    About 11 minutes.
 3. **Publish** (with an OIDC token, no install scripts): the tarballs the gate checked, with
-   `npm publish --provenance` through trusted publishing, skipping any npm serves already. After a
-   stable version, a step of its own points `next` at the release too, where npm lets it. That step
-   can't fail the job, and gives up after three minutes.
-4. **Finish** (the only job that can write to the repository): waits for npm to serve every
-   package with the gate's integrity, the dist-tag, its trusted publisher and provenance; then
+   `npm publish --provenance` through trusted publishing, skipping any npm serves already. npm is
+   the one the lockfile pins (11.21.3), not the runner's. After a stable version, a step of its own
+   points `next` at the release too, where npm lets it. That step can't fail the job, and gives up
+   after three minutes.
+4. **Finish** (the only job that can write to the repository): waits, up to 15 minutes, for npm
+   to serve every package with the gate's integrity, the dist-tag, its trusted publisher and
+   provenance, and for each version's tarball (`dist.tarball`) to download with that integrity.
+   npm's CDN can answer 404 for a tarball for minutes after the package lists the version, which
+   failed the 2.0.0 release's install job once; nothing reads a tarball before this wait. Then it
    pushes the tag, so the commit npm has is on GitHub whatever happens next, then `main`, and
    writes the GitHub release, marked a prerelease for one. If `main` moved while the release ran,
    it merges the release into `main` as a PR would (`chore(release): merge v<version> into main`),
@@ -172,8 +181,11 @@ gh release create v<version> --verify-tag --title <version> --notes-file .releas
 
 `--dry-run` starts a run with `dry-run` on, from any pushed branch: the check reports what a
 release would stop at instead of stopping, and the gate runs. Then a job of its own, with no
-OIDC token and no write access, checks what publishing would do and how the push would go, and
-prints the notes; the publish and finish jobs don't run. It publishes, pushes and releases nothing,
+OIDC token and no write access, checks what publishing would do, running the release's
+`npm publish` with the pinned npm and `--dry-run` for each tarball (npm reads it and checks the tag
+and the version against the registry, and uploads nothing), and how the push would go, and prints
+the notes. The trust exchange itself shows in the first job, which asks npm for each package as
+`npm publish` does; the publish and finish jobs don't run. It publishes, pushes and releases nothing,
 and only reports CI and `main`'s rules on the laptop. A dry run of a stable version
 (`vp run release 2.0.0 --dry-run`) also checks the install commands: its first job reports the lines
 that would still install `@next`, its gate fails on them, and its last job says whether a release
@@ -315,7 +327,8 @@ The publish job (`tools/release/src/publish.ts`) refuses unless:
 - `HEAD` is on `origin/main`, or right on top of it: the release commit, not pushed yet;
 - the dry run checked the version asked for;
 - every published package was packed, and each tarball's sha512 still matches;
-- npm is 11.5.1 or later, the first that publishes through trusted publishing.
+- npm, the one the lockfile pins, is 11.5.1 or later, the first that publishes through trusted
+  publishing.
 
 Moving `next` after a stable version is no such condition: a step of its own tries it after the
 publish, and what npm refuses becomes a step for the owner

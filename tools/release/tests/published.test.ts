@@ -1,11 +1,19 @@
+import { createHash } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, test } from "vite-plus/test";
 
 import { writeManifest, type ReleaseManifest } from "../src/manifest";
-import { checkPublished, waitForPublished, type Packument } from "../src/published";
+import {
+  checkPublished,
+  fetchTarball,
+  waitForPublished,
+  type Packument,
+  type TarballAnswer,
+} from "../src/published";
 
 const manifest: ReleaseManifest = {
   status: "passed",
@@ -22,7 +30,11 @@ const served = (integrity: string, tag = "1.0.0-rc.1", trusted = true): Packumen
   "dist-tags": { latest: "1.0.0-rc.1", next: tag },
   versions: {
     "1.0.0-rc.1": {
-      dist: { integrity, ...(trusted ? { attestations: { provenance: {} } } : {}) },
+      dist: {
+        integrity,
+        tarball: `https://registry.example/${integrity}.tgz`,
+        ...(trusted ? { attestations: { provenance: {} } } : {}),
+      },
       _npmUser: trusted ? { trustedPublisher: { id: "github" } } : {},
     },
   },
@@ -99,7 +111,12 @@ describe("waiting for npm", () => {
   });
   afterEach(() => rm(directory, { force: true, recursive: true }));
 
-  const quiet = { intervalMs: 0, log: () => {} };
+  /** npm's CDN serving every tarball: the integrity is the file's name in `served`'s URL. */
+  const downloads = async (url: string): Promise<TarballAnswer> => ({
+    status: 200,
+    integrity: url.slice(url.lastIndexOf("/") + 1, -".tgz".length),
+  });
+  const quiet = { intervalMs: 0, log: () => {}, fetchTarball: downloads };
 
   test("asks again until npm lists every package, through registry errors", async () => {
     let calls = 0;
@@ -137,16 +154,121 @@ describe("waiting for npm", () => {
     ).rejects.toThrow("npm doesn't list @x/a@1.0.0-rc.1 yet");
   });
 
+  test("waits for every tarball to download once npm lists the version, as release run 45774483713 needed", async () => {
+    const asked: string[] = [];
+    let round = 0;
+    const lines: string[] = [];
+    await waitForPublished({
+      ...quiet,
+      log: (line) => lines.push(line),
+      version: options.version,
+      manifestFile,
+      fetch: async (name) => {
+        if (name === "@x/a") round += 1;
+        return both.get(name);
+      },
+      fetchTarball: async (url) => {
+        asked.push(url);
+        // @x/b's tarball: a 404 from the CDN, then a registry error, then the file.
+        if (url.includes("sha512-b") && round === 1) return { status: 404 };
+        if (url.includes("sha512-b") && round === 2) throw new Error("socket hang up");
+        return downloads(url);
+      },
+    });
+
+    // @x/a's tarball once: a download that matched isn't asked for again.
+    expect(asked).toEqual([
+      "https://registry.example/sha512-a.tgz",
+      "https://registry.example/sha512-b.tgz",
+      "https://registry.example/sha512-b.tgz",
+      "https://registry.example/sha512-b.tgz",
+    ]);
+    expect(lines.slice(0, 2)).toEqual([
+      "Waiting for npm: 1 left, such as npm answers 404 for @x/b@1.0.0-rc.1's tarball, https://registry.example/sha512-b.tgz",
+      "Waiting for npm: 1 left, such as @x/b@1.0.0-rc.1's tarball: socket hang up",
+    ]);
+    expect(lines.at(-1)).toContain("each tarball downloads with the dry run's integrity");
+  });
+
+  test("asks for no tarball before npm lists the version", async () => {
+    const asked: string[] = [];
+    let calls = 0;
+    await waitForPublished({
+      ...quiet,
+      version: options.version,
+      manifestFile,
+      fetch: async (name) => {
+        calls += 1;
+        return calls <= 2 ? undefined : both.get(name);
+      },
+      fetchTarball: async (url) => {
+        asked.push(url);
+        return downloads(url);
+      },
+    });
+    expect(asked).toHaveLength(2);
+  });
+
+  test("names the tarball that never downloads when the time runs out, and stops at once on other bytes", async () => {
+    await expect(
+      waitForPublished({
+        ...quiet,
+        version: options.version,
+        manifestFile,
+        timeoutMs: 0,
+        fetch: async (name) => both.get(name),
+        fetchTarball: async (url) => (url.includes("sha512-a") ? { status: 404 } : downloads(url)),
+      }),
+    ).rejects.toThrow(
+      "npm still doesn't serve the release after 0 minutes:\n- npm answers 404 for @x/a@1.0.0-rc.1's tarball, https://registry.example/sha512-a.tgz",
+    );
+
+    await expect(
+      waitForPublished({
+        ...quiet,
+        version: options.version,
+        manifestFile,
+        timeoutMs: 60_000,
+        fetch: async (name) => both.get(name),
+        fetchTarball: async (url) =>
+          url.includes("sha512-b") ? { status: 200, integrity: "sha512-other" } : downloads(url),
+      }),
+    ).rejects.toThrow(
+      "@x/b@1.0.0-rc.1's tarball, https://registry.example/sha512-b.tgz, is sha512-other, not the one the dry run checked (sha512-b)",
+    );
+  });
+
   test("checks a prerelease under the next tag", async () => {
     const lines: string[] = [];
     const fetch = async (name: string) => both.get(name);
     await waitForPublished({
-      intervalMs: 0,
+      ...quiet,
       log: (line) => lines.push(line),
       version: "1.0.0-rc.1",
       manifestFile,
       fetch,
     });
     expect(lines.at(-1)).toContain("tagged next, from the trusted publisher, with provenance");
+  });
+});
+
+test("reports npm's status for a tarball it doesn't serve, without reading a body", async () => {
+  const server = createServer((_, response) => response.writeHead(404).end("Not Found"));
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const { port } = server.address() as { port: number };
+    expect(await fetchTarball(`http://127.0.0.1:${port}/x-a-1.0.0.tgz`)).toEqual({ status: 404 });
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("hashes a downloaded tarball as npm writes its integrity", async () => {
+  const bytes = Buffer.from("a tarball");
+  expect(
+    await fetchTarball(`data:application/octet-stream;base64,${bytes.toString("base64")}`),
+  ).toEqual({
+    status: 200,
+    integrity: `sha512-${createHash("sha512").update(bytes).digest("base64")}`,
   });
 });
