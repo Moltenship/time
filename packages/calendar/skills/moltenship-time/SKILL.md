@@ -22,10 +22,8 @@ The same docs are online at https://time.molten.sh/docs, with `https://time.molt
 If the package isn't installed yet, in a React app:
 
 ```bash
-pnpm add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
+pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
 ```
-
-Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 `@ui-sdk/core` and `@ui-sdk/react` are peer dependencies since 2.0. Use the project's package manager. The runtime needs `Temporal`: Node.js 26 has it, and a browser without it needs a polyfill loaded before the calendar (`docs/installation.md`). A SolidJS 2 app installs other packages, which [references/solid.md](references/solid.md) lists.
 

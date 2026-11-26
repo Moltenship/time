@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/ics",
-  "version": "2.0.0-beta.1",
+  "version": "2.0.0",
   "description": "Typed, Temporal-native iCalendar (RFC 5545) parsing with Standard Schema support.",
   "keywords": [
     "ical",

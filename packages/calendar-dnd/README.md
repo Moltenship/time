@@ -16,10 +16,8 @@ It's a layer of `@moltenship/calendar`, which re-exports all of it. Most apps in
 ## Install
 
 ```bash
-pnpm add @moltenship/calendar-dnd@next
+pnpm add @moltenship/calendar-dnd
 ```
-
-Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - A runtime with `Temporal` (Node.js 26 and later include it), or a polyfill that defines
   `globalThis.Temporal`, loaded first.

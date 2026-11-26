@@ -12,10 +12,8 @@ same version of both, so there's one copy of each.
 ## Install
 
 ```bash
-pnpm add @moltenship/calendar-core@next
+pnpm add @moltenship/calendar-core
 ```
-
-Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - A runtime with `Temporal` (Node.js 26 and later include it), or a polyfill that defines
   `globalThis.Temporal`, loaded first.

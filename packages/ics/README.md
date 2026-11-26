@@ -13,10 +13,8 @@ every deviation from the RFC reported as an issue with its line.
 ## Install
 
 ```bash
-pnpm add @moltenship/ics@next
+pnpm add @moltenship/ics
 ```
-
-Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 ## Parse a feed
 

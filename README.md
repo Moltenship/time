@@ -40,14 +40,6 @@ The engine imports no UI framework. React and SolidJS 2 render it. The
 screenshot is the [live demo](https://moltenship-time-demo.vercel.app), a Google Calendar-style
 React app built from the same views. Its source is in [`apps/demo`](./apps/demo).
 
-<!-- pre-release -->
-
-> [!NOTE]
-> Time 2.0 is a pre-release. It rebuilds the calendar's parts on [ui-sdk](https://ui-sdk.dev),
-> which is itself in beta, so the API can still change before 2.0.0.
-
-<!-- /pre-release -->
-
 Coming from 1.x? See [Migrating to 2.0](https://time.molten.sh/docs/react/migrating-to-2).
 
 ## Features
@@ -93,16 +85,14 @@ react-big-calendar, including where they're ahead.
 In a React app:
 
 ```bash
-pnpm add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
+pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 In a SolidJS 2 app:
 
 ```bash
-pnpm add @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+pnpm add @moltenship/calendar-solid solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
-
-Time 2.0 is a pre-release on npm's `next` tag, so both commands install `@next`.
 
 Time needs:
 
@@ -237,7 +227,7 @@ The docs are written to be read by a coding agent too:
 - [`/llms.txt`](https://time.molten.sh/llms.txt) is the index, and every page has a Markdown
   version: add `.md` to its address. [`/llms-full.txt`](https://time.molten.sh/llms-full.txt) is
   every page in one file.
-- `@moltenship/calendar@next` ships the same docs, for the version you installed, in
+- `@moltenship/calendar` ships the same docs, for the version you installed, in
   `node_modules/@moltenship/calendar/docs`.
 - An [Agent Skill](https://agentskills.io) teaches an agent the library:
 

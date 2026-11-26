@@ -53,10 +53,8 @@ test("a saved move reaches onEventChange", async () => {
 ## Install
 
 ```bash
-pnpm add -D @moltenship/calendar-testing@next
+pnpm add -D @moltenship/calendar-testing
 ```
-
-Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - React 19 and React DOM 19, peer dependencies.
 - `@ui-sdk/core` and `@ui-sdk/react` 0.1 beta, peer dependencies since 2.0: the calendar's parts are

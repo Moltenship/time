@@ -22,10 +22,8 @@ Every hook React's integration exports has a Solid one with the same name. If th
 ## Install
 
 ```bash
-pnpm add @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+pnpm add @moltenship/calendar-solid solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
-
-Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - `@moltenship/calendar-solid` is the one package to import. It re-exports the engine and the Temporal helpers, so the adapter and the view functions come from it too.
 - The views install with the shadcn CLI from the Solid registry: `npx shadcn@latest add https://time.molten.sh/r/solid/calendar-full.json` adds every Solid item but `base-tokens`, `list-view.json` the agenda alone, and `time-grid-view`, `month-view` and `year-view` the week and day, the month and the year. `scrolling-time-grid-view`, `scrolling-month-view` and `scrolling-list-view` add the scrolling week and day, month and agenda (`https://time.molten.sh/docs/solid/views/scrolling.md`), `resource-columns-view` the resource columns (`https://time.molten.sh/docs/solid/views/resource-columns.md`), and `resource-timeline-view` the resource timeline (`https://time.molten.sh/docs/solid/views/resource-timeline.md`). `https://time.molten.sh/docs/solid/installation.md` has the setup, and `https://time.molten.sh/docs/solid/views.md` links each view's page.

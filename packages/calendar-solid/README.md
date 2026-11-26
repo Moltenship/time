@@ -21,10 +21,8 @@ creates.
 ## Install
 
 ```bash
-pnpm add @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+pnpm add @moltenship/calendar-solid solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
-
-Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - It re-exports `@moltenship/calendar-core` and `@moltenship/calendar-temporal`, as
   `@moltenship/calendar` does for React, so the event adapter, the views' projections and the

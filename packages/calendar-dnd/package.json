@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/calendar-dnd",
-  "version": "2.0.0-beta.1",
+  "version": "2.0.0",
   "description": "Pointer drag, resize, and create interactions for Moltenship Time views.",
   "keywords": [
     "calendar",

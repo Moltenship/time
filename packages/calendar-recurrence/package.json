@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/calendar-recurrence",
-  "version": "2.0.0-beta.1",
+  "version": "2.0.0",
   "description": "Range-bounded recurrence for Moltenship Time: RRULE expansion, exceptions and series edits.",
   "keywords": [
     "calendar",

@@ -28,10 +28,8 @@ framework.
 You rarely install it yourself: the framework integrations depend on it.
 
 ```bash
-pnpm add @moltenship/calendar-primitives@next @ui-sdk/core
+pnpm add @moltenship/calendar-primitives @ui-sdk/core
 ```
-
-Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - `@ui-sdk/core` 0.1 beta. It is a peer dependency, and still pre-1.0, so this package takes the
   beta the calendar was tested with and the ones after it in the same 0.1 line.

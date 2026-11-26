@@ -12,10 +12,8 @@ Use the same version as `@moltenship/calendar`, so they share one copy of the en
 ## Install
 
 ```bash
-pnpm add @moltenship/calendar-recurrence@next
+pnpm add @moltenship/calendar-recurrence
 ```
-
-Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - A runtime with `Temporal` (Node.js 26 and later include it), or a polyfill that defines
   `globalThis.Temporal`, loaded first.
