@@ -1,7 +1,7 @@
 import { replaceSource } from "fumadocs-core/mdx-plugins/stringifier";
 
 import { type Framework, frameworkHref } from "./frameworks";
-import { installTag, withInstallTag } from "./install-tag";
+import { installTag, installTagSource, withInstallTag } from "./install-tag";
 
 /**
  * Compiles a docs page for one framework. Every page is compiled twice, once for React's docs and
@@ -31,6 +31,9 @@ import { installTag, withInstallTag } from "./install-tag";
 export function remarkFramework(framework: Framework, options: Options = { installTag }) {
   return () =>
     (tree: Node, file: SourceFile): void => {
+      // The page reads differently for another version of the package, so the build must compile
+      // it again when the manifest changes (`installTagSource`).
+      (file.data._compiler as Compiler | undefined)?.addDependency(installTagSource());
       const state: State = {
         framework,
         tag: options.installTag,
@@ -52,6 +55,11 @@ interface Options {
 /** The file being compiled, which Fumadocs' source edits are kept by. */
 interface SourceFile {
   data: Record<string, unknown>;
+}
+
+/** The loader compiling the file, which Fumadocs puts on its data as `_compiler`. */
+interface Compiler {
+  addDependency(file: string): void;
 }
 
 type SourceEdit = Parameters<typeof replaceSource>;

@@ -1,3 +1,5 @@
+import { createRequire } from "node:module";
+
 import manifest from "@moltenship/calendar/package.json" with { type: "json" };
 
 /** The npm tag a pre-release is published under, which `tools/release` calls its dist-tag. */
@@ -29,6 +31,17 @@ export function installTagFor(version: string): string | undefined {
  * explanations off the site together.
  */
 export const installTag: string | undefined = installTagFor(manifest.version);
+
+/**
+ * The file `installTag` is read from. A compiled page depends on it, and Next.js can't see that:
+ * the docs' config imports the manifest in the loader's own process, outside the build's module
+ * graph. `lib/remark-framework.ts` names this file as each page's dependency, so the build cache
+ * drops a page compiled for another version. Without it, the release of 2.0.0 changed nothing but
+ * the version, and the cached pages went on installing `@next`.
+ */
+export function installTagSource(): string {
+  return createRequire(import.meta.url).resolve("@moltenship/calendar/package.json");
+}
 
 // A command is one line that starts with one of these. `tests/install-tag.test.ts` fails when a
 // page installs a Time package in another form (`npm i`, a line continued with `\`), which would

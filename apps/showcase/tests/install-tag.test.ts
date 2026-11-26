@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { createStringifier } from "fumadocs-core/mdx-plugins/stringifier";
 import { describe, expect, test } from "vite-plus/test";
 
@@ -6,6 +8,7 @@ import manifest from "@moltenship/calendar/package.json" with { type: "json" };
 import {
   installTag,
   installTagFor,
+  installTagSource,
   preReleaseTag,
   tagged,
   withInstallTag,
@@ -147,6 +150,26 @@ function compile(tag: string | undefined) {
     .replace(/\n{3,}/gu, "\n\n");
   return { tree, text, data: file.data };
 }
+
+describe("a compiled page", () => {
+  // The build caches a compiled page until a file it depends on changes. A release changes the
+  // packages' version and no page, and the pages of 2.0.0 went on installing `@next` from the
+  // cache.
+  test("depends on the manifest the tag is read from", () => {
+    const dependencies: string[] = [];
+    const file = {
+      data: { _compiler: { addDependency: (name: string) => dependencies.push(name) } },
+      toString: () => source,
+    };
+    remarkFramework("solid")()(page(), file);
+
+    expect(dependencies).toEqual([installTagSource()]);
+    expect(JSON.parse(readFileSync(installTagSource(), "utf8"))).toMatchObject({
+      name: "@moltenship/calendar",
+      version: manifest.version,
+    });
+  });
+});
 
 describe("a page compiled with a tag", () => {
   test("names it in its commands and keeps what is said about it", () => {
