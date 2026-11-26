@@ -22,12 +22,18 @@ export function trustsRelease(listed: string): boolean {
 
 /**
  * Whether the trusted publisher `npm trust list --json` shows lets the workflow move dist-tags:
- * "Allow npm dist-tag" on npmjs.com, `manageDistTags` among its permissions. Undefined when the
+ * "Allow npm dist-tag" on npmjs.com, `manageDistTags` among its permissions, as npm's API docs
+ * name it (api-docs.npmjs.com, Trust). Undefined when the
  * output lists no permissions, as from an npm that doesn't print them.
  */
 export function allowsDistTag(listed: string): boolean | undefined {
   if (/"manageDistTags"/u.test(listed)) return true;
   return /"permissions"/u.test(listed) ? false : undefined;
+}
+
+/** The permissions npm trust list --json printed, as they came, so a misread name shows. */
+function permissionsOf(listed: string): string {
+  return listed.match(/"permissions"\s*:\s*\[[^\]]*\]/u)?.[0].replace(/\s+/gu, " ") ?? "none";
 }
 
 /** What the owner reads about the dist-tag setting, given the packages without it. */
@@ -73,13 +79,29 @@ async function setUp(options: { readonly disallowTokens: boolean; readonly dryRu
     const noDistTag: string[] = [];
     const unknownDistTag: string[] = [];
     for (const name of names) {
-      const listed = await run(node, npmArgs(["trust", "list", name, "--json"]), { cwd });
+      const list = () => run(node, npmArgs(["trust", "list", name, "--json"]), { cwd });
+      let listed = await list();
+      if (listed.code !== 0) {
+        // npm asks for 2FA only on a terminal: once more in it, then the captured call again.
+        await run(node, npmArgs(["trust", "list", name]), { cwd, inherit: true });
+        listed = await list();
+      }
+      if (listed.code !== 0) {
+        const why = `${listed.stdout}\n${listed.stderr}`.trim();
+        if (!options.dryRun) throw new Error(`npm trust list ${name} failed:\n${why}`);
+        console.log(`Couldn't list ${name}'s trusted publisher: ${why}`);
+        unknownDistTag.push(name);
+        continue;
+      }
       if (trustsRelease(listed.stdout)) {
         console.log(
           `${name} trusts ${trustedPublisher.repository}'s ${trustedPublisher.workflow} already.`,
         );
         const allows = allowsDistTag(listed.stdout);
-        if (allows === false) noDistTag.push(name);
+        if (allows === false) {
+          noDistTag.push(name);
+          console.log(`  Its permissions: ${permissionsOf(listed.stdout)}.`);
+        }
         if (allows === undefined) unknownDistTag.push(name);
         continue;
       }

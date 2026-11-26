@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -249,6 +250,17 @@ describe("waiting for npm", () => {
     });
     expect(lines.at(-1)).toContain("tagged next, from the trusted publisher, with provenance");
   });
+});
+
+test("reports npm's status for a tarball it doesn't serve, without reading a body", async () => {
+  const server = createServer((_, response) => response.writeHead(404).end("Not Found"));
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const { port } = server.address() as { port: number };
+    expect(await fetchTarball(`http://127.0.0.1:${port}/x-a-1.0.0.tgz`)).toEqual({ status: 404 });
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 test("hashes a downloaded tarball as npm writes its integrity", async () => {

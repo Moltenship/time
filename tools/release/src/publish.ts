@@ -8,7 +8,7 @@ import { gte } from "semver";
 import { npmRegistry as registry } from "./config";
 import { distTag, manifestPath, publishProblems, readManifest, tarballIntegrity } from "./manifest";
 import { tarballDirectory } from "./pack";
-import { nextTagCommand, pointNext } from "./next-tag";
+import { lastLine, nextTagCommand, pointNext } from "./next-tag";
 import { pinnedNpm } from "./npm";
 import { fetchPackument } from "./published";
 import { gitState, isOnMain, readPublishedPackages, run, runOrThrow } from "./workspace";
@@ -138,14 +138,25 @@ export async function publish(options: {
       // The release's own command, with npm's --dry-run: npm reads each tarball, checks the tag
       // and the version against the registry, and stops before it uploads. Where the job can mint
       // an OIDC token it trades it too; the dry-run job can't, and the check job asked npm for
-      // each package's trusted publisher instead.
-      for (const { file } of pending) {
-        await runOrThrow(...npmCall(place, [...publishArgs(file), "--dry-run"]), { cwd, env });
+      // each package's trusted publisher instead. What npm refuses is a problem to report.
+      const refused: string[] = [];
+      for (const { name, file } of pending) {
+        const result = await run(...npmCall(place, [...publishArgs(file), "--dry-run"]), {
+          cwd,
+          env,
+        });
+        if (result.code !== 0) {
+          refused.push(
+            `npm publish --dry-run refused ${name}@${version}: ${lastLine(`${result.stdout}\n${result.stderr}`)}`,
+          );
+        }
       }
-      log(
-        `npm ${npm} took all ${pending.length} for npm publish --dry-run. A release would publish them now, with that npm.`,
-      );
-      return problems;
+      if (refused.length === 0) {
+        log(
+          `npm ${npm} took all ${pending.length} for npm publish --dry-run. A release would publish them now, with that npm.`,
+        );
+      }
+      return [...problems, ...refused];
     }
     for (const { name, file } of pending) {
       await runOrThrow(...npmCall(place, publishArgs(file)), { cwd, env, inherit: true });

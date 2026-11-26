@@ -12,8 +12,9 @@ import type { RunResult } from "./workspace";
  * through npm trusted publishing, as it publishes: no token. npm allows that from 11.21.0, which
  * the release pins (`npm.ts`), and only for a trusted publisher with "Allow npm dist-tag" on,
  * which is off unless the owner turns it on (docs/internal/releasing.md). npm shows that setting
- * to a maintainer's login, not to the workflow, so only `vp run release:trust` can report it. Where npm is older, refuses or stops answering, nothing
- * fails: the release is out, and what is left is one command for the owner, which the run reports.
+ * to a maintainer's login, not to the workflow, so only `vp run release:trust` can report it.
+ * Where npm is older, refuses or stops answering, nothing fails: the release is out, and what is
+ * left is one command for the owner, which the run reports.
  * The whole move has a few minutes (`nextTagLimits`), well inside its step's and its job's.
  */
 
@@ -190,7 +191,7 @@ export async function pointNext(
 }
 
 /** The last line of a command's output that says something, where npm puts its error. */
-function lastLine(output: string): string {
+export function lastLine(output: string): string {
   return (
     output
       .split("\n")

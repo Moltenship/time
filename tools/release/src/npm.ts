@@ -13,6 +13,8 @@ const manifest = JSON.parse(readFileSync(manifestFile, "utf8")) as {
  * integrity, and the jobs' `vp install --frozen-lockfile --ignore-scripts` brings it in, so a
  * release doesn't publish with whatever npm the runner's Node.js bundles. Node.js 26 brought
  * 11.20.0, which can publish through trusted publishing but not move a dist-tag (`next-tag.ts`).
+ * pnpm also links it into `tools/release/node_modules/.bin`, so a `vp run release#…` script that
+ * runs `npm` from PATH gets this one too.
  */
 export const pinnedNpm = {
   version: manifest.version,
